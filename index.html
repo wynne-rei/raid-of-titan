@@ -2829,12 +2829,14 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
     <button class="modal-close" onclick="closeModal('modal-options')">✕</button>
     <div class="modal-title">オプション</div>
     <div class="option-row">
-      <label>BGM 音量</label>
-      <input type="range" min="0" max="100" value="50" id="bgm-volume" oninput="setBGMVolume(this.value)">
+      <label>🔊 BGM 音量 <span id="bgm-vol-label">50%</span></label>
+      <input type="range" min="0" max="100" value="50" id="bgm-volume"
+        oninput="setBGMVolume(this.value); document.getElementById('bgm-vol-label').textContent=this.value+'%'">
     </div>
     <div class="option-row">
-      <label>SE 音量</label>
-      <input type="range" min="0" max="100" value="70" id="se-volume" oninput="setSEVolume(this.value)">
+      <label>🔔 SE 音量 <span id="se-vol-label">70%</span></label>
+      <input type="range" min="0" max="100" value="70" id="se-volume"
+        oninput="setSEVolume(this.value); document.getElementById('se-vol-label').textContent=this.value+'%'">
     </div>
     <div class="option-row" style="flex-direction:column; align-items:stretch; gap:8px;">
       <label>🎤 自動実況テスト</label>
@@ -4090,6 +4092,15 @@ body.ui-stream #now-live-overlay { display: none !important; }
 </div>
 
 <!-- Player Stats Panel -->
+<!-- バトル中の設定ボタン -->
+<div id="battle-settings-btn" onclick="openModal('modal-options')" style="
+  position:fixed; top:12px; left:12px; z-index:900;
+  width:36px; height:36px; border-radius:8px;
+  background:rgba(10,10,30,0.7); border:1px solid rgba(255,255,255,0.15);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:18px; backdrop-filter:blur(4px);
+" title="設定">⚙</div>
+
 <div id="player-stats-panel" style="display:none">
   <div id="ps-toggle" onclick="document.getElementById('player-stats-panel').classList.toggle('open')">📊</div>
   <div id="ps-content">
@@ -4904,6 +4915,7 @@ function updateQueenLevelUI() {
 
 function playLevelUpSound() {
   const ctx = getAudioCtx();
+  const seDest = getSEDestination();
   const now = ctx.currentTime;
   // Triumphant ascending arpeggio
   const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
@@ -4916,7 +4928,7 @@ function playLevelUpSound() {
     g.gain.linearRampToValueAtTime(0.15, now + i * 0.12 + 0.05);
     g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.5);
     osc.connect(g);
-    g.connect(ctx.destination);
+    g.connect(seDest);
     osc.start(now + i * 0.12);
     osc.stop(now + i * 0.12 + 0.6);
   });
@@ -4929,7 +4941,7 @@ function playLevelUpSound() {
   sg.gain.linearRampToValueAtTime(0.1, now + 0.6);
   sg.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
   shimmer.connect(sg);
-  sg.connect(ctx.destination);
+  sg.connect(seDest);
   shimmer.start(now + 0.5);
   shimmer.stop(now + 1.6);
 }
@@ -10225,12 +10237,14 @@ window.filterUnits = function(filter) {
 
 // Volume controls
 window.setBGMVolume = function(val) {
-  const v = val / 100;
-  if (currentBGM && currentBGM.gainNode) currentBGM.gainNode.gain.value = v * 0.18;
+  _bgmVolumeVal = val / 100;
+  localStorage.setItem('cr3d_bgm_vol', _bgmVolumeVal);
+  if (masterBGMGain) masterBGMGain.gain.value = _bgmVolumeVal;
 };
 window.setSEVolume = function(val) {
-  // SE volume stored for future use
-  window._seVolume = val / 100;
+  _seVolumeVal = val / 100;
+  localStorage.setItem('cr3d_se_vol', _seVolumeVal);
+  if (masterSEGain) masterSEGain.gain.value = _seVolumeVal;
 };
 
 // ============================================================
@@ -12479,10 +12493,35 @@ function initSnowParticles() {
 let audioCtx = null;
 let currentBGM = null; // { gainNode, stop() }
 
+// マスター音量管理
+let masterBGMGain = null;  // BGM用マスターゲイン
+let masterSEGain = null;   // SE用マスターゲイン
+let _bgmVolumeVal = parseFloat(localStorage.getItem('cr3d_bgm_vol') ?? '0.5');
+let _seVolumeVal = parseFloat(localStorage.getItem('cr3d_se_vol') ?? '0.7');
+
 function getAudioCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // マスターゲインノード作成
+    masterBGMGain = audioCtx.createGain();
+    masterBGMGain.gain.value = _bgmVolumeVal;
+    masterBGMGain.connect(audioCtx.destination);
+    masterSEGain = audioCtx.createGain();
+    masterSEGain.gain.value = _seVolumeVal;
+    masterSEGain.connect(audioCtx.destination);
+  }
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
+}
+
+// BGM/SEの出力先を取得
+function getBGMDestination() {
+  getAudioCtx();
+  return masterBGMGain || audioCtx.destination;
+}
+function getSEDestination() {
+  getAudioCtx();
+  return masterSEGain || audioCtx.destination;
 }
 
 function stopBGM() {
@@ -12497,7 +12536,7 @@ function playTitleBGM() {
   const ctx = getAudioCtx();
   const master = ctx.createGain();
   master.gain.value = 0.25;
-  master.connect(ctx.destination);
+  master.connect(getBGMDestination());
 
   const nodes = [];
   let stopped = false;
@@ -12618,7 +12657,7 @@ function playBattleBGM() {
   const ctx = getAudioCtx();
   const master = ctx.createGain();
   master.gain.value = 0.2;
-  master.connect(ctx.destination);
+  master.connect(getBGMDestination());
 
   const nodes = [];
   let stopped = false;
@@ -12821,6 +12860,17 @@ function playBattleBGM() {
 function init() {
   loadFullProgress();
   initVoice();
+  // 音量スライダーの初期値を復元
+  const bgmSlider = document.getElementById('bgm-volume');
+  const seSlider = document.getElementById('se-volume');
+  const bgmVal = Math.round(_bgmVolumeVal * 100);
+  const seVal = Math.round(_seVolumeVal * 100);
+  if (bgmSlider) bgmSlider.value = bgmVal;
+  if (seSlider) seSlider.value = seVal;
+  const bgmLabel = document.getElementById('bgm-vol-label');
+  const seLabel = document.getElementById('se-vol-label');
+  if (bgmLabel) bgmLabel.textContent = bgmVal + '%';
+  if (seLabel) seLabel.textContent = seVal + '%';
   initThree();
   buildArena();
   setupInput();
