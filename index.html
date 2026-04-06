@@ -8194,7 +8194,9 @@ function updateHPBarPosition(entity) {
     }
   }
 
-  pos.y += isPlayerTower ? 38 : isQueen ? 38 : 15;
+  // FBXモデルはfbxHeight分の高さがある → 頭上に表示
+  const fbxH = (entity.mesh && entity.mesh.userData && entity.mesh.userData.fbxHeight) ? entity.mesh.userData.fbxHeight : 0;
+  pos.y += isPlayerTower ? 38 : isQueen ? 38 : (fbxH > 0 ? fbxH + 8 : 15);
   pos.project(camera);
 
   const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
