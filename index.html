@@ -4193,6 +4193,8 @@ let fbxCharactersReady = false;
 const CHARACTER_FBX_CONFIG = {
   queen: {
     modelPath: 'assets/characters/queen/model.fbx',
+    idlePath: 'assets/characters/queen/idle.fbx',
+    walkPath: 'assets/characters/queen/walk.fbx',
     textures: {
       body:      { diffuse: 'assets/characters/queen/body_diffuse.png',  normal: 'assets/characters/queen/body_normal.png' },
       dress:     { diffuse: 'assets/characters/queen/dress_diffuse.png', normal: 'assets/characters/queen/dress_normal.png' },
@@ -4205,6 +4207,8 @@ const CHARACTER_FBX_CONFIG = {
   },
   knight: {
     modelPath: 'assets/characters/knight/model.fbx',
+    idlePath: 'assets/characters/knight/idle.fbx',
+    walkPath: 'assets/characters/knight/walk.fbx',
     textures: {
       body:   { diffuse: 'assets/characters/knight/body_diffuse.png',   normal: 'assets/characters/knight/body_normal.png' },
       hair:   { diffuse: 'assets/characters/knight/hair_diffuse.png',   normal: 'assets/characters/knight/hair_normal.png' },
@@ -4215,6 +4219,8 @@ const CHARACTER_FBX_CONFIG = {
   },
   dwarfFemale: {
     modelPath: 'assets/characters/dwarfFemale/model.fbx',
+    idlePath: 'assets/characters/dwarfFemale/idle.fbx',
+    walkPath: 'assets/characters/dwarfFemale/walk.fbx',
     textures: {
       body:    { diffuse: 'assets/characters/dwarfFemale/body_diffuse.png',    normal: 'assets/characters/dwarfFemale/body_normal.png' },
       overall: { diffuse: 'assets/characters/dwarfFemale/overall_diffuse.png', normal: 'assets/characters/dwarfFemale/overall_normal.png' },
@@ -4224,6 +4230,8 @@ const CHARACTER_FBX_CONFIG = {
   },
   dwarfMale: {
     modelPath: 'assets/characters/dwarfMale/model.fbx',
+    idlePath: 'assets/characters/dwarfMale/idle.fbx',
+    walkPath: 'assets/characters/dwarfMale/walk.fbx',
     textures: {
       body:   { diffuse: 'assets/characters/dwarfMale/body_diffuse.png',   normal: 'assets/characters/dwarfMale/body_normal.png' },
       coat:   { diffuse: 'assets/characters/dwarfMale/coat_diffuse.png',   normal: 'assets/characters/dwarfMale/coat_normal.png' },
@@ -4309,8 +4317,36 @@ function preloadCharacterModels() {
         });
 
         fbxCharacterModels[charType] = fbx;
-        console.log(`[FBX] Character ${charType} ready`);
-        resolve();
+        fbxCharacterModels[charType]._animations = { idle: null, walk: null };
+
+        // アニメーションFBXを別途ロード
+        const animPromises = [];
+        if (config.idlePath) {
+          animPromises.push(new Promise((res) => {
+            fbxLoader.load(config.idlePath, (animFbx) => {
+              if (animFbx.animations.length > 0) {
+                fbxCharacterModels[charType]._animations.idle = animFbx.animations[0];
+                console.log(`[FBX] ${charType} idle animation loaded`);
+              }
+              res();
+            }, undefined, () => res());
+          }));
+        }
+        if (config.walkPath) {
+          animPromises.push(new Promise((res) => {
+            fbxLoader.load(config.walkPath, (animFbx) => {
+              if (animFbx.animations.length > 0) {
+                fbxCharacterModels[charType]._animations.walk = animFbx.animations[0];
+                console.log(`[FBX] ${charType} walk animation loaded`);
+              }
+              res();
+            }, undefined, () => res());
+          }));
+        }
+        Promise.all(animPromises).then(() => {
+          console.log(`[FBX] Character ${charType} ready (with animations)`);
+          resolve();
+        });
       }, undefined, (error) => {
         console.error(`[FBX] Character ${charType} load error:`, error);
         resolve(); // エラーでもフォールバックで続行
@@ -4359,13 +4395,30 @@ function cloneFBXForKing(charType) {
   group.userData.isFBXKing = true;
   group.userData.fbxHeight = targetHeight;
 
-  // アイドルアニメーション（あれば）
-  if (srcModel.animations && srcModel.animations.length > 0) {
+  // アニメーション設定（別FBXから読み込んだアニメーション）
+  const anims = srcModel._animations;
+  if (anims && (anims.idle || anims.walk)) {
     const mixer = new THREE.AnimationMixer(clone);
-    const action = mixer.clipAction(srcModel.animations[0]);
-    action.play();
     group.userData.mixer = mixer;
+    group.userData.animations = {};
     entityMixers.push(mixer);
+
+    // Idleアニメーションをデフォルト再生
+    if (anims.idle) {
+      const idleAction = mixer.clipAction(anims.idle);
+      idleAction.play();
+      group.userData.animations.idle = idleAction;
+    }
+    // Walkアニメーション（移動時に切り替え用）
+    if (anims.walk) {
+      const walkAction = mixer.clipAction(anims.walk);
+      walkAction.play();
+      // 移動中はwalk、停止中はidle
+      if (anims.idle) {
+        walkAction.enabled = false; // 初期はidle
+      }
+      group.userData.animations.walk = walkAction;
+    }
   }
 
   return group;
@@ -11958,7 +12011,9 @@ function updateKingMovement(dt) {
     if (keysPressed['d'] || keysPressed['arrowright']) inputX = -1;
   }
 
-  if (inputX !== 0 || inputZ !== 0) {
+  const isMoving = (inputX !== 0 || inputZ !== 0);
+
+  if (isMoving) {
     const len = Math.sqrt(inputX * inputX + inputZ * inputZ);
     inputX /= len;
     inputZ /= len;
@@ -11979,6 +12034,21 @@ function updateKingMovement(dt) {
 
     playerKingTower.x = playerKingTower.mesh.position.x;
     playerKingTower.z = playerKingTower.mesh.position.z;
+  }
+
+  // FBXキングのIdle/Walkアニメーション切り替え
+  const mesh = playerKingTower.mesh;
+  if (mesh && mesh.userData && mesh.userData.animations) {
+    const anims = mesh.userData.animations;
+    if (isMoving && anims.walk && !anims.walk.enabled) {
+      if (anims.idle) anims.idle.enabled = false;
+      anims.walk.enabled = true;
+      anims.walk.reset().play();
+    } else if (!isMoving && anims.idle && anims.walk && anims.walk.enabled) {
+      anims.walk.enabled = false;
+      anims.idle.enabled = true;
+      anims.idle.reset().play();
+    }
   }
 
   // Assassin's Creed style third-person camera
