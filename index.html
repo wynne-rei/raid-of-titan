@@ -2730,6 +2730,10 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
         <span class="hero-icon">📺</span>
         <span class="hero-label">視聴者として参戦</span>
       </button>
+      <button class="hero-btn hero-viewer" onclick="window.openNetSpectatorDialog()" style="background:linear-gradient(135deg,#2a4a7a,#3b6baa);">
+        <span class="hero-icon">🌐</span>
+        <span class="hero-label">観戦で参加</span>
+      </button>
     </div>
     <div class="menu-icons">
       <button class="menu-icon-btn" id="btn-continue" onclick="window.continueGame()">
@@ -4101,6 +4105,55 @@ body.ui-stream #now-live-overlay { display: none !important; }
 <!-- HP Bar Template Container -->
 <div id="hp-bars-container"></div>
 
+<!-- マルチプレイ: ホスト用ルームコード表示 -->
+<div id="net-host-overlay" style="display:none; position:fixed; top:12px; right:12px; z-index:9999;
+  background:rgba(10,10,30,0.85); border:1px solid rgba(160,96,255,0.4); border-radius:12px;
+  padding:10px 18px; text-align:center; backdrop-filter:blur(8px); min-width:140px;">
+  <div style="font-size:10px; color:#aaa; letter-spacing:2px; margin-bottom:4px;">ROOM CODE</div>
+  <div id="net-room-code" style="font-size:28px; font-weight:bold; color:#fff; letter-spacing:6px; font-family:monospace;">------</div>
+  <div id="net-viewer-count" style="font-size:11px; color:#8f8; margin-top:4px;">0 人が観戦中</div>
+</div>
+
+<!-- マルチプレイ: 観戦参加ダイアログ -->
+<div id="net-join-dialog" style="display:none; position:fixed; inset:0; z-index:99999;
+  background:rgba(0,0,0,0.85); backdrop-filter:blur(12px);
+  display:none; justify-content:center; align-items:center;">
+  <div style="background:rgba(20,20,40,0.95); border:1px solid rgba(160,96,255,0.4);
+    border-radius:16px; padding:40px; text-align:center; max-width:400px; width:90%;">
+    <div style="font-size:32px; margin-bottom:8px;">🌐</div>
+    <h2 style="color:#fff; margin:0 0 8px 0; font-size:22px;">マルチプレイ観戦</h2>
+    <p style="color:#aaa; font-size:13px; margin:0 0 24px 0;">ホストのルームコードを入力してください</p>
+    <input type="text" id="net-room-input" maxlength="6" placeholder="ABCDEF"
+      style="text-transform:uppercase; text-align:center; font-size:32px; letter-spacing:8px;
+      font-family:monospace; width:200px; padding:12px; background:rgba(255,255,255,0.1);
+      border:2px solid rgba(160,96,255,0.5); border-radius:8px; color:#fff; outline:none;">
+    <div id="net-join-status" style="color:#ff6; font-size:13px; margin-top:12px; min-height:20px;"></div>
+    <div style="margin-top:20px; display:flex; gap:12px; justify-content:center;">
+      <button onclick="window.joinAsNetSpectator()" style="padding:12px 28px; font-size:16px;
+        background:linear-gradient(135deg,#6c3baa,#a060ff); color:#fff; border:none;
+        border-radius:8px; cursor:pointer; font-weight:bold;">接続</button>
+      <button onclick="window.closeNetJoinDialog()" style="padding:12px 28px; font-size:16px;
+        background:rgba(255,255,255,0.1); color:#ccc; border:1px solid rgba(255,255,255,0.2);
+        border-radius:8px; cursor:pointer;">戻る</button>
+    </div>
+  </div>
+</div>
+
+<!-- マルチプレイ: ホスト切断通知 -->
+<div id="net-disconnect-overlay" style="display:none; position:fixed; inset:0; z-index:99999;
+  background:rgba(0,0,0,0.85); backdrop-filter:blur(12px);
+  justify-content:center; align-items:center;">
+  <div style="background:rgba(40,20,20,0.95); border:1px solid rgba(255,80,80,0.4);
+    border-radius:16px; padding:40px; text-align:center;">
+    <div style="font-size:40px; margin-bottom:12px;">🔌</div>
+    <h2 style="color:#fff; margin:0 0 12px 0;">ホストが切断しました</h2>
+    <button onclick="window.backToMenuFromDisconnect()" style="padding:12px 28px; font-size:16px;
+      background:linear-gradient(135deg,#aa3b3b,#ff6060); color:#fff; border:none;
+      border-radius:8px; cursor:pointer; font-weight:bold; margin-top:8px;">タイトルに戻る</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
 </script>
@@ -4400,6 +4453,15 @@ let raidCount = 0;
 // streamMode: 'off' | 'streamer' (自分が配信者) | 'viewer' (自分が視聴者)
 let streamMode = 'off';
 let isSpectator = false; // 視聴者モードか
+// === マルチプレイ観戦 (PeerJS WebRTC) ===
+let peerInstance = null;       // PeerJS Peer object
+let isNetHost = false;         // ホスト（プレイヤー）か
+let isNetSpectator = false;    // リモート観戦者か
+let netConnections = [];       // ホスト: 観戦者への接続配列
+let hostConnection = null;     // 観戦者: ホストへの接続
+let roomCode = '';             // 6文字ルームコード
+let netBroadcastTimer = 0;    // ホスト: ブロードキャスト間隔タイマー
+const NET_BROADCAST_INTERVAL = 0.5; // 500ms
 let spectatedPlayerId = -1; // 視聴者モードで観戦中のBOT id（-1なら未選択）
 // 視聴者の所属国 & ギフトデッキ（スパチャで送るユニット）
 let spectatorFaction = 'fire';
@@ -10681,6 +10743,225 @@ function cycleSpectatedPlayer(dir) {
   setSpectatedPlayer(alive[nextIdx].id);
 }
 
+// ============================================================
+// MULTIPLAYER SPECTATING (PeerJS WebRTC)
+// ============================================================
+function generateRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+function initHostNetworking() {
+  if (peerInstance) { peerInstance.destroy(); peerInstance = null; }
+  roomCode = generateRoomCode();
+  const peerId = 'rot-' + roomCode;
+  console.log('[NET] Host initializing, room:', roomCode);
+  try {
+    peerInstance = new Peer(peerId);
+  } catch(e) {
+    console.error('[NET] PeerJS init failed:', e);
+    return;
+  }
+  peerInstance.on('open', (id) => {
+    console.log('[NET] Host ready, peer ID:', id);
+    isNetHost = true;
+    document.getElementById('net-room-code').textContent = roomCode;
+    document.getElementById('net-host-overlay').style.display = 'block';
+    updateNetViewerCount();
+  });
+  peerInstance.on('connection', (conn) => {
+    console.log('[NET] Spectator connected:', conn.peer);
+    conn.on('open', () => {
+      netConnections.push(conn);
+      updateNetViewerCount();
+      // 初回: 即座に状態送信
+      try {
+        const state = serializeBattleState();
+        state._netMeta = { type: 'state' };
+        conn.send(state);
+      } catch(e) { console.error('[NET] Initial state send error:', e); }
+    });
+    conn.on('close', () => {
+      netConnections = netConnections.filter(c => c !== conn);
+      updateNetViewerCount();
+      console.log('[NET] Spectator disconnected');
+    });
+    conn.on('error', (err) => {
+      console.error('[NET] Connection error:', err);
+      netConnections = netConnections.filter(c => c !== conn);
+      updateNetViewerCount();
+    });
+  });
+  peerInstance.on('error', (err) => {
+    console.error('[NET] Peer error:', err);
+    // ID被りの場合リトライ
+    if (err.type === 'unavailable-id') {
+      roomCode = generateRoomCode();
+      setTimeout(() => initHostNetworking(), 500);
+    }
+  });
+}
+
+function updateNetViewerCount() {
+  const el = document.getElementById('net-viewer-count');
+  if (el) el.textContent = netConnections.length + ' 人が観戦中';
+}
+
+function broadcastState() {
+  if (netConnections.length === 0) return;
+  try {
+    const state = serializeBattleState();
+    state._netMeta = { type: 'state' };
+    const dead = [];
+    netConnections.forEach((conn, i) => {
+      try { conn.send(state); }
+      catch(e) { dead.push(i); }
+    });
+    if (dead.length) {
+      netConnections = netConnections.filter((_, i) => !dead.includes(i));
+      updateNetViewerCount();
+    }
+  } catch(e) {
+    console.error('[NET] Broadcast error:', e);
+  }
+}
+
+function initSpectatorNetworking(code) {
+  if (peerInstance) { peerInstance.destroy(); peerInstance = null; }
+  const hostId = 'rot-' + code.toUpperCase();
+  console.log('[NET] Spectator connecting to:', hostId);
+  const statusEl = document.getElementById('net-join-status');
+  statusEl.textContent = '接続中...';
+  statusEl.style.color = '#ff6';
+  try {
+    peerInstance = new Peer();
+  } catch(e) {
+    statusEl.textContent = 'PeerJS初期化に失敗しました';
+    statusEl.style.color = '#f66';
+    return;
+  }
+  peerInstance.on('open', () => {
+    hostConnection = peerInstance.connect(hostId, { reliable: true });
+    // 接続タイムアウト
+    const timeout = setTimeout(() => {
+      if (!isNetSpectator) {
+        statusEl.textContent = 'ルームが見つかりません';
+        statusEl.style.color = '#f66';
+        if (hostConnection) try { hostConnection.close(); } catch(_){}
+      }
+    }, 10000);
+    hostConnection.on('open', () => {
+      clearTimeout(timeout);
+      console.log('[NET] Connected to host!');
+      statusEl.textContent = '接続成功！ゲーム状態を受信中...';
+      statusEl.style.color = '#8f8';
+    });
+    hostConnection.on('data', (data) => {
+      if (data && data._netMeta && data._netMeta.type === 'state') {
+        receiveHostState(data);
+      }
+    });
+    hostConnection.on('close', () => {
+      console.log('[NET] Host disconnected');
+      if (isNetSpectator) {
+        document.getElementById('net-disconnect-overlay').style.display = 'flex';
+      }
+    });
+    hostConnection.on('error', (err) => {
+      console.error('[NET] Connection error:', err);
+      statusEl.textContent = '接続エラー: ' + (err.message || err.type || '不明');
+      statusEl.style.color = '#f66';
+    });
+  });
+  peerInstance.on('error', (err) => {
+    console.error('[NET] Peer error:', err);
+    statusEl.textContent = '接続エラー: ' + (err.type || '不明');
+    statusEl.style.color = '#f66';
+  });
+}
+
+let _netFirstStateReceived = false;
+function receiveHostState(data) {
+  if (!scene || !renderer) return;
+  try {
+    delete data._netMeta;
+    restoreBattleState(data);
+    if (!_netFirstStateReceived) {
+      _netFirstStateReceived = true;
+      isNetSpectator = true;
+      // ダイアログを閉じてゲーム画面に
+      document.getElementById('net-join-dialog').style.display = 'none';
+      document.getElementById('title-screen').style.display = 'none';
+      // バトルUIを表示（ただしカードハンドは非表示）
+      document.getElementById('battle-dock').style.display = 'flex';
+      document.getElementById('card-hand').classList.remove('visible');
+      // 観戦モード起動
+      isSpectator = true;
+      gameState = 'PLAYING';
+      // 最初の生存プレイヤーを観戦対象に
+      const alive = players.filter(p => !p.eliminated && p.kingTower && !p.kingTower.destroyed);
+      if (alive.length > 0) {
+        // 人間プレイヤー（ホスト）を優先
+        const human = alive.find(p => p.isHuman);
+        setSpectatedPlayer(human ? human.id : alive[0].id);
+      }
+      // 観戦中テキスト表示
+      addCommentary('🌐 観戦モードで接続しました！ ←→キーでプレイヤーを切り替え', 'fire');
+    }
+  } catch(e) {
+    console.error('[NET] State restore error:', e);
+  }
+}
+
+function cleanupNetworking() {
+  if (peerInstance) {
+    try { peerInstance.destroy(); } catch(_) {}
+    peerInstance = null;
+  }
+  netConnections = [];
+  hostConnection = null;
+  isNetHost = false;
+  isNetSpectator = false;
+  _netFirstStateReceived = false;
+  roomCode = '';
+  const overlay = document.getElementById('net-host-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+// UI handlers
+window.openNetSpectatorDialog = function() {
+  const dlg = document.getElementById('net-join-dialog');
+  dlg.style.display = 'flex';
+  const input = document.getElementById('net-room-input');
+  input.value = '';
+  document.getElementById('net-join-status').textContent = '';
+  setTimeout(() => input.focus(), 100);
+};
+window.closeNetJoinDialog = function() {
+  document.getElementById('net-join-dialog').style.display = 'none';
+  if (peerInstance && !isNetSpectator) {
+    try { peerInstance.destroy(); } catch(_) {}
+    peerInstance = null;
+  }
+};
+window.joinAsNetSpectator = function() {
+  const input = document.getElementById('net-room-input');
+  const code = input.value.toUpperCase().trim();
+  if (code.length !== 6) {
+    document.getElementById('net-join-status').textContent = '6文字のコードを入力してください';
+    document.getElementById('net-join-status').style.color = '#f66';
+    return;
+  }
+  initSpectatorNetworking(code);
+};
+window.backToMenuFromDisconnect = function() {
+  document.getElementById('net-disconnect-overlay').style.display = 'none';
+  cleanupNetworking();
+  window.backToMenu();
+};
+
 window.startNewGame = function() {
   unlockSpeech(); // ← ユーザージェスチャー内で即座にunlock
   deleteSaveData();
@@ -11097,6 +11378,10 @@ window.startBattle = function() {
   }
   // 全プレイヤーに配信者名を付与（配信者モード・視聴者モード両方で使う）
   assignStreamerNames();
+  // マルチプレイ: ホストネットワーク初期化
+  if (!isNetSpectator) {
+    initHostNetworking();
+  }
 };
 
 // 全プレイヤーに配信者風のニックネームと視聴者数を付与
@@ -11123,6 +11408,8 @@ window.backToMenu = function() {
   // 視聴者/配信者モードをクリア
   isSpectator = false;
   disableStreamMode();
+  // マルチプレイ: ネットワーククリーンアップ
+  cleanupNetworking();
   playTitleBGM();
   updateContinueButton();
 };
@@ -11791,6 +12078,16 @@ function updateMinimap() {
 // MAIN GAME LOOP
 // ============================================================
 function updateGame(dt) {
+  // ネットワーク観戦者: ゲームロジック全スキップ、カメラ/UI/ライティングのみ
+  if (isNetSpectator) {
+    if (isSpectator) updateSpectatorMode(dt);
+    updateKingMovement(dt);
+    updateLightingFromWorldTime();
+    updateClouds(dt);
+    updateHUD();
+    updateMinimap();
+    return;
+  }
   // Tutorial state handling
   if (gameState === 'TUTORIAL') {
     // Keep elixir full during tutorial
@@ -11884,6 +12181,15 @@ function updateGame(dt) {
   // Re-render hand (for elixir cost checking)
   if (Math.floor(elixir) !== Math.floor(elixir - rate * dt)) {
     renderHand();
+  }
+
+  // ホスト: 観戦者への状態ブロードキャスト
+  if (isNetHost && netConnections.length > 0) {
+    netBroadcastTimer += dt;
+    if (netBroadcastTimer >= NET_BROADCAST_INTERVAL) {
+      netBroadcastTimer = 0;
+      broadcastState();
+    }
   }
 }
 
