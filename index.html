@@ -4474,17 +4474,17 @@ function cloneFBXForUnit(cardId, def) {
   // SkeletonUtils.clone() でスケルトン（骨格）ごと正しくクローン
   const clone = SkeletonUtils.clone(fbxGiantModel);
 
-  // マテリアルを個別にクローン（共有を避ける）
+  // マテリアル共有（パフォーマンス最適化: clone廃止）
   clone.traverse((child) => {
     if (child.isMesh || child.isSkinnedMesh) {
-      child.material = child.material.clone();
       child.castShadow = true;
       child.receiveShadow = true;
     }
   });
 
-  // サイズ正規化: FBXモデルのバウンディングボックスから高さを計算
-  const box = new THREE.Box3().setFromObject(fbxGiantModel); // 元モデルで計測（クローンは変形済みの場合がある）
+  // サイズ正規化: FBXモデルのバウンディングボックスから高さを計算（キャッシュ済み）
+  if (!_fbxBBoxCache) _fbxBBoxCache = new THREE.Box3().setFromObject(fbxGiantModel);
+  const box = _fbxBBoxCache;
   const modelHeight = box.max.y - box.min.y;
   // ユニットの目標高さ（def.size[1]ベース × unitScale込み）
   const unitScale = (def.type === 'troop') ? 10 : 1;
@@ -4756,6 +4756,62 @@ let spellEffects = [];
 let towers = [];
 let selectedCardIndex = -1;
 let placementMode = false;
+
+// Performance: Spatial hash grid for target search
+const SPATIAL_CELL_SIZE = 200;
+const spatialGrid = new Map();
+let frameCount = 0;
+
+function _spatialKey(cx, cz) { return cx + ',' + cz; }
+
+function rebuildSpatialGrid() {
+  spatialGrid.clear();
+  for (let i = 0; i < entities.length; i++) {
+    const e = entities[i];
+    if (e.hp <= 0) continue;
+    const cx = Math.floor(e.mesh.position.x / SPATIAL_CELL_SIZE);
+    const cz = Math.floor(e.mesh.position.z / SPATIAL_CELL_SIZE);
+    const key = _spatialKey(cx, cz);
+    if (!spatialGrid.has(key)) spatialGrid.set(key, []);
+    spatialGrid.get(key).push(e);
+  }
+  for (let i = 0; i < towers.length; i++) {
+    const t = towers[i];
+    if (t.destroyed) continue;
+    const tx = t.mesh ? t.mesh.position.x : t.x;
+    const tz = t.mesh ? t.mesh.position.z : t.z;
+    const cx = Math.floor(tx / SPATIAL_CELL_SIZE);
+    const cz = Math.floor(tz / SPATIAL_CELL_SIZE);
+    const key = _spatialKey(cx, cz);
+    if (!spatialGrid.has(key)) spatialGrid.set(key, []);
+    spatialGrid.get(key).push(t);
+  }
+}
+
+function getNearbyFromGrid(x, z) {
+  const cx = Math.floor(x / SPATIAL_CELL_SIZE);
+  const cz = Math.floor(z / SPATIAL_CELL_SIZE);
+  const result = [];
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      const key = _spatialKey(cx + dx, cz + dz);
+      const cell = spatialGrid.get(key);
+      if (cell) {
+        for (let i = 0; i < cell.length; i++) result.push(cell[i]);
+      }
+    }
+  }
+  return result;
+}
+
+// Performance: FBX bounding box cache
+let _fbxBBoxCache = null;
+
+// Performance: Damage number DOM pool
+const dmgNumPool = [];
+
+// Performance: FBX unit object pool
+const fbxUnitPool = [];
 
 // Factions
 const FACTIONS = {
@@ -6198,7 +6254,7 @@ function initThree() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   document.body.appendChild(renderer.domElement);
 
   // Lights — Bad North風トゥーンシェーディング向け（コントラスト強め）
@@ -6212,7 +6268,7 @@ function initThree() {
   const sun = new THREE.DirectionalLight(0xfff8e8, 1.5);
   sun.position.set(200, 400, -100);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(1024, 1024);
   sun.shadow.camera.left = -3500;
   sun.shadow.camera.right = 3500;
   sun.shadow.camera.top = 3500;
@@ -7548,10 +7604,43 @@ function updateHUD() {
 // ============================================================
 // UNIT MESH BUILDER — Bad North Style (Minimalist Warriors)
 // ============================================================
+function getPooledFBXUnit(cardId, def) {
+  // Try to reuse from pool
+  for (let i = 0; i < fbxUnitPool.length; i++) {
+    if (!fbxUnitPool[i].active) {
+      fbxUnitPool[i].active = true;
+      const mesh = fbxUnitPool[i].mesh;
+      // Reset animation
+      if (mesh.userData.mixer && mesh.userData.walkAction) {
+        mesh.userData.walkAction.reset().play();
+        if (!entityMixers.includes(mesh.userData.mixer)) {
+          entityMixers.push(mesh.userData.mixer);
+        }
+      }
+      return mesh;
+    }
+  }
+  // Create new
+  const mesh = cloneFBXForUnit(cardId, def);
+  fbxUnitPool.push({ mesh, active: true });
+  return mesh;
+}
+
+function returnToPool(mesh) {
+  for (let i = 0; i < fbxUnitPool.length; i++) {
+    if (fbxUnitPool[i].mesh === mesh) {
+      fbxUnitPool[i].active = false;
+      scene.remove(mesh);
+      return true;
+    }
+  }
+  return false;
+}
+
 function createUnitMesh(cardId, def, baseColor) {
-  // FBXモデルが使える場合はそれを使用
+  // FBXモデルが使える場合はプールから取得
   if (fbxModelReady && fbxGiantModel) {
-    return cloneFBXForUnit(cardId, def);
+    return getPooledFBXUnit(cardId, def);
   }
   // フォールバック: 従来のプリミティブ生成
   const group = new THREE.Group();
@@ -8044,19 +8133,46 @@ function castSpell(cardId, x, z, side) {
 // ============================================================
 // DAMAGE NUMBER
 // ============================================================
+function initDmgNumPool() {
+  for (let i = 0; i < 20; i++) {
+    const div = document.createElement('div');
+    div.className = 'damage-number';
+    div.style.display = 'none';
+    document.body.appendChild(div);
+    dmgNumPool.push({ el: div, active: false });
+  }
+}
+
 function showDamageNumber(x, z, dmg) {
   const vec = new THREE.Vector3(x, 15, z);
   vec.project(camera);
   const sx = (vec.x * 0.5 + 0.5) * window.innerWidth;
   const sy = (-vec.y * 0.5 + 0.5) * window.innerHeight;
 
-  const el = document.createElement('div');
-  el.className = 'damage-number';
+  // Get from pool
+  let poolItem = null;
+  for (let i = 0; i < dmgNumPool.length; i++) {
+    if (!dmgNumPool[i].active) { poolItem = dmgNumPool[i]; break; }
+  }
+  if (!poolItem) {
+    // All in use, reuse oldest (index 0 wraps)
+    poolItem = dmgNumPool[0];
+  }
+  poolItem.active = true;
+  const el = poolItem.el;
+  el.style.display = 'block';
   el.textContent = `-${dmg}`;
   el.style.left = sx + 'px';
   el.style.top = sy + 'px';
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 800);
+  // Re-trigger animation
+  el.style.animation = 'none';
+  el.offsetHeight; // force reflow
+  el.style.animation = '';
+
+  setTimeout(() => {
+    poolItem.active = false;
+    el.style.display = 'none';
+  }, 800);
 }
 
 // ============================================================
@@ -8092,17 +8208,20 @@ function getMovementTarget(entity) {
   const side = entity.side;
   const x = entity.mesh.position.x;
   const z = entity.mesh.position.z;
+  const nearby = getNearbyFromGrid(x, z);
   // ギフトユニット(forceKing): 射程内に敵ユニットがいれば反撃、それ以外は最寄り敵キング直進
   if (entity.forceKing) {
     // 射程 + 少し余裕で敵ユニットチェック（反撃モード）
     const atkRange = (entity.range || 12) + 20;
     let atkNear = null, atkDist = Infinity;
-    entities.forEach(e => {
-      if (isAlly(e.side, side) || e.hp <= 0) return;
-      if (entity.targetType === 'ground' && e.fly) return;
+    for (let ni = 0; ni < nearby.length; ni++) {
+      const e = nearby[ni];
+      if (e.destroyed !== undefined || e.isKing) continue; // skip towers
+      if (isAlly(e.side, side) || e.hp <= 0) continue;
+      if (entity.targetType === 'ground' && e.fly) continue;
       const d = Math.sqrt((e.mesh.position.x - x) ** 2 + (e.mesh.position.z - z) ** 2);
       if (d <= atkRange && d < atkDist) { atkDist = d; atkNear = e; }
-    });
+    }
     if (atkNear) return { x: atkNear.mesh.position.x, z: atkNear.mesh.position.z, target: atkNear };
     // 敵が近くにいない → 最寄り敵キングタワーへ直進
     let nearest = null, minDist = Infinity;
@@ -8124,15 +8243,17 @@ function getMovementTarget(entity) {
     if (nearest) return { x: nearest.x, z: nearest.z, target: nearest };
   }
 
-  // Find nearest enemy entity or tower
+  // Find nearest enemy entity or tower (using spatial grid)
   let nearest = null, minDist = Infinity;
 
-  entities.forEach(e => {
-    if (isAlly(e.side, side) || e.hp <= 0) return;
-    if (entity.targetType === 'ground' && e.fly) return;
+  for (let ni = 0; ni < nearby.length; ni++) {
+    const e = nearby[ni];
+    if (e.destroyed !== undefined || e.isKing) continue; // skip towers
+    if (isAlly(e.side, side) || e.hp <= 0) continue;
+    if (entity.targetType === 'ground' && e.fly) continue;
     const d = Math.sqrt((e.mesh.position.x - x) ** 2 + (e.mesh.position.z - z) ** 2);
     if (d < minDist) { minDist = d; nearest = e; }
-  });
+  }
 
   // If no entity in range, go for nearest enemy tower
   if (!nearest || minDist > 800) {
@@ -8172,6 +8293,7 @@ function getPathPoint(entity) {
 // UPDATE ENTITIES
 // ============================================================
 function updateEntities(dt) {
+  rebuildSpatialGrid();
   for (let i = entities.length - 1; i >= 0; i--) {
     const e = entities[i];
 
@@ -8226,7 +8348,16 @@ function updateEntities(dt) {
         });
       }
       removeEntityMixer(e.mesh);
-      scene.remove(e.mesh);
+      if (!returnToPool(e.mesh)) {
+        scene.remove(e.mesh);
+        e.mesh.traverse((child) => {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) {
+            if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+            else child.material.dispose();
+          }
+        });
+      }
       e.hpContainer.remove();
       entities.splice(i, 1);
       continue;
@@ -8428,15 +8559,19 @@ function updateBuildingAttack(e, dt, speedMult) {
   }
 }
 
+const _hpBarVec = new THREE.Vector3();
 function updateHPBarPosition(entity) {
   const isPlayerTower = entity.isKing && entity.playerId === 0;
   const isQueen = entity.isKing;
-  const pos = entity.mesh ? entity.mesh.position.clone() : new THREE.Vector3(entity.x, 2, entity.z);
+  const srcPos = entity.mesh ? entity.mesh.position : null;
+  const ex = srcPos ? srcPos.x : entity.x;
+  const ey = srcPos ? srcPos.y : 2;
+  const ez = srcPos ? srcPos.z : entity.z;
 
   // Distance check — hide far-away queen HP bars (not player's own)
   if (isQueen && !isPlayerTower && playerKingTower) {
-    const dx = pos.x - playerKingTower.mesh.position.x;
-    const dz = pos.z - playerKingTower.mesh.position.z;
+    const dx = ex - playerKingTower.mesh.position.x;
+    const dz = ez - playerKingTower.mesh.position.z;
     const dist = Math.sqrt(dx * dx + dz * dz);
     if (dist > 250) {
       entity.hpContainer.style.display = 'none';
@@ -8444,15 +8579,30 @@ function updateHPBarPosition(entity) {
     }
   }
 
+  // Check if position or hp changed since last update (dirty check)
+  const hpPct = Math.max(0, (entity.hp / entity.maxHp) * 100);
+  const lastX = entity._lastHpX || 0;
+  const lastZ = entity._lastHpZ || 0;
+  const lastHpPct = entity._lastHpPct || -1;
+  const posChanged = Math.abs(ex - lastX) > 0.1 || Math.abs(ez - lastZ) > 0.1;
+  const hpChanged = Math.abs(hpPct - lastHpPct) > 0.01;
+
+  if (!posChanged && !hpChanged && entity._hpBarInited) return;
+
+  entity._lastHpX = ex;
+  entity._lastHpZ = ez;
+  entity._lastHpPct = hpPct;
+  entity._hpBarInited = true;
+
   // FBXモデルはfbxHeight分の高さがある → 頭上に表示
   const fbxH = (entity.mesh && entity.mesh.userData && entity.mesh.userData.fbxHeight) ? entity.mesh.userData.fbxHeight : 0;
-  pos.y += isPlayerTower ? 38 : isQueen ? 38 : (fbxH > 0 ? fbxH + 8 : 15);
-  pos.project(camera);
+  _hpBarVec.set(ex, ey + (isPlayerTower ? 38 : isQueen ? 38 : (fbxH > 0 ? fbxH + 8 : 15)), ez);
+  _hpBarVec.project(camera);
 
-  const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
-  const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+  const x = (_hpBarVec.x * 0.5 + 0.5) * window.innerWidth;
+  const y = (-_hpBarVec.y * 0.5 + 0.5) * window.innerHeight;
 
-  if (pos.z > 1 || pos.z < 0) {
+  if (_hpBarVec.z > 1 || _hpBarVec.z < 0) {
     entity.hpContainer.style.display = 'none';
     return;
   }
@@ -8462,12 +8612,13 @@ function updateHPBarPosition(entity) {
   entity.hpContainer.style.left = (x - halfW) + 'px';
   entity.hpContainer.style.top = y + 'px';
 
-  const fill = entity.hpContainer.querySelector('.hp-bar-fill');
-  const hpPct = Math.max(0, (entity.hp / entity.maxHp) * 100);
-  fill.style.width = hpPct + '%';
+  if (hpChanged) {
+    const fill = entity.hpContainer.querySelector('.hp-bar-fill');
+    fill.style.width = hpPct + '%';
+  }
 
   // Update HP text for all queens
-  if (isQueen) {
+  if (isQueen && hpChanged) {
     const hpText = entity.hpContainer.querySelector('.hp-text');
     if (hpText) hpText.textContent = `${Math.ceil(entity.hp)} / ${entity.maxHp}`;
   }
@@ -8484,6 +8635,13 @@ function updateTowers(dt) {
     if (tower.hp <= 0) {
       tower.destroyed = true;
       scene.remove(tower.mesh);
+      tower.mesh.traverse((child) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+          else child.material.dispose();
+        }
+      });
       tower.hpContainer.style.display = 'none';
 
       // Credit king kill + commentary
@@ -8614,6 +8772,8 @@ function updateProjectiles(dt) {
         }
       }
       scene.remove(p.mesh);
+      if (p.mesh.geometry) p.mesh.geometry.dispose();
+      if (p.mesh.material) p.mesh.material.dispose();
       projectiles.splice(i, 1);
     } else {
       const speed = p.speed * dt;
@@ -8642,6 +8802,11 @@ function updateSpellEffects(dt) {
     }
     if (e.timer <= 0) {
       scene.remove(e.mesh);
+      if (e.mesh.geometry) e.mesh.geometry.dispose();
+      if (e.mesh.material) {
+        if (Array.isArray(e.mesh.material)) e.mesh.material.forEach(m => m.dispose());
+        else e.mesh.material.dispose();
+      }
       spellEffects.splice(i, 1);
     }
   }
@@ -12669,6 +12834,7 @@ function updateGame(dt) {
   document.getElementById('elixir-text').textContent = `${Math.floor(elixir)}/${ELIXIR_MAX}`;
 
   // Update systems
+  frameCount++;
   updateEntities(dt);
   updateEntityAnimations(dt);
   updateTowers(dt);
@@ -12682,12 +12848,11 @@ function updateGame(dt) {
   updateKingMovement(dt);
   updateGhostPosition();
   updateChests(dt);
-  updateHUD();
+  if (frameCount % 3 === 0) { updateHUD(); updateMinimap(); }
   updateCommentary(dt);
-  updatePlayerStats(dt);
+  if (frameCount % 3 === 0) updatePlayerStats(dt);
   updateQueenAuraAnimation(dt);
-  updateActionStatus();
-  updateMinimap();
+  if (frameCount % 3 === 0) updateActionStatus();
 
   // Re-render hand (for elixir cost checking)
   if (Math.floor(elixir) !== Math.floor(elixir - rate * dt)) {
@@ -13148,6 +13313,7 @@ function init() {
   buildArena();
   setupInput();
   initSnowParticles();
+  initDmgNumPool();
   // FBXモデルをプリロード → 完了後にゲーム開始可能に
   const titleScreen = document.getElementById('title-screen');
   const menuBtns = titleScreen ? titleScreen.querySelectorAll('.hero-btn') : [];
