@@ -4163,6 +4163,7 @@ body.ui-stream #now-live-overlay { display: none !important; }
 <script type="module">
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 // ============================================================
 // FBX MODEL LOADER & ANIMATION SYSTEM
@@ -4218,17 +4219,21 @@ function preloadFBXModels() {
 // FBXモデルをクローンしてユニット用メッシュを生成
 function cloneFBXForUnit(cardId, def) {
   const group = new THREE.Group();
-  const clone = fbxGiantModel.clone();
 
-  // SkinnedMeshのクローンはボーン共有問題があるので手動で処理
+  // SkeletonUtils.clone() でスケルトン（骨格）ごと正しくクローン
+  const clone = SkeletonUtils.clone(fbxGiantModel);
+
+  // マテリアルを個別にクローン（共有を避ける）
   clone.traverse((child) => {
-    if (child.isSkinnedMesh) {
+    if (child.isMesh || child.isSkinnedMesh) {
       child.material = child.material.clone();
+      child.castShadow = true;
+      child.receiveShadow = true;
     }
   });
 
   // サイズ正規化: FBXモデルのバウンディングボックスから高さを計算
-  const box = new THREE.Box3().setFromObject(clone);
+  const box = new THREE.Box3().setFromObject(fbxGiantModel); // 元モデルで計測（クローンは変形済みの場合がある）
   const modelHeight = box.max.y - box.min.y;
   // ユニットの目標高さ（def.size[1]ベース、unitScale前）
   const targetHeight = (def.size[1] || def.size[0] || 4);
@@ -4241,7 +4246,7 @@ function cloneFBXForUnit(cardId, def) {
 
   group.add(clone);
 
-  // アニメーションミキサーをセットアップ
+  // アニメーションミキサーをセットアップ（クローンされたスケルトンに紐づけ）
   if (fbxGiantAnimations.length > 0) {
     const mixer = new THREE.AnimationMixer(clone);
     const action = mixer.clipAction(fbxGiantAnimations[0]);
@@ -12807,9 +12812,23 @@ function init() {
   buildArena();
   setupInput();
   initSnowParticles();
-  // FBXモデルをプリロード（バックグラウンドでロード、完了後に自動で使われる）
+  // FBXモデルをプリロード → 完了後にゲーム開始可能に
+  const titleScreen = document.getElementById('title-screen');
+  const menuBtns = titleScreen ? titleScreen.querySelectorAll('.hero-btn') : [];
+  menuBtns.forEach(b => { b.style.opacity = '0.4'; b.style.pointerEvents = 'none'; });
+  if (titleScreen) {
+    let loadingMsg = document.createElement('div');
+    loadingMsg.id = 'fbx-loading-msg';
+    loadingMsg.style.cssText = 'text-align:center;color:#aaa;font-size:14px;margin-top:10px;';
+    loadingMsg.textContent = '3Dモデルを読み込み中...';
+    const menuHeroes = titleScreen.querySelector('.menu-heroes');
+    if (menuHeroes) menuHeroes.appendChild(loadingMsg);
+  }
   preloadFBXModels().then(() => {
     console.log('[INIT] FBX models preloaded');
+    menuBtns.forEach(b => { b.style.opacity = '1'; b.style.pointerEvents = 'auto'; });
+    const msg = document.getElementById('fbx-loading-msg');
+    if (msg) msg.remove();
   });
   animate();
   // Fallback for background tabs where rAF pauses
