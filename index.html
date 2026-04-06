@@ -7623,12 +7623,7 @@ function spawnEntity(cardId, x, z, side) {
     const pColor = (players[side] && FACTIONS[players[side].faction]) ? FACTIONS[players[side].faction].color : 0xffffff;
     const flagMat = new THREE.MeshToonMaterial({ color: pColor, emissive: pColor, emissiveIntensity: 0.3 });
     if (isFBX) {
-      // FBXモデル: 頭上に小さな色マーカー（旗の代わり）
-      const markerGeo = new THREE.SphereGeometry(3, 8, 8);
-      const marker = new THREE.Mesh(markerGeo, flagMat);
-      const fbxH = mesh.userData.fbxHeight || 40;
-      marker.position.y = fbxH + 5;
-      mesh.add(marker);
+      // FBXモデル: 陣営はHPバーの色で識別。マーカー不要
     } else {
       // プリミティブモデル: 従来の旗
       const flagSize = unitScale > 1 ? 3 : 1.5;
