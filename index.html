@@ -10238,12 +10238,15 @@ window.filterUnits = function(filter) {
 // Volume controls
 window.setBGMVolume = function(val) {
   _bgmVolumeVal = val / 100;
-  localStorage.setItem('cr3d_bgm_vol', _bgmVolumeVal);
+  localStorage.setItem('cr3d_bgm_vol', String(_bgmVolumeVal));
+  // マスターゲインが未初期化ならAudioContextを初期化
+  if (!masterBGMGain) getAudioCtx();
   if (masterBGMGain) masterBGMGain.gain.value = _bgmVolumeVal;
 };
 window.setSEVolume = function(val) {
   _seVolumeVal = val / 100;
-  localStorage.setItem('cr3d_se_vol', _seVolumeVal);
+  localStorage.setItem('cr3d_se_vol', String(_seVolumeVal));
+  if (!masterSEGain) getAudioCtx();
   if (masterSEGain) masterSEGain.gain.value = _seVolumeVal;
 };
 
