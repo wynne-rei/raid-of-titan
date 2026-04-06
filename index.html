@@ -10438,6 +10438,24 @@ function confirmGiftPlacement() {
   const placeX = giftGhostMesh.position.x;
   const placeZ = giftGhostMesh.position.z;
 
+  // ネットワーク観戦者の場合: ホストにコマンドを送信
+  if (isNetSpectator && hostConnection) {
+    try {
+      hostConnection.send({
+        _netMeta: { type: 'spawn' },
+        cardId: cardId,
+        x: Math.round(placeX * 10) / 10,
+        z: Math.round(placeZ * 10) / 10,
+        faction: spectatorFaction
+      });
+      addCommentary(`🎁 ${def.icon} ${def.name} を配置リクエスト送信！`, spectatorFaction);
+    } catch(e) {
+      console.error('[NET] Spawn command send error:', e);
+    }
+    cancelGiftPlacement();
+    return;
+  }
+
   // 配置先の味方プレイヤーを決定：一番近い自国プレイヤー
   const allies = players.filter(p => !p.eliminated && p.faction === spectatorFaction && p.kingTower && !p.kingTower.destroyed);
   if (allies.length === 0) { cancelGiftPlacement(); return; }
@@ -10783,6 +10801,12 @@ function initHostNetworking() {
         conn.send(state);
       } catch(e) { console.error('[NET] Initial state send error:', e); }
     });
+    // 観戦者からのコマンド受信（ユニット配置など）
+    conn.on('data', (data) => {
+      if (data && data._netMeta) {
+        handleSpectatorCommand(data, conn);
+      }
+    });
     conn.on('close', () => {
       netConnections = netConnections.filter(c => c !== conn);
       updateNetViewerCount();
@@ -10802,6 +10826,48 @@ function initHostNetworking() {
       setTimeout(() => initHostNetworking(), 500);
     }
   });
+}
+
+// ホスト: 観戦者からのコマンドを処理
+function handleSpectatorCommand(data, conn) {
+  if (data._netMeta.type === 'spawn') {
+    const { cardId, x, z, faction } = data;
+    const def = CARD_DEFS[cardId];
+    if (!def) return;
+    // 指定された国の味方プレイヤーを探す
+    const allies = players.filter(p => !p.eliminated && p.faction === faction && p.kingTower && !p.kingTower.destroyed);
+    if (allies.length === 0) return;
+    // 配置位置に最も近い味方を選択
+    let owner = allies[0], best = Infinity;
+    allies.forEach(p => {
+      const dx = p.kingTower.mesh.position.x - x;
+      const dz = p.kingTower.mesh.position.z - z;
+      const d = dx * dx + dz * dz;
+      if (d < best) { best = d; owner = p; }
+    });
+    // ユニットをスポーン
+    const beforeLen = entities.length;
+    if (def.type === 'spell') {
+      castSpell(cardId, x, z, owner.id);
+    } else {
+      spawnEntity(cardId, x, z, owner.id);
+      for (let i = beforeLen; i < entities.length; i++) {
+        const ent = entities[i];
+        ent.isGift = true;
+        ent.giftOwner = '観戦者';
+        ent.forceKing = true;
+        activeGifts.push({
+          entity: ent, cardId, def,
+          ownerStreamer: owner.streamerName || ('Player' + owner.id),
+          dead: false, announcedAttack: false, announcedTowerHit: false
+        });
+      }
+    }
+    // ホスト側にも通知表示
+    giftFlashEffect(x, z);
+    addCommentary(`🌐🎁 観戦者が ${def.icon} ${def.name} を援軍として投入！`, faction);
+    console.log('[NET] Spectator spawn:', cardId, 'at', x, z);
+  }
 }
 
 function updateNetViewerCount() {
@@ -10894,12 +10960,17 @@ function receiveHostState(data) {
       // ダイアログを閉じてゲーム画面に
       document.getElementById('net-join-dialog').style.display = 'none';
       document.getElementById('title-screen').style.display = 'none';
-      // バトルUIを表示（ただしカードハンドは非表示）
-      document.getElementById('battle-dock').style.display = 'flex';
+      // プレイヤー用UIを非表示
       document.getElementById('card-hand').classList.remove('visible');
+      document.getElementById('battle-dock').style.display = 'none';
+      try { document.getElementById('player-stats-panel').style.display = 'none'; } catch(_){}
+      try { document.getElementById('bottom-status-bar').style.display = 'none'; } catch(_){}
       // 観戦モード起動
       isSpectator = true;
+      streamMode = 'viewer';
       gameState = 'PLAYING';
+      // 配信名を付与（enterSpectatorModeと同様）
+      if (!players[0] || !players[0].streamerName) assignStreamerNames();
       // 最初の生存プレイヤーを観戦対象に
       const alive = players.filter(p => !p.eliminated && p.kingTower && !p.kingTower.destroyed);
       if (alive.length > 0) {
@@ -10907,8 +10978,24 @@ function receiveHostState(data) {
         const human = alive.find(p => p.isHuman);
         setSpectatedPlayer(human ? human.id : alive[0].id);
       }
+      // 観戦UIを表示（ギフトパネル・配信者リスト・チャット）
+      document.body.classList.add('ui-spec');
+      try { enableStreamerMode(); } catch(_){}
+      try { document.getElementById('spectator-list').style.display = 'flex'; } catch(_){}
+      try { document.getElementById('stream-chat-input-wrap').style.display = 'flex'; } catch(_){}
+      try { renderSpectatorList(); } catch(_){}
+      focusSpectatedPlayer();
+      // ギフトパネル表示（カード配置UI）
+      try {
+        // localStorageからギフトデッキを復元
+        const saved = JSON.parse(localStorage.getItem('cr3d_gift_deck') || 'null');
+        if (Array.isArray(saved) && saved.length > 0) {
+          spectatorGiftDeck = saved.filter(c => CARD_DEFS[c]).slice(0, 6);
+        }
+        showGiftPanel();
+      } catch(_){}
       // 観戦中テキスト表示
-      addCommentary('🌐 観戦モードで接続しました！ ←→キーでプレイヤーを切り替え', 'fire');
+      addCommentary('🌐 観戦モードで接続しました！ ←→キーでプレイヤー切替 / 下のカードでユニット配置', 'fire');
     }
   } catch(e) {
     console.error('[NET] State restore error:', e);
