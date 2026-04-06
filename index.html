@@ -10239,14 +10239,18 @@ window.filterUnits = function(filter) {
 window.setBGMVolume = function(val) {
   _bgmVolumeVal = val / 100;
   localStorage.setItem('cr3d_bgm_vol', String(_bgmVolumeVal));
-  // マスターゲインが未初期化ならAudioContextを初期化
-  if (!masterBGMGain) getAudioCtx();
+  // マスターゲインに反映
+  if (!masterBGMGain) try { getAudioCtx(); } catch(_){}
   if (masterBGMGain) masterBGMGain.gain.value = _bgmVolumeVal;
+  // 現在再生中のBGM内部ゲインにも反映（二重制御で確実にミュート）
+  if (currentBGM && currentBGM.gainNode) {
+    currentBGM.gainNode.gain.value = _bgmVolumeVal * 0.25;
+  }
 };
 window.setSEVolume = function(val) {
   _seVolumeVal = val / 100;
   localStorage.setItem('cr3d_se_vol', String(_seVolumeVal));
-  if (!masterSEGain) getAudioCtx();
+  if (!masterSEGain) try { getAudioCtx(); } catch(_){}
   if (masterSEGain) masterSEGain.gain.value = _seVolumeVal;
 };
 
@@ -12643,6 +12647,7 @@ function playTitleBGM() {
   delay.connect(ctx.destination);
 
   currentBGM = {
+    gainNode: master,
     stop() {
       stopped = true;
       clearInterval(melodyInterval);
@@ -12653,6 +12658,8 @@ function playTitleBGM() {
       }, 2000);
     }
   };
+  // 保存済みの音量を反映
+  master.gain.value = _bgmVolumeVal * 0.25;
 }
 
 function playBattleBGM() {
@@ -12845,6 +12852,7 @@ function playBattleBGM() {
   }, drumTempo * 8 * 1000);
 
   currentBGM = {
+    gainNode: master,
     stop() {
       stopped = true;
       clearInterval(drumInterval);
@@ -12858,6 +12866,8 @@ function playBattleBGM() {
       }, 2000);
     }
   };
+  // 保存済みの音量を反映
+  master.gain.value = _bgmVolumeVal * 0.25;
 }
 
 function init() {
