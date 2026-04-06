@@ -4185,46 +4185,233 @@ let fbxGiantAnimations = [];    // 歩行アニメーションクリップ
 let fbxModelReady = false;      // モデルロード完了フラグ
 const entityMixers = [];        // 全エンティティのAnimationMixer配列
 
-// FBXモデルをプリロード
-function preloadFBXModels() {
-  return new Promise((resolve, reject) => {
-    const textureLoader = new THREE.TextureLoader();
-    // テクスチャを並列ロード
-    const diffuseMap = textureLoader.load('assets/Meshy_AI_texture_0.png');
-    const normalMap = textureLoader.load('assets/Meshy_AI_texture_0_normal.png');
-    const roughnessMap = textureLoader.load('assets/Meshy_AI_texture_0_roughness.png');
-    const metalnessMap = textureLoader.load('assets/Meshy_AI_texture_0_metallic.png');
+// キャラクターFBXモデル管理
+const fbxCharacterModels = {};  // { queen: fbxModel, knight: fbxModel, ... }
+let fbxCharactersReady = false;
 
-    fbxLoader.load('assets/Meshy_AI_Animation_Walking_withSkin.fbx', (fbx) => {
-      console.log('[FBX] Giant model loaded, animations:', fbx.animations.length);
-      // マテリアルをPBRテクスチャに差し替え
-      fbx.traverse((child) => {
-        if (child.isMesh) {
-          child.material = new THREE.MeshStandardMaterial({
-            map: diffuseMap,
-            normalMap: normalMap,
-            roughnessMap: roughnessMap,
-            metalnessMap: metalnessMap,
-            metalness: 0.3,
-            roughness: 0.7
-          });
-          child.castShadow = true;
-          child.receiveShadow = true;
-        }
+// キャラクターFBXモデル設定
+const CHARACTER_FBX_CONFIG = {
+  queen: {
+    modelPath: 'assets/characters/queen/model.fbx',
+    textures: {
+      body:      { diffuse: 'assets/characters/queen/body_diffuse.png',  normal: 'assets/characters/queen/body_normal.png' },
+      dress:     { diffuse: 'assets/characters/queen/dress_diffuse.png', normal: 'assets/characters/queen/dress_normal.png' },
+      eyes:      { diffuse: 'assets/characters/queen/eyes_diffuse.png' },
+      hair:      { diffuse: 'assets/characters/queen/hair_diffuse.png',  normal: 'assets/characters/queen/hair_normal.png' },
+      boots:     { diffuse: 'assets/characters/queen/boots_diffuse.png' },
+      hood:      { diffuse: 'assets/characters/queen/hood_diffuse.png' },
+      headdress: { diffuse: 'assets/characters/queen/headdress_diffuse.png' }
+    }
+  },
+  knight: {
+    modelPath: 'assets/characters/knight/model.fbx',
+    textures: {
+      body:   { diffuse: 'assets/characters/knight/body_diffuse.png',   normal: 'assets/characters/knight/body_normal.png' },
+      hair:   { diffuse: 'assets/characters/knight/hair_diffuse.png',   normal: 'assets/characters/knight/hair_normal.png' },
+      eyes:   { diffuse: 'assets/characters/knight/eyes_diffuse.png' },
+      jacket: { diffuse: 'assets/characters/knight/jacket_diffuse.png', normal: 'assets/characters/knight/jacket_normal.png' },
+      boots:  { diffuse: 'assets/characters/knight/boots_diffuse.png',  normal: 'assets/characters/knight/boots_normal.png' }
+    }
+  },
+  dwarfFemale: {
+    modelPath: 'assets/characters/dwarfFemale/model.fbx',
+    textures: {
+      body:    { diffuse: 'assets/characters/dwarfFemale/body_diffuse.png',    normal: 'assets/characters/dwarfFemale/body_normal.png' },
+      overall: { diffuse: 'assets/characters/dwarfFemale/overall_diffuse.png', normal: 'assets/characters/dwarfFemale/overall_normal.png' },
+      helmet:  { diffuse: 'assets/characters/dwarfFemale/helmet_diffuse.png' },
+      armor:   { diffuse: 'assets/characters/dwarfFemale/armor_diffuse.png',  normal: 'assets/characters/dwarfFemale/armor_normal.png' }
+    }
+  },
+  dwarfMale: {
+    modelPath: 'assets/characters/dwarfMale/model.fbx',
+    textures: {
+      body:   { diffuse: 'assets/characters/dwarfMale/body_diffuse.png',   normal: 'assets/characters/dwarfMale/body_normal.png' },
+      coat:   { diffuse: 'assets/characters/dwarfMale/coat_diffuse.png',   normal: 'assets/characters/dwarfMale/coat_normal.png' },
+      helmet: { diffuse: 'assets/characters/dwarfMale/helmet_diffuse.png' },
+      armor:  { diffuse: 'assets/characters/dwarfMale/armor_diffuse.png', normal: 'assets/characters/dwarfMale/armor_normal.png' }
+    }
+  }
+};
+
+// テクスチャ名→メッシュマテリアル名のマッピングキーワード
+const TEXTURE_MATERIAL_KEYWORDS = {
+  armor:     ['armor', 'sword', 'weapon', 'shield'],
+  helmet:    ['helmet', 'helm', 'mask'],
+  coat:      ['coat', 'cloak', 'robe'],
+  dress:     ['dress', 'sundress', 'skirt'],
+  jacket:    ['jacket', 'shirt', 'torso'],
+  overall:   ['overall', 'cloth'],
+  boots:     ['boot', 'shoe', 'feet'],
+  hood:      ['hood', 'fur', 'cape'],
+  headdress: ['headdress', 'crown', 'head_acc'],
+  eyes:      ['eye'],
+  hair:      ['hair'],
+  body:      ['body', 'skin', 'face', 'jaw']
+};
+
+// キャラクターFBXをプリロード
+function preloadCharacterModels() {
+  const textureLoader = new THREE.TextureLoader();
+  const promises = Object.entries(CHARACTER_FBX_CONFIG).map(([charType, config]) => {
+    return new Promise((resolve) => {
+      // テクスチャをプリロード
+      const loadedTextures = {};
+      for (const [partName, texPaths] of Object.entries(config.textures)) {
+        loadedTextures[partName] = {};
+        if (texPaths.diffuse) loadedTextures[partName].diffuse = textureLoader.load(texPaths.diffuse);
+        if (texPaths.normal) loadedTextures[partName].normal = textureLoader.load(texPaths.normal);
+      }
+
+      // FBXモデルをロード
+      fbxLoader.load(config.modelPath, (fbx) => {
+        console.log(`[FBX] Character ${charType} loaded, meshes:`, fbx.children.length);
+
+        // メッシュにテクスチャを割り当て
+        fbx.traverse((child) => {
+          if (child.isMesh || child.isSkinnedMesh) {
+            const matName = (child.material?.name || child.name || '').toLowerCase();
+            let matched = false;
+
+            // マテリアル名からテクスチャパートを推定
+            for (const [partName, keywords] of Object.entries(TEXTURE_MATERIAL_KEYWORDS)) {
+              if (!loadedTextures[partName]) continue;
+              if (keywords.some(kw => matName.includes(kw))) {
+                const tex = loadedTextures[partName];
+                child.material = new THREE.MeshStandardMaterial({
+                  map: tex.diffuse || null,
+                  normalMap: tex.normal || null,
+                  metalness: 0.2,
+                  roughness: 0.7,
+                  side: THREE.DoubleSide
+                });
+                matched = true;
+                break;
+              }
+            }
+
+            // マッチしなかった場合: bodyテクスチャにフォールバック
+            if (!matched) {
+              const fallback = loadedTextures['body'] || loadedTextures[Object.keys(loadedTextures)[0]];
+              if (fallback) {
+                child.material = new THREE.MeshStandardMaterial({
+                  map: fallback.diffuse || null,
+                  normalMap: fallback.normal || null,
+                  metalness: 0.2,
+                  roughness: 0.7,
+                  side: THREE.DoubleSide
+                });
+              }
+            }
+
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+
+        fbxCharacterModels[charType] = fbx;
+        console.log(`[FBX] Character ${charType} ready`);
+        resolve();
+      }, undefined, (error) => {
+        console.error(`[FBX] Character ${charType} load error:`, error);
+        resolve(); // エラーでもフォールバックで続行
       });
-      fbxGiantModel = fbx;
-      fbxGiantAnimations = fbx.animations;
-      fbxModelReady = true;
-      console.log('[FBX] Giant model ready');
-      resolve();
-    }, (progress) => {
-      // ロード進捗
-    }, (error) => {
-      console.error('[FBX] Load error:', error);
-      fbxModelReady = false;
-      resolve(); // エラーでもフォールバックで続行
     });
   });
+  return Promise.all(promises).then(() => {
+    fbxCharactersReady = true;
+    console.log('[FBX] All character models ready');
+  });
+}
+
+// キャラクターFBXをクローンしてキング用メッシュを生成
+function cloneFBXForKing(charType) {
+  const srcModel = fbxCharacterModels[charType];
+  if (!srcModel) return null;
+
+  const group = new THREE.Group();
+  const clone = SkeletonUtils.clone(srcModel);
+
+  // マテリアルを個別にクローン
+  clone.traverse((child) => {
+    if (child.isMesh || child.isSkinnedMesh) {
+      child.material = child.material.clone();
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+
+  // サイズ正規化: キングの高さを30に合わせる
+  const box = new THREE.Box3().setFromObject(srcModel);
+  const modelHeight = box.max.y - box.min.y;
+  const targetHeight = 30; // キャラクター高さ（既存のプリミティブと同等）
+  const scaleFactor = targetHeight / modelHeight;
+  clone.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+  // 足元を原点に合わせる
+  const center = box.getCenter(new THREE.Vector3());
+  clone.position.set(
+    -center.x * scaleFactor,
+    -box.min.y * scaleFactor,
+    -center.z * scaleFactor
+  );
+
+  group.add(clone);
+  group.userData.isFBXKing = true;
+  group.userData.fbxHeight = targetHeight;
+
+  // アイドルアニメーション（あれば）
+  if (srcModel.animations && srcModel.animations.length > 0) {
+    const mixer = new THREE.AnimationMixer(clone);
+    const action = mixer.clipAction(srcModel.animations[0]);
+    action.play();
+    group.userData.mixer = mixer;
+    entityMixers.push(mixer);
+  }
+
+  return group;
+}
+
+// 全FBXモデルをプリロード（ユニット＋キャラクター）
+function preloadFBXModels() {
+  return Promise.all([
+    // 巨人ユニットモデル
+    new Promise((resolve) => {
+      const textureLoader = new THREE.TextureLoader();
+      const diffuseMap = textureLoader.load('assets/units/giant/diffuse.png');
+      const normalMap = textureLoader.load('assets/units/giant/normal.png');
+      const roughnessMap = textureLoader.load('assets/units/giant/roughness.png');
+      const metalnessMap = textureLoader.load('assets/units/giant/metallic.png');
+
+      fbxLoader.load('assets/units/giant/model.fbx', (fbx) => {
+        console.log('[FBX] Giant model loaded, animations:', fbx.animations.length);
+        fbx.traverse((child) => {
+          if (child.isMesh) {
+            child.material = new THREE.MeshStandardMaterial({
+              map: diffuseMap,
+              normalMap: normalMap,
+              roughnessMap: roughnessMap,
+              metalnessMap: metalnessMap,
+              metalness: 0.3,
+              roughness: 0.7
+            });
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        fbxGiantModel = fbx;
+        fbxGiantAnimations = fbx.animations;
+        fbxModelReady = true;
+        console.log('[FBX] Giant model ready');
+        resolve();
+      }, undefined, (error) => {
+        console.error('[FBX] Giant load error:', error);
+        fbxModelReady = false;
+        resolve();
+      });
+    }),
+    // キャラクターモデル
+    preloadCharacterModels()
+  ]);
 }
 
 // FBXモデルをクローンしてユニット用メッシュを生成
@@ -6937,7 +7124,10 @@ function createTower(x, z, playerId, faction) {
   const dressColor = color;
   const dressAccent = 0xffd700;
 
-  const mesh = createCharacterMesh(charType, dressColor, dressAccent);
+  // FBXキャラクターモデルが利用可能ならFBXを使う、なければプリミティブ
+  const mesh = (fbxCharactersReady && fbxCharacterModels[charType])
+    ? cloneFBXForKing(charType)
+    : createCharacterMesh(charType, dressColor, dressAccent);
 
   mesh.position.set(x, 0, z);
   mesh.castShadow = true;
