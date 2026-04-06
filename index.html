@@ -4155,10 +4155,126 @@ body.ui-stream #now-live-overlay { display: none !important; }
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="importmap">
-{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
 </script>
 <script type="module">
 import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+
+// ============================================================
+// FBX MODEL LOADER & ANIMATION SYSTEM
+// ============================================================
+const fbxLoader = new FBXLoader();
+let fbxGiantModel = null;       // プリロード済みの巨人FBXモデル
+let fbxGiantAnimations = [];    // 歩行アニメーションクリップ
+let fbxModelReady = false;      // モデルロード完了フラグ
+const entityMixers = [];        // 全エンティティのAnimationMixer配列
+
+// FBXモデルをプリロード
+function preloadFBXModels() {
+  return new Promise((resolve, reject) => {
+    const textureLoader = new THREE.TextureLoader();
+    // テクスチャを並列ロード
+    const diffuseMap = textureLoader.load('assets/Meshy_AI_texture_0.png');
+    const normalMap = textureLoader.load('assets/Meshy_AI_texture_0_normal.png');
+    const roughnessMap = textureLoader.load('assets/Meshy_AI_texture_0_roughness.png');
+    const metalnessMap = textureLoader.load('assets/Meshy_AI_texture_0_metallic.png');
+
+    fbxLoader.load('assets/Meshy_AI_Animation_Walking_withSkin.fbx', (fbx) => {
+      console.log('[FBX] Giant model loaded, animations:', fbx.animations.length);
+      // マテリアルをPBRテクスチャに差し替え
+      fbx.traverse((child) => {
+        if (child.isMesh) {
+          child.material = new THREE.MeshStandardMaterial({
+            map: diffuseMap,
+            normalMap: normalMap,
+            roughnessMap: roughnessMap,
+            metalnessMap: metalnessMap,
+            metalness: 0.3,
+            roughness: 0.7
+          });
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      fbxGiantModel = fbx;
+      fbxGiantAnimations = fbx.animations;
+      fbxModelReady = true;
+      console.log('[FBX] Giant model ready');
+      resolve();
+    }, (progress) => {
+      // ロード進捗
+    }, (error) => {
+      console.error('[FBX] Load error:', error);
+      fbxModelReady = false;
+      resolve(); // エラーでもフォールバックで続行
+    });
+  });
+}
+
+// FBXモデルをクローンしてユニット用メッシュを生成
+function cloneFBXForUnit(cardId, def) {
+  const group = new THREE.Group();
+  const clone = fbxGiantModel.clone();
+
+  // SkinnedMeshのクローンはボーン共有問題があるので手動で処理
+  clone.traverse((child) => {
+    if (child.isSkinnedMesh) {
+      child.material = child.material.clone();
+    }
+  });
+
+  // サイズ正規化: FBXモデルのバウンディングボックスから高さを計算
+  const box = new THREE.Box3().setFromObject(clone);
+  const modelHeight = box.max.y - box.min.y;
+  // ユニットの目標高さ（def.size[1]ベース、unitScale前）
+  const targetHeight = (def.size[1] || def.size[0] || 4);
+  const scaleFactor = targetHeight / modelHeight;
+  clone.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+  // モデルの中心を原点に
+  const center = box.getCenter(new THREE.Vector3());
+  clone.position.set(-center.x * scaleFactor, -box.min.y * scaleFactor, -center.z * scaleFactor);
+
+  group.add(clone);
+
+  // アニメーションミキサーをセットアップ
+  if (fbxGiantAnimations.length > 0) {
+    const mixer = new THREE.AnimationMixer(clone);
+    const action = mixer.clipAction(fbxGiantAnimations[0]);
+    // ユニット速度に応じてアニメ速度を調整
+    action.timeScale = (def.speed || 40) / 40;
+    action.play();
+    group.userData.mixer = mixer;
+    group.userData.walkAction = action;
+    entityMixers.push(mixer);
+  }
+
+  return group;
+}
+
+// 毎フレームのアニメーション更新
+function updateEntityAnimations(dt) {
+  for (let i = entityMixers.length - 1; i >= 0; i--) {
+    const mixer = entityMixers[i];
+    if (mixer) {
+      mixer.update(dt);
+    }
+  }
+}
+
+// エンティティ削除時にミキサーを除去
+function removeEntityMixer(mesh) {
+  if (mesh && mesh.userData && mesh.userData.mixer) {
+    const idx = entityMixers.indexOf(mesh.userData.mixer);
+    if (idx >= 0) entityMixers.splice(idx, 1);
+    mesh.userData.mixer.stopAllAction();
+    mesh.userData.mixer = null;
+  }
+}
 
 // ============================================================
 // TOON SHADING INFRASTRUCTURE — Bad North Style
@@ -5491,7 +5607,7 @@ function saveBattleState() {
 function restoreBattleState(data) {
   try {
     // 1. 既存オブジェクトのクリーンアップ
-    entities.forEach(e => { scene.remove(e.mesh); if (e.hpContainer) e.hpContainer.remove(); });
+    entities.forEach(e => { removeEntityMixer(e.mesh); scene.remove(e.mesh); if (e.hpContainer) e.hpContainer.remove(); });
     entities = [];
     projectiles.forEach(p => scene.remove(p.mesh));
     projectiles = [];
@@ -7168,6 +7284,11 @@ function updateHUD() {
 // UNIT MESH BUILDER — Bad North Style (Minimalist Warriors)
 // ============================================================
 function createUnitMesh(cardId, def, baseColor) {
+  // FBXモデルが使える場合はそれを使用
+  if (fbxModelReady && fbxGiantModel) {
+    return cloneFBXForUnit(cardId, def);
+  }
+  // フォールバック: 従来のプリミティブ生成
   const group = new THREE.Group();
   const S = 8; // Bad North風ローポリ
   const mat = toonMat(baseColor || def.color);
@@ -7833,6 +7954,7 @@ function updateEntities(dt) {
           particle: true
         });
       }
+      removeEntityMixer(e.mesh);
       scene.remove(e.mesh);
       e.hpContainer.remove();
       entities.splice(i, 1);
@@ -8133,6 +8255,7 @@ function updateTowers(dt) {
         // Remove all entities owned by eliminated player
         for (let i = entities.length - 1; i >= 0; i--) {
           if (entities[i].side === tower.playerId) {
+            removeEntityMixer(entities[i].mesh);
             scene.remove(entities[i].mesh);
             entities[i].hpContainer.remove();
             entities.splice(i, 1);
@@ -11355,7 +11478,7 @@ window.confirmCharacter = function() {
 
 window.startBattle = function() {
   // Clean up previous match
-  entities.forEach(e => { scene.remove(e.mesh); e.hpContainer.remove(); });
+  entities.forEach(e => { removeEntityMixer(e.mesh); scene.remove(e.mesh); e.hpContainer.remove(); });
   entities = [];
   projectiles.forEach(p => scene.remove(p.mesh));
   projectiles = [];
@@ -11667,7 +11790,7 @@ function startTutorial() {
   { const _pg = document.getElementById('postgame-screen'); _pg.style.display = 'none'; _pg.classList.remove('visible', 'win', 'lose'); }
 
   // Clean up any existing entities/towers
-  entities.forEach(e => { scene.remove(e.mesh); e.hpContainer.remove(); });
+  entities.forEach(e => { removeEntityMixer(e.mesh); scene.remove(e.mesh); e.hpContainer.remove(); });
   entities = [];
   projectiles.forEach(p => scene.remove(p.mesh));
   projectiles = [];
@@ -11945,7 +12068,7 @@ function finishTutorial() {
   document.getElementById('tutorial-guide').classList.remove('show');
 
   // Clean up tutorial entities
-  entities.forEach(e => { scene.remove(e.mesh); e.hpContainer.remove(); });
+  entities.forEach(e => { removeEntityMixer(e.mesh); scene.remove(e.mesh); e.hpContainer.remove(); });
   entities = [];
   projectiles.forEach(p => scene.remove(p.mesh));
   projectiles = [];
@@ -12185,6 +12308,7 @@ function updateGame(dt) {
 
     // Run core systems but NOT bots/auto-spawn/commentary/stats
     updateEntities(dt);
+    updateEntityAnimations(dt);
     updateTowers(dt);
     updateProjectiles(dt);
     updateSpellEffects(dt);
@@ -12247,6 +12371,7 @@ function updateGame(dt) {
 
   // Update systems
   updateEntities(dt);
+  updateEntityAnimations(dt);
   updateTowers(dt);
   updateProjectiles(dt);
   updateSpellEffects(dt);
@@ -12682,6 +12807,10 @@ function init() {
   buildArena();
   setupInput();
   initSnowParticles();
+  // FBXモデルをプリロード（バックグラウンドでロード、完了後に自動で使われる）
+  preloadFBXModels().then(() => {
+    console.log('[INIT] FBX models preloaded');
+  });
   animate();
   // Fallback for background tabs where rAF pauses
   setInterval(tickFallback, 33);
