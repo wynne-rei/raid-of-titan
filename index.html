@@ -8714,20 +8714,12 @@ function updateHPBarPosition(entity) {
     }
   }
 
-  // Check if position or hp changed since last update (dirty check)
+  // HP変化チェック（HPバーの幅更新用）
   const hpPct = Math.max(0, (entity.hp / entity.maxHp) * 100);
-  const lastX = entity._lastHpX || 0;
-  const lastZ = entity._lastHpZ || 0;
   const lastHpPct = entity._lastHpPct || -1;
-  const posChanged = Math.abs(ex - lastX) > 0.1 || Math.abs(ez - lastZ) > 0.1;
   const hpChanged = Math.abs(hpPct - lastHpPct) > 0.01;
-
-  if (!posChanged && !hpChanged && entity._hpBarInited) return;
-
-  entity._lastHpX = ex;
-  entity._lastHpZ = ez;
-  entity._lastHpPct = hpPct;
-  entity._hpBarInited = true;
+  if (hpChanged) entity._lastHpPct = hpPct;
+  // ※ スクリーン座標はカメラ移動で常に変わるため、位置の再投影は毎フレーム実行
 
   // FBXモデルはfbxHeight分の高さがある → 頭上に表示
   const fbxH = (entity.mesh && entity.mesh.userData && entity.mesh.userData.fbxHeight) ? entity.mesh.userData.fbxHeight : 0;
