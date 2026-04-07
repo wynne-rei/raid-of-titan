@@ -11159,25 +11159,17 @@ function pickupChest(chest, index) {
 
   const faction = humanPlayer ? humanPlayer.faction : 'fire';
 
+  // --- 特殊チェストのボーナス効果（カード配布とは別に発動） ---
   if (chestType === 'gold') {
-    // ゴールドチェスト: GDP+200
     addGDP(faction, GOLD_CHEST_GDP);
-    const notify = document.createElement('div');
-    notify.className = 'card-pickup-notify';
-    notify.style.color = '#ffd700';
-    notify.textContent = `${ct.icon} GDP +${GOLD_CHEST_GDP}!`;
-    document.body.appendChild(notify);
-    setTimeout(() => notify.remove(), 1500);
-    addCommentary(`💰 ゴールドチェスト獲得！GDP+200！`, faction);
-    return;
+    addCommentary(`💰 ゴールドチェスト獲得！GDP+${GOLD_CHEST_GDP}！`, faction);
   }
 
   if (chestType === 'blueprint') {
-    // 設計図チェスト: ランダム施設を建設可能エリアに自動配置
     const availableStructures = STRUCTURE_IDS.filter(id => {
-      const def = STRUCTURE_DEFS[id];
+      const sdef = STRUCTURE_DEFS[id];
       const count = structures.filter(s => s.type === id && s.faction === faction && !s.destroyed).length;
-      return count < def.maxPerFaction;
+      return count < sdef.maxPerFaction;
     });
     if (availableStructures.length > 0) {
       const sType = availableStructures[Math.floor(Math.random() * availableStructures.length)];
@@ -11185,7 +11177,6 @@ function pickupChest(chest, index) {
       const basePos = PLAYER_POSITIONS[0];
       const sx = basePos.x + (Math.random() - 0.5) * 80;
       const sz = basePos.z + (Math.random() - 0.5) * 80;
-      // 無料で施設を建設（GDP消費なし）
       const mesh = createStructureMesh(sType, faction);
       mesh.position.set(sx, 0, sz);
       scene.add(mesh);
@@ -11199,27 +11190,14 @@ function pickupChest(chest, index) {
         hp: sDef.hp, maxHp: sDef.hp, mesh, hpContainer, destroyed: false, attackTimer: 0
       });
       createBuildEffect(sx, sz, FACTIONS[faction].color);
-      const notify = document.createElement('div');
-      notify.className = 'card-pickup-notify';
-      notify.style.color = '#42a5f5';
-      notify.textContent = `${ct.icon} ${sDef.icon} ${sDef.name}を獲得！`;
-      document.body.appendChild(notify);
-      setTimeout(() => notify.remove(), 1500);
       addCommentary(`📐 設計図チェスト！${sDef.name}が建設された！`, faction);
     } else {
-      // 全施設上限: 代わりにGDP+150
       addGDP(faction, 150);
-      const notify = document.createElement('div');
-      notify.className = 'card-pickup-notify';
-      notify.textContent = `${ct.icon} 施設上限！GDP+150に変換`;
-      document.body.appendChild(notify);
-      setTimeout(() => notify.remove(), 1500);
+      addCommentary(`📐 施設上限！GDP+150に変換`, faction);
     }
-    return;
   }
 
   if (chestType === 'enhance') {
-    // 強化の書チェスト: 既存施設のHP＆効果をレベルアップ
     const myStructures = structures.filter(s => s.faction === faction && !s.destroyed);
     if (myStructures.length > 0) {
       const target = myStructures[Math.floor(Math.random() * myStructures.length)];
@@ -11227,37 +11205,22 @@ function pickupChest(chest, index) {
       target.maxHp = Math.floor(target.maxHp * ENHANCE_HP_MULT);
       target.hp = Math.min(target.maxHp, target.hp + Math.floor(target.maxHp * 0.5));
       createBuildEffect(target.x, target.z, 0xab47bc);
-      const notify = document.createElement('div');
-      notify.className = 'card-pickup-notify';
-      notify.style.color = '#ce93d8';
-      notify.textContent = `${ct.icon} ${sDef.icon} ${sDef.name}を強化！`;
-      document.body.appendChild(notify);
-      setTimeout(() => notify.remove(), 1500);
       addCommentary(`📜 強化の書！${sDef.name}がパワーアップ！(HP+25%)`, faction);
-    } else {
-      // 施設なし: 代わりにカード配布
-      const cardId = getRandomCard();
-      const def = CARD_DEFS[cardId];
-      if (handCards.length < HAND_MAX) {
-        handCards.push(cardId);
-        renderHand();
-      }
-      const notify = document.createElement('div');
-      notify.className = 'card-pickup-notify';
-      notify.textContent = `${def.icon} ${def.name} GET!`;
-      document.body.appendChild(notify);
-      setTimeout(() => notify.remove(), 1500);
     }
-    return;
   }
 
-  // 通常チェスト: カード獲得（従来通り）
+  // --- 全チェスト共通: 必ずカードを1枚配布 ---
   const cardId = getRandomCard();
   const def = CARD_DEFS[cardId];
 
+  // 通知（チェスト種類に応じた追加テキスト）
+  const bonusText = chestType === 'gold' ? ` & GDP+${GOLD_CHEST_GDP}` :
+                    chestType === 'blueprint' ? ' & 施設建設' :
+                    chestType === 'enhance' ? ' & 施設強化' : '';
   const notify = document.createElement('div');
   notify.className = 'card-pickup-notify';
-  notify.textContent = `${def.icon} ${def.name} GET!`;
+  if (chestType !== 'normal') notify.style.color = '#' + ct.ringColor.toString(16).padStart(6, '0');
+  notify.textContent = `${ct.icon} ${def.icon} ${def.name} GET!${bonusText}`;
   document.body.appendChild(notify);
   setTimeout(() => notify.remove(), 1500);
 
