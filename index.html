@@ -10905,7 +10905,7 @@ function playCard(index) {
   // Create ghost preview (floating above ground for visibility)
   ghostMesh = createGhostMesh(cardId);
   if (ghostMesh && playerKingTower) {
-    const posY = def.type === 'spell' ? 1 : 50;
+    const posY = def.type === 'spell' ? 1 : def.type === 'structure' ? 0 : 50;
     ghostMesh.position.set(
       playerKingTower.mesh.position.x,
       posY,
@@ -10992,9 +10992,9 @@ function updateGhostPosition() {
   const cardId = handCards[selectedCardIndex];
   const def = CARD_DEFS[cardId];
   if (!def) return;
-  const posY = def.type === 'spell' ? 1 : 50;
-  // Bob up and down for visibility
-  const bob = Math.sin(Date.now() * 0.004) * 5;
+  const posY = def.type === 'spell' ? 1 : def.type === 'structure' ? 0 : 50;
+  // Bob up and down for visibility (structures stay grounded)
+  const bob = def.type === 'structure' ? 0 : Math.sin(Date.now() * 0.004) * 5;
   // Place ghost in front of king based on camera direction
   const gx = playerKingTower.mesh.position.x - Math.sin(cameraYaw) * GHOST_OFFSET_Z;
   const gz = playerKingTower.mesh.position.z + Math.cos(cameraYaw) * GHOST_OFFSET_Z;
