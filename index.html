@@ -2873,7 +2873,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
           <h3>🌿 土の国 — Nation of Earth</h3>
           <p>大地の恵みを受けし者たち。生命力と回復力に優れ、持久戦を得意とする。エリクサー生成量が多く、物量で押し切る。</p>
           <div class="fc-traits">
-            <div class="fc-trait">エリクサー +10%</div>
+            <div class="fc-trait">GDP回復 +10%</div>
             <div class="fc-trait">持久型</div>
             <div class="fc-trait">自然回復</div>
           </div>
@@ -2881,16 +2881,54 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
       </div>
       <div class="lib-panel" data-panel="characters">
         <div class="char-card">
-          <div class="char-icon">👑</div>
+          <div class="char-icon">👸</div>
           <div class="char-info">
             <h3>クイーン — Queen of the Realm</h3>
-            <p>各国を率いる女王。戦場を俯瞰し、ユニットたちに指令を下す。<br>
-            敵ユニットを倒すほど経験値が溜まり、レベルアップで HP・攻撃力・射程が強化される。最大レベルで圧倒的な支配力を発揮する。</p>
+            <p>各国を率いる女王。優雅にして強靭、杖の魔法で敵を薙ぎ払う。高い魔法攻撃とサポート力を併せ持つ万能型。</p>
             <div class="ch-perks">
-              <div class="ch-perk">レベル最大 10</div>
-              <div class="ch-perk">HP 成長</div>
-              <div class="ch-perk">範囲 成長</div>
-              <div class="ch-perk">オーラ効果</div>
+              <div class="ch-perk">HP 70</div>
+              <div class="ch-perk">ATK 85</div>
+              <div class="ch-perk">SPD 60</div>
+              <div class="ch-perk">万能型</div>
+            </div>
+          </div>
+        </div>
+        <div class="char-card">
+          <div class="char-icon">🤴</div>
+          <div class="char-info">
+            <h3>ナイトプリンス — Knight Prince</h3>
+            <p>鎧に身を包む騎士。剣術に長け、前線で輝く。バランス型で初心者にもおすすめ。</p>
+            <div class="ch-perks">
+              <div class="ch-perk">HP 80</div>
+              <div class="ch-perk">ATK 80</div>
+              <div class="ch-perk">SPD 75</div>
+              <div class="ch-perk">バランス型</div>
+            </div>
+          </div>
+        </div>
+        <div class="char-card">
+          <div class="char-icon">⛏️</div>
+          <div class="char-info">
+            <h3>女ドワーフ — Dwarf Lady</h3>
+            <p>小柄だが怪力。巨大なハンマーを軽々と振り回す。瞬間火力に優れた攻撃特化型。</p>
+            <div class="ch-perks">
+              <div class="ch-perk">HP 65</div>
+              <div class="ch-perk">ATK 95</div>
+              <div class="ch-perk">SPD 55</div>
+              <div class="ch-perk">攻撃特化型</div>
+            </div>
+          </div>
+        </div>
+        <div class="char-card">
+          <div class="char-icon">🪓</div>
+          <div class="char-info">
+            <h3>男ドワーフ — Dwarf Lord</h3>
+            <p>歴戦のベテラン。豊かなヒゲと斧が彼の誇り。高HPで前線を支える重戦士タイプ。</p>
+            <div class="ch-perks">
+              <div class="ch-perk">HP 95</div>
+              <div class="ch-perk">ATK 75</div>
+              <div class="ch-perk">SPD 50</div>
+              <div class="ch-perk">重戦士型</div>
             </div>
           </div>
         </div>
@@ -2902,6 +2940,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
           <button class="uf-chip" data-filter="troop" onclick="window.filterUnits('troop')">🗡 兵士</button>
           <button class="uf-chip" data-filter="spell" onclick="window.filterUnits('spell')">✨ 呪文</button>
           <button class="uf-chip" data-filter="building" onclick="window.filterUnits('building')">🏛 建物</button>
+          <button class="uf-chip" data-filter="structure" onclick="window.filterUnits('structure')">🏗 施設</button>
         </div>
         <div class="unit-gallery" id="unit-gallery"></div>
       </div>
@@ -3122,10 +3161,10 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
 <!-- Battle Dock: エリクサー + 手札の統合UI -->
 <div id="battle-dock">
   <div id="elixir-container">
-    <span class="elixir-icon">💎</span>
+    <span class="elixir-icon">💰</span>
     <div id="elixir-bar-bg">
       <div id="elixir-bar-fill" style="width:50%"></div>
-      <div id="elixir-text">5/10</div>
+      <div id="elixir-text">GDP: 1000</div>
     </div>
   </div>
   <div id="card-hand"></div>
@@ -4161,7 +4200,7 @@ body.ui-stream #now-live-overlay { display: none !important; }
       <div class="pg-stat-card"><span class="psc-icon">⚔️</span><span class="psc-val" id="pg-stat-kills" data-target="0">0</span><span class="psc-lbl">Eliminations</span></div>
       <div class="pg-stat-card"><span class="psc-icon">👑</span><span class="psc-val" id="pg-stat-kings" data-target="0">0</span><span class="psc-lbl">King Slain</span></div>
       <div class="pg-stat-card"><span class="psc-icon">⏱️</span><span class="psc-val" id="pg-stat-time">0:00</span><span class="psc-lbl">Survived</span></div>
-      <div class="pg-stat-card"><span class="psc-icon">💎</span><span class="psc-val" id="pg-stat-elixir" data-target="0">0</span><span class="psc-lbl">Elixir Used</span></div>
+      <div class="pg-stat-card"><span class="psc-icon">💰</span><span class="psc-val" id="pg-stat-elixir" data-target="0">0</span><span class="psc-lbl">GDP Used</span></div>
     </div>
     <div class="pg-xp-section">
       <div class="pg-xp-header">
@@ -4703,7 +4742,7 @@ function cloneFBXForUnit(cardId, def) {
   const modelHeight = box.max.y - box.min.y;
   // ユニットの目標高さ（def.size[1]ベース × unitScale込み）
   const unitScale = (def.type === 'troop') ? 10 : 1;
-  const targetHeight = (def.size[1] || def.size[0] || 4) * unitScale;
+  const targetHeight = (def.size ? (def.size[1] || def.size[0]) : 4) * unitScale;
   const scaleFactor = targetHeight / modelHeight;
   clone.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
@@ -4891,11 +4930,9 @@ const PLAYER_SIDE_Z = -ARENA_L / 2;
 const BOT_SIDE_Z = ARENA_L / 2;
 const TERRITORY_MAX = 10;
 let arenaW = ARENA_W_BASE; // current width, grows with territory
-const ELIXIR_MAX = 20;
 const MATCH_TIME = 300;
 const OVERTIME = 120;
-const ELIXIR_RATE = 1 / 2.8;
-const ELIXIR_RATE_DOUBLE = 1 / 1.4;
+const GDP_PASSIVE_RATE = 20;  // GDP per second (base, while alive)
 
 // ============================================================
 // 共通定数（リファクタリング用）
@@ -4920,95 +4957,95 @@ const AUTO_SPAWN_VARIANCE = 5;
 // ============================================================
 const CARD_DEFS = {
   knight: {
-    name: 'ナイト', cost: 3, type: 'troop', icon: '🗡️',
+    name: 'ナイト', cost: 60, type: 'troop', icon: '🗡️',
     hp: 600, dmg: 75, speed: 12, range: 12, attackSpeed: 1.1,
     count: 1, color: 0x4caf50, shape: 'box', size: [5, 8, 5],
     target: 'ground', fly: false, splash: false, unlockLevel: 1
   },
   archer: {
-    name: 'アーチャー', cost: 3, type: 'troop', icon: '🏹',
+    name: 'アーチャー', cost: 60, type: 'troop', icon: '🏹',
     hp: 250, dmg: 50, speed: 10, range: 50, attackSpeed: 1.2,
     count: 2, color: 0xff80ab, shape: 'cylinder', size: [3, 7, 3],
     target: 'both', fly: false, splash: false, unlockLevel: 1
   },
   giant: {
-    name: 'ジャイアント', cost: 5, type: 'troop', icon: '🦍',
+    name: 'ジャイアント', cost: 100, type: 'troop', icon: '🦍',
     hp: 2000, dmg: 120, speed: 7, range: 12, attackSpeed: 1.5,
     count: 1, color: 0x8d6e63, shape: 'box', size: [7, 12, 7],
     target: 'building', fly: false, splash: false, unlockLevel: 1
   },
   musketeer: {
-    name: 'マスケット銃士', cost: 4, type: 'troop', icon: '🔫',
+    name: 'マスケット銃士', cost: 80, type: 'troop', icon: '🔫',
     hp: 340, dmg: 100, speed: 10, range: 60, attackSpeed: 1.1,
     count: 1, color: 0x5c6bc0, shape: 'cylinder', size: [3, 8, 3],
     target: 'both', fly: false, splash: false, unlockLevel: 1
   },
   goblins: {
-    name: 'ゴブリン', cost: 2, type: 'troop', icon: '👺',
+    name: 'ゴブリン', cost: 40, type: 'troop', icon: '👺',
     hp: 130, dmg: 50, speed: 16, range: 10, attackSpeed: 1.1,
     count: 3, color: 0x66bb6a, shape: 'box', size: [3, 5, 3],
     target: 'ground', fly: false, splash: false, unlockLevel: 1
   },
   miniPekka: {
-    name: 'ミニP.E.K.K.A', cost: 4, type: 'troop', icon: '🤖',
+    name: 'ミニP.E.K.K.A', cost: 80, type: 'troop', icon: '🤖',
     hp: 600, dmg: 200, speed: 12, range: 12, attackSpeed: 1.8,
     count: 1, color: 0x1565c0, shape: 'box', size: [5, 9, 5],
     target: 'ground', fly: false, splash: false, unlockLevel: 2
   },
   babyDragon: {
-    name: 'ベビードラゴン', cost: 4, type: 'troop', icon: '🐉',
+    name: 'ベビードラゴン', cost: 80, type: 'troop', icon: '🐉',
     hp: 500, dmg: 60, speed: 10, range: 35, attackSpeed: 1.5,
     count: 1, color: 0x7e57c2, shape: 'sphere', size: [5, 5, 5],
     target: 'both', fly: true, splash: true, splashRadius: 15, unlockLevel: 3
   },
   skeletonArmy: {
-    name: 'スケルトン軍団', cost: 3, type: 'troop', icon: '💀',
+    name: 'スケルトン軍団', cost: 60, type: 'troop', icon: '💀',
     hp: 50, dmg: 35, speed: 14, range: 10, attackSpeed: 1.0,
     count: 8, color: 0xeeeeee, shape: 'box', size: [2.5, 5, 2.5],
     target: 'ground', fly: false, splash: false, unlockLevel: 2
   },
   hogRider: {
-    name: 'ホグライダー', cost: 4, type: 'troop', icon: '🐗',
+    name: 'ホグライダー', cost: 80, type: 'troop', icon: '🐗',
     hp: 800, dmg: 150, speed: 20, range: 12, attackSpeed: 1.6,
     count: 1, color: 0xf9a825, shape: 'box', size: [6, 8, 8],
     target: 'building', fly: false, splash: false, unlockLevel: 3
   },
   valkyrie: {
-    name: 'バルキリー', cost: 4, type: 'troop', icon: '⚔️',
+    name: 'バルキリー', cost: 80, type: 'troop', icon: '⚔️',
     hp: 700, dmg: 90, speed: 10, range: 12, attackSpeed: 1.5,
     count: 1, color: 0xef6c00, shape: 'cylinder', size: [4.5, 8, 4.5],
     target: 'ground', fly: false, splash: true, splashRadius: 13, unlockLevel: 4
   },
   wizard: {
-    name: 'ウィザード', cost: 5, type: 'troop', icon: '🧙',
+    name: 'ウィザード', cost: 100, type: 'troop', icon: '🧙',
     hp: 340, dmg: 130, speed: 10, range: 55, attackSpeed: 1.4,
     count: 1, color: 0x9c27b0, shape: 'cylinder', size: [3.5, 8.5, 3.5],
     target: 'both', fly: false, splash: true, splashRadius: 15, unlockLevel: 5
   },
   fireball: {
-    name: 'ファイアボール', cost: 4, type: 'spell', icon: '🔥',
+    name: 'ファイアボール', cost: 80, type: 'spell', icon: '🔥',
     dmg: 325, radius: 25, unlockLevel: 1
   },
   arrows: {
-    name: '矢の雨', cost: 3, type: 'spell', icon: '🏹',
+    name: '矢の雨', cost: 60, type: 'spell', icon: '🏹',
     dmg: 115, radius: 40, unlockLevel: 1
   },
   freeze: {
-    name: 'フリーズ', cost: 4, type: 'spell', icon: '❄️',
+    name: 'フリーズ', cost: 80, type: 'spell', icon: '❄️',
     dmg: 50, radius: 30, freezeDuration: 3.0, unlockLevel: 4
   },
   rage: {
-    name: 'レイジ', cost: 2, type: 'spell', icon: '😡',
+    name: 'レイジ', cost: 40, type: 'spell', icon: '😡',
     dmg: 0, radius: 50, rageDuration: 6.0, rageBoost: 1.4, unlockLevel: 6
   },
   cannon: {
-    name: '大砲', cost: 3, type: 'building', category: 'attack', icon: '💣',
+    name: '大砲', cost: 60, type: 'building', category: 'attack', icon: '💣',
     hp: 500, dmg: 80, range: 55, attackSpeed: 1.0,
     lifetime: 30, target: 'ground', color: 0x78909c, unlockLevel: 2,
     shape: 'cylinder', size: [6, 8, 6], count: 1
   },
   infernoTower: {
-    name: 'インフェルノタワー', cost: 5, type: 'building', category: 'attack', icon: '🔥',
+    name: 'インフェルノタワー', cost: 100, type: 'building', category: 'attack', icon: '🔥',
     hp: 600, dmg: 20, dmgMax: 200, range: 60, attackSpeed: 0.4,
     lifetime: 35, target: 'both', color: 0xd32f2f, unlockLevel: 1,
     shape: 'cylinder', size: [5, 12, 5], count: 1
@@ -5017,31 +5054,31 @@ const CARD_DEFS = {
   struct_farm: {
     name: '農場', cost: 150, type: 'structure', category: 'defense', icon: '🌾',
     hp: 800, color: 0x8bc34a, unlockLevel: 1, count: 1,
-    structureId: 'farm', costType: 'gdp',
-    description: 'エリクサー回復速度+15%'
+    structureId: 'farm',
+    description: 'GDP回復速度+15%'
   },
   struct_watchtower: {
     name: '見張り塔', cost: 200, type: 'structure', category: 'attack', icon: '🗼',
     hp: 600, dmg: 40, range: 80, attackSpeed: 1.5, color: 0x795548, unlockLevel: 1, count: 1,
-    structureId: 'watchtower', costType: 'gdp',
+    structureId: 'watchtower',
     description: '範囲内の敵を自動攻撃'
   },
   struct_wall: {
     name: '城壁', cost: 100, type: 'structure', category: 'defense', icon: '🧱',
     hp: 1500, color: 0x9e9e9e, unlockLevel: 1, count: 1,
-    structureId: 'wall', costType: 'gdp',
+    structureId: 'wall',
     description: '敵の侵入を阻む壁'
   },
   struct_smithy: {
     name: '鍛冶場', cost: 250, type: 'structure', category: 'attack', icon: '⚒️',
     hp: 700, color: 0xf44336, unlockLevel: 1, count: 1,
-    structureId: 'smithy', costType: 'gdp',
+    structureId: 'smithy',
     description: '味方ユニット攻撃力+20%'
   },
   struct_altar: {
     name: '祭壇', cost: 300, type: 'structure', category: 'defense', icon: '🔮',
     hp: 500, color: 0x9c27b0, unlockLevel: 1, count: 1,
-    structureId: 'altar', costType: 'gdp',
+    structureId: 'altar',
     description: 'GDP収入+30%'
   }
 };
@@ -5052,8 +5089,8 @@ const CARD_DEFS = {
 const STRUCTURE_DEFS = {
   farm: {
     name: '農場', icon: '🌾', cost: 150,
-    hp: 800, effect: 'elixirBoost', effectValue: 0.15,
-    description: 'エリクサー回復速度+15%',
+    hp: 800, effect: 'gdpRegenBoost', effectValue: 0.15,
+    description: 'GDP回復速度+15%',
     color: 0x8bc34a, size: { w: 18, h: 8, d: 18 }, maxPerFaction: 3
   },
   watchtower: {
@@ -5103,7 +5140,7 @@ window._getDebugInfo = () => {
 };
 let gameState = 'MENU';
 let matchTimer = 0; // 経過時間（秒、そのセッションの生存時間）
-let matchElixirSpent = 0; // 試合で使ったエリクサー合計
+let matchGDPSpent = 0; // 試合で使ったGDP合計
 let isOvertime = false;
 
 // ============================================================
@@ -5220,7 +5257,6 @@ let humanPlayer = null; // reference to players[0]
 
 // Shared refs
 let handCards = []; // alias for humanPlayer.handCards
-let elixir = 10;
 
 // Deck & Hand
 let playerDeck = ['knight', 'archer', 'giant', 'musketeer', 'goblins', 'fireball', 'arrows', 'cannon'];
@@ -6209,7 +6245,7 @@ function serializeBattleState() {
   data.gameState = gameState;
   data.matchTimer = matchTimer;
   data.isOvertime = isOvertime;
-  data.elixir = elixir;
+  // elixir removed — GDP is tracked via factionGDP
   data.queenLevel = queenLevel;
   data.queenXP = queenXP;
   data.factionLevels = { ...factionLevels };
@@ -6252,7 +6288,7 @@ function serializeBattleState() {
     isRemote: p.isRemote || false,
     faction: p.faction,
     color: p.color,
-    elixir: p.elixir,
+    // elixir removed
     handCards: p.handCards ? [...p.handCards] : [],
     botTimer: p.botTimer,
     botChestTimer: p.botChestTimer || 0,
@@ -6377,7 +6413,7 @@ function restoreBattleState(data) {
     gameState = data.gameState;
     matchTimer = data.matchTimer;
     isOvertime = data.isOvertime;
-    elixir = data.elixir;
+    // elixir removed — GDP is tracked via factionGDP
     queenLevel = data.queenLevel;
     queenXP = data.queenXP;
     factionLevels = data.factionLevels;
@@ -6459,7 +6495,7 @@ function restoreBattleState(data) {
         faction: pd.faction,
         color: pd.color,
         kingTower: towers[idx] || null,
-        elixir: pd.elixir,
+        // elixir removed
         handCards: pd.handCards || [],
         botTimer: pd.botTimer,
         botChestTimer: pd.botChestTimer || 0,
@@ -7956,6 +7992,7 @@ function createMcCannon() {
   const wL = new THREE.Mesh(wG, mcMat(0x5a3010)); wL.position.set(-3.2, 2, 0); wL.castShadow=false; g.add(wL);
   const wR = new THREE.Mesh(wG, mcMat(0x5a3010)); wR.position.set(3.2, 2, 0); wR.castShadow=false; g.add(wR);
   g.add(at(mcBox(7, 0.5, 0.5, 0x444444), 0, 2, 0));
+  g.scale.set(5, 5, 5);
   return g;
 }
 
@@ -7971,6 +8008,7 @@ function createMcInfernoTower() {
     const f = at(mcBoxE(0.6, 0.6, 0.6, 0xff8800, 0xff6600, 0.8), Math.cos(a)*1.5, 13+Math.sin(a*2)*0.5, Math.sin(a)*1.5);
     f.name='flamePart'; g.add(f);
   }
+  g.scale.set(5, 5, 5);
   return g;
 }
 
@@ -7985,7 +8023,7 @@ function createMcFarm() {
   g.add(at(mcBox(3, 0.5, 3, 0xcc4444), -2, 4, -2));
   for (let x = 0; x < 3; x++) for (let z = 0; z < 3; z++)
     g.add(at(mcBox(0.8, 1.2, 0.8, 0x55aa22), x*1.5, 2.2, z*1.5));
-  g.scale.set(3, 3, 3);
+  g.scale.set(10, 10, 10);
   return g;
 }
 
@@ -8135,11 +8173,11 @@ function createBuildEffect(x, z, color) {
 }
 
 function getStructureBoosts(faction) {
-  const boosts = { elixirBoost: 0, attackBoost: 0, gdpBoost: 0 };
+  const boosts = { gdpRegenBoost: 0, attackBoost: 0, gdpBoost: 0 };
   structures.forEach(s => {
     if (s.faction === faction && !s.destroyed) {
       const def = STRUCTURE_DEFS[s.type];
-      if (def.effect === 'elixirBoost') boosts.elixirBoost += def.effectValue;
+      if (def.effect === 'gdpRegenBoost') boosts.gdpRegenBoost += def.effectValue;
       if (def.effect === 'attackBoost') boosts.attackBoost += def.effectValue;
       if (def.effect === 'gdpBoost') boosts.gdpBoost += def.effectValue;
     }
@@ -8519,7 +8557,7 @@ function buildTowers() {
       faction: faction,
       color: factionData.color,
       kingTower: tower,
-      elixir: 10,
+      // GDP-based (no per-player elixir)
       handCards: [],
       botTimer: 3 + Math.random() * 3,
       botChestTimer: 0,
@@ -8573,7 +8611,6 @@ function addCoopPlayer(characterType) {
     faction: faction,
     color: factionData.color,
     kingTower: tower,
-    elixir: 10,
     handCards: [],
     botTimer: 0,
     botChestTimer: 0,
@@ -8850,8 +8887,7 @@ function handlePlayerDeath() {
 function respawnPlayer() {
   if (!humanPlayer) return;
   reviveKingFor(0);
-  // 初期エリクサー
-  elixir = 10;
+  // GDP-based: no per-player elixir reset needed
   // カメラをキング位置に戻す
   const kt = humanPlayer.kingTower;
   if (kt && camera) {
@@ -9043,7 +9079,7 @@ function spawnEntity(cardId, x, z, side) {
     // Side indicator (colored flag matching player) — マイクラ風はHPバーの色で識別
     // 旗は不要（マイクラ風はユニット自体に陣営色が反映済み）
 
-    const baseH = (def.size[1] || def.size[0]) / 2;
+    const baseH = def.size ? (def.size[1] || def.size[0]) / 2 : 4;
     const posY = def.fly ? 15 : 0;
     mesh.position.set(x + ox, posY, z + oz);
     mesh.castShadow = false;
@@ -9629,7 +9665,7 @@ function updateEntities(dt) {
     // Bobbing animation for troops + 地形追従
     {
       const terrainY = e.fly ? 0 : getTerrainHeight(e.mesh.position.x, e.mesh.position.z);
-      const baseY = e.fly ? 25 : (e.def.size[1] || e.def.size[0]) / 2;
+      const baseY = e.fly ? 25 : (e.def.size ? (e.def.size[1] || e.def.size[0]) / 2 : 4);
       const bob = e.state === 'moving' ? Math.sin(clock.elapsedTime * 5) * 0.05 : 0;
       e.mesh.position.y = terrainY + baseY + bob;
     }
@@ -9931,9 +9967,9 @@ function updateAllBotsAI(dt) {
   players.forEach(p => {
     if (p.isHuman || p.eliminated) return;
 
-    // Elixir regen for bots
-    const rate = ELIXIR_RATE;
-    p.elixir = Math.min(ELIXIR_MAX, p.elixir + rate * dt);
+    // GDP passive regen for bots
+    const botBoosts = getStructureBoosts(p.faction);
+    addGDP(p.faction, GDP_PASSIVE_RATE * (1 + botBoosts.gdpRegenBoost) * dt);
 
     // Bot movement - slowly move toward nearest enemy
     p.botTimer -= dt;
@@ -9962,14 +9998,15 @@ function updateAllBotsAI(dt) {
         }
       }
 
-      // Place a card if we have one and enough elixir
-      if (p.handCards.length > 0 && p.elixir >= 3) {
+      // Place a card if we have one and enough GDP
+      const botGdp = factionGDP[p.faction] || 0;
+      if (p.handCards.length > 0 && botGdp >= 40) {
         // Pick a random card we can afford
-        const affordable = p.handCards.filter((c, i) => CARD_DEFS[c] && CARD_DEFS[c].cost <= p.elixir);
+        const affordable = p.handCards.filter((c, i) => CARD_DEFS[c] && CARD_DEFS[c].cost <= botGdp);
         if (affordable.length > 0) {
           const cardId = affordable[Math.floor(Math.random() * affordable.length)];
           const def = CARD_DEFS[cardId];
-          p.elixir -= def.cost;
+          addGDP(p.faction, -def.cost);
           // Place near king tower, toward nearest enemy
           let px = kt.x + (Math.random() - 0.5) * 100;
           let pz = kt.z + (Math.random() - 0.5) * 100;
@@ -10841,19 +10878,15 @@ function playCard(index) {
   const cardId = handCards[index];
   const def = CARD_DEFS[cardId];
 
-  // 施設カード: GDP消費チェック
-  if (def.type === 'structure') {
-    const faction = humanPlayer ? humanPlayer.faction : 'fire';
-    const gdp = factionGDP[faction] || 0;
-    if (gdp < def.cost) return;
-    // 上限チェック
-    if (def.structureId) {
-      const existing = structures.filter(s => s.type === def.structureId && s.faction === faction && !s.destroyed).length;
-      const maxPer = STRUCTURE_DEFS[def.structureId]?.maxPerFaction || 99;
-      if (existing >= maxPer) return;
-    }
-  } else {
-    if (elixir < def.cost) return;
+  // GDP消費チェック
+  const faction = humanPlayer ? humanPlayer.faction : 'fire';
+  const gdp = factionGDP[faction] || 0;
+  if (gdp < def.cost) return;
+  // 施設カード: 上限チェック
+  if (def.type === 'structure' && def.structureId) {
+    const existing = structures.filter(s => s.type === def.structureId && s.faction === faction && !s.destroyed).length;
+    const maxPer = STRUCTURE_DEFS[def.structureId]?.maxPerFaction || 99;
+    if (existing >= maxPer) return;
   }
 
   // ツールチップを消す
@@ -10893,14 +10926,16 @@ function confirmPlacement() {
   const placeX = ghostMesh.position.x;
   const placeZ = ghostMesh.position.z;
 
+  const faction = humanPlayer ? humanPlayer.faction : 'fire';
   // 施設カード: buildStructureで建設（GDP消費）
   if (def.type === 'structure' && def.structureId) {
-    const faction = humanPlayer ? humanPlayer.faction : 'fire';
     const result = buildStructure(def.structureId, placeX, placeZ, faction);
     if (!result) return; // GDP不足・上限の場合は配置キャンセル
   } else {
-    elixir -= def.cost;
-    matchElixirSpent += def.cost;
+    // GDP消費でユニット/呪文/建物を配置
+    if ((factionGDP[faction] || 0) < def.cost) return;
+    addGDP(faction, -def.cost);
+    matchGDPSpent += def.cost;
     spawnEntity(cardId, placeX, placeZ, 0);
   }
 
@@ -11277,18 +11312,13 @@ function renderHand() {
     const typeClass = isStructure ? 'card-structure' : `card-${def.type}`;
     const catClass = def.category ? `cat-${def.category}` : '';
 
-    // 施設カード: GDP消費、通常カード: エリクサー消費
-    let disabled = '';
-    if (isStructure) {
-      disabled = myGdp < def.cost ? 'disabled' : '';
-      // 上限チェック
-      if (!disabled && def.structureId) {
-        const existing = structures.filter(s => s.type === def.structureId && s.faction === myFaction && !s.destroyed).length;
-        const maxPer = STRUCTURE_DEFS[def.structureId]?.maxPerFaction || 99;
-        if (existing >= maxPer) disabled = 'disabled';
-      }
-    } else {
-      disabled = elixir < def.cost ? 'disabled' : '';
+    // 全カード: GDP消費チェック
+    let disabled = myGdp < def.cost ? 'disabled' : '';
+    // 施設カード: 上限チェック
+    if (!disabled && isStructure && def.structureId) {
+      const existing = structures.filter(s => s.type === def.structureId && s.faction === myFaction && !s.destroyed).length;
+      const maxPer = STRUCTURE_DEFS[def.structureId]?.maxPerFaction || 99;
+      if (existing >= maxPer) disabled = 'disabled';
     }
 
     const selected = i === selectedCardIndex ? 'selected' : '';
@@ -11334,7 +11364,7 @@ function renderHand() {
         </div>`;
     }
 
-    const costLabel = isStructure ? `💰${def.cost}` : def.cost;
+    const costLabel = `💰${def.cost}`;
 
     return `<div class="hand-card ${typeClass} ${catClass} ${disabled} ${selected}" data-card-index="${i}" data-card-id="${cardId}">
       <div class="hc-type-icon">${typeIcon}</div>
@@ -11371,12 +11401,10 @@ function renderHand() {
     if (isNaN(idx) || idx >= handCards.length) return;
     const def = CARD_DEFS[handCards[idx]];
     if (!def) return;
-    // 施設カード: GDP、通常: エリクサーチェック
-    if (def.type === 'structure') {
+    // GDP消費チェック
+    {
       const faction = humanPlayer ? humanPlayer.faction : 'fire';
       if ((factionGDP[faction] || 0) < def.cost) return;
-    } else {
-      if (elixir < def.cost) return;
     }
     if (selectedCardIndex === idx) {
       cancelPlacement();
@@ -11740,7 +11768,7 @@ function showResultSnapshot() {
   if (elKills) elKills.textContent = kills;
   if (elKings) elKings.textContent = kingKills;
   if (elTime)  elTime.textContent  = timeStr;
-  if (elElix)  elElix.textContent  = Math.round(matchElixirSpent);
+  if (elElix)  elElix.textContent  = Math.round(matchGDPSpent);
 }
 
 window.resumeFromResult = function() {
@@ -11822,7 +11850,7 @@ function endMatch() {
   setTimeout(() => {
     animateCountUp(elKills, kills + unitKills, 1000);
     animateCountUp(elKings, kingKills, 1000);
-    animateCountUp(elElix, Math.round(matchElixirSpent), 1200);
+    animateCountUp(elElix, Math.round(matchGDPSpent), 1200);
     // タイマー表示はフォーマット固定なので段階表示
     let tStart = performance.now();
     const tStep = (now) => {
@@ -11954,7 +11982,7 @@ function populateUnitGallery() {
   // 常に再生成（アンロック状況が変わる可能性があるため）
   gallery.innerHTML = '';
   // type順にソート: troop -> building -> spell
-  const typeOrder = { troop: 0, building: 1, spell: 2 };
+  const typeOrder = { troop: 0, building: 1, spell: 2, structure: 3 };
   const entries = Object.entries(CARD_DEFS).sort((a, b) => {
     const ta = typeOrder[a[1].type] ?? 9;
     const tb = typeOrder[b[1].type] ?? 9;
@@ -11967,7 +11995,7 @@ function populateUnitGallery() {
     card.className = 'unit-card type-' + def.type + (isLocked ? ' locked' : '');
     card.setAttribute('data-type', def.type);
     card.setAttribute('data-unlock', def.unlockLevel || 1);
-    const typeLabel = def.type === 'troop' ? '兵士 / TROOP' : def.type === 'spell' ? '呪文 / SPELL' : '建物 / BUILDING';
+    const typeLabel = def.type === 'troop' ? '兵士 / TROOP' : def.type === 'spell' ? '呪文 / SPELL' : def.type === 'structure' ? '施設 / STRUCTURE' : '建物 / BUILDING';
     // stats grid
     const stats = [];
     if (def.hp)          stats.push({ lbl: 'HP',  val: def.hp });
@@ -12811,9 +12839,9 @@ function handleSpectatorCommand(data, conn) {
     const { cardId, x, z } = data;
     const def = CARD_DEFS[cardId];
     if (!def) return;
-    // エリクサーチェック
-    if (p.elixir < def.cost) return;
-    p.elixir -= def.cost;
+    // GDPチェック
+    if ((factionGDP[p.faction] || 0) < def.cost) return;
+    addGDP(p.faction, -def.cost);
     if (def.type === 'spell') {
       castSpell(cardId, x, z, p.id);
     } else {
@@ -13568,10 +13596,8 @@ window.startBattle = function() {
   document.getElementById('hp-bars-container').innerHTML = '';
 
   // Reset state
-  elixir = 10;
-  // Bot elixir managed per-player in players[]
   matchTimer = 0; // セッション生存時間リセット
-  matchElixirSpent = 0;
+  matchGDPSpent = 0;
   // ワールド時間はセッションをまたいで累積（ロード時に上書きされる）
   if (typeof worldTime !== 'number') worldTime = 0;
   // GDP はロード時に上書きされるが、初期セッションでは 1000 固定
@@ -13976,7 +14002,6 @@ function startTutorial() {
   document.getElementById('hp-bars-container').innerHTML = '';
 
   // Reset state
-  elixir = ELIXIR_MAX;
   selectedCardIndex = -1;
   placementMode = false;
   if (ghostMesh) { scene.remove(ghostMesh); ghostMesh = null; }
@@ -13999,7 +14024,6 @@ function startTutorial() {
     faction: selectedFaction,
     color: FACTIONS[selectedFaction].color,
     kingTower: playerTower,
-    elixir: ELIXIR_MAX,
     handCards: [],
     botTimer: 999,
     botChestTimer: 0,
@@ -14021,7 +14045,6 @@ function startTutorial() {
     faction: enemyFaction,
     color: FACTIONS[enemyFaction].color,
     kingTower: null,
-    elixir: 0,
     handCards: [],
     botTimer: 999,
     botChestTimer: 0,
@@ -14288,8 +14311,9 @@ function updateActionStatus() {
   } else {
     if (dim) dim.classList.remove('active');
     // 使えるカードがあるか
+    const curGdp = factionGDP[humanPlayer ? humanPlayer.faction : 'fire'] || 0;
     const affordable = (handCards || []).some(cid => {
-      const d = CARD_DEFS[cid]; return d && elixir >= d.cost;
+      const d = CARD_DEFS[cid]; return d && curGdp >= d.cost;
     });
     if (affordable) {
       state = 'ready';
@@ -14299,8 +14323,8 @@ function updateActionStatus() {
     } else {
       state = 'waiting';
       icon = '◇';
-      text = 'エリクサー待機';
-      hint = `${Math.floor(elixir)}/${ELIXIR_MAX}`;
+      text = 'GDP不足';
+      hint = `GDP: ${Math.floor(curGdp)}`;
     }
   }
 
@@ -14470,11 +14494,11 @@ function updateGame(dt) {
   }
   // Tutorial state handling
   if (gameState === 'TUTORIAL') {
-    // Keep elixir full during tutorial
-    elixir = ELIXIR_MAX;
-    const pct = 100;
-    document.getElementById('elixir-bar-fill').style.width = pct + '%';
-    document.getElementById('elixir-text').textContent = `${Math.floor(elixir)}/${ELIXIR_MAX}`;
+    // Keep GDP high during tutorial
+    const tutFac = humanPlayer ? humanPlayer.faction : 'fire';
+    if ((factionGDP[tutFac] || 0) < 5000) factionGDP[tutFac] = 5000;
+    document.getElementById('elixir-bar-fill').style.width = '100%';
+    document.getElementById('elixir-text').textContent = `GDP: ${Math.floor(factionGDP[tutFac])}`;
 
     // Run core systems but NOT bots/auto-spawn/commentary/stats
     updateEntities(dt);
@@ -14538,24 +14562,22 @@ function updateGame(dt) {
     }
   }
 
-  // Elixir
-  const myBoosts = humanPlayer ? getStructureBoosts(humanPlayer.faction) : { elixirBoost: 0 };
-  const rate = ELIXIR_RATE * (1 + myBoosts.elixirBoost);
-  elixir = Math.min(ELIXIR_MAX, elixir + rate * dt);
-  // 協力プレイヤー（リモート）のエリクサー回復
-  players.forEach(p => {
-    if (p.isRemote && !p.eliminated) {
-      p.elixir = Math.min(ELIXIR_MAX, p.elixir + rate * dt);
-    }
-  });
-  // Bot elixir is handled in updateAllBotsAI
+  // GDP passive regen for human player's faction
+  if (humanPlayer && !humanPlayer.eliminated) {
+    const myBoosts = getStructureBoosts(humanPlayer.faction);
+    addGDP(humanPlayer.faction, GDP_PASSIVE_RATE * (1 + myBoosts.gdpRegenBoost) * dt);
+  }
 
-  // Update elixir bar
-  const pct = (elixir / ELIXIR_MAX) * 100;
+  // Update GDP bar
+  const myFac = humanPlayer ? humanPlayer.faction : 'fire';
+  const myGdpNow = Math.floor(factionGDP[myFac] || 0);
   const elxFill = document.getElementById('elixir-bar-fill');
-  elxFill.style.width = pct + '%';
-  elxFill.classList.toggle('full', elixir >= ELIXIR_MAX);
-  document.getElementById('elixir-text').textContent = `${Math.floor(elixir)}/${ELIXIR_MAX}`;
+  // GDP bar: show percentage relative to a soft cap for visual feedback
+  const gdpVisualMax = 2000;
+  const gdpPct = Math.min(100, (myGdpNow / gdpVisualMax) * 100);
+  elxFill.style.width = gdpPct + '%';
+  elxFill.classList.toggle('full', myGdpNow >= gdpVisualMax);
+  document.getElementById('elixir-text').textContent = `GDP: ${myGdpNow}`;
 
   // Update systems
   frameCount++;
@@ -14582,8 +14604,8 @@ function updateGame(dt) {
   checkTerritoryExpansion(dt);
   if (frameCount % 3 === 0) updateActionStatus();
 
-  // Re-render hand (for elixir cost checking)
-  if (Math.floor(elixir) !== Math.floor(elixir - rate * dt)) {
+  // Re-render hand (for GDP cost checking) — every ~0.5 seconds
+  if (frameCount % 15 === 0) {
     renderHand();
   }
 
