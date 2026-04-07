@@ -9692,6 +9692,11 @@ function updateBuildingAttack(e, dt, speedMult) {
   });
 
   if (nearest) {
+    // 砲台を敵に向ける
+    const ntx = nearest.mesh ? nearest.mesh.position.x : nearest.x;
+    const ntz = nearest.mesh ? nearest.mesh.position.z : nearest.z;
+    e.mesh.lookAt(ntx, e.mesh.position.y, ntz);
+
     e.attackTimer -= dt * speedMult;
     if (e.attackTimer <= 0) {
       e.attackTimer = e.attackSpeed;
