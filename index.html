@@ -286,39 +286,6 @@ canvas { display: block; }
 }
 .menu-icon-btn.hidden { display: none; }
 
-/* PUSH TO START プロンプト */
-.push-to-start {
-  position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%);
-  z-index: 20; cursor: pointer;
-  animation: ptsBreath 2.5s ease-in-out infinite;
-}
-@keyframes ptsBreath {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
-}
-.pts-bar {
-  padding: 14px 48px;
-  border: 1px solid rgba(200,168,80,0.6);
-  border-left: 2px solid rgba(200,168,80,0.8);
-  border-right: 2px solid rgba(200,168,80,0.8);
-  background: linear-gradient(180deg, rgba(20,24,35,0.7) 0%, rgba(10,12,20,0.8) 100%);
-  backdrop-filter: blur(6px);
-}
-.pts-text {
-  font-family: 'Georgia', 'Times New Roman', serif;
-  font-size: clamp(14px, 2vw, 18px);
-  color: #c8b888;
-  letter-spacing: 6px;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-}
-.push-to-start:hover .pts-bar {
-  border-color: rgba(220,188,100,0.9);
-  box-shadow: 0 0 20px rgba(200,168,80,0.15);
-}
-.push-to-start:hover .pts-text {
-  color: #e8d8a8;
-}
-
 /* ===== Modal Overlay ===== */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 200;
@@ -2756,15 +2723,8 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
     <div class="title-jp">レイド オブ タイタン</div>
   </div>
 
-  <!-- PUSH TO START プロンプト -->
-  <div class="push-to-start" id="push-to-start" onclick="window.showMainMenu()">
-    <div class="pts-bar">
-      <span class="pts-text">PUSH TO START</span>
-    </div>
-  </div>
-
-  <!-- メインメニュー（最初は非表示） -->
-  <div class="main-menu" id="main-menu" style="display:none;">
+  <!-- メインメニュー -->
+  <div class="main-menu" id="main-menu">
     <div class="menu-heroes">
       <button class="hero-btn hero-streamer" onclick="window.startNewGame()">
         <span class="hero-icon">🎥</span>
@@ -11878,12 +11838,6 @@ window.backToMenuFromDisconnect = function() {
   window.backToMenu();
 };
 
-window.showMainMenu = function() {
-  const pts = document.getElementById('push-to-start');
-  const menu = document.getElementById('main-menu');
-  if (pts) { pts.style.transition = 'opacity 0.4s'; pts.style.opacity = '0'; setTimeout(() => pts.style.display = 'none', 400); }
-  if (menu) { menu.style.display = 'flex'; menu.style.opacity = '0'; menu.style.transition = 'opacity 0.5s'; requestAnimationFrame(() => menu.style.opacity = '1'); }
-};
 window.startNewGame = function() {
   unlockSpeech(); // ← ユーザージェスチャー内で即座にunlock
   deleteSaveData();
@@ -12317,11 +12271,6 @@ function assignStreamerNames() {
 window.backToMenu = function() {
   { const _pg = document.getElementById('postgame-screen'); _pg.style.display = 'none'; _pg.classList.remove('visible', 'win', 'lose'); }
   document.getElementById('title-screen').style.display = 'flex';
-  // PUSH TO START を復活、メニューを隠す
-  const _pts = document.getElementById('push-to-start');
-  if (_pts) { _pts.style.display = ''; _pts.style.opacity = ''; _pts.style.transition = ''; }
-  const _mm2 = document.getElementById('main-menu');
-  if (_mm2) { _mm2.style.display = 'none'; _mm2.style.opacity = ''; }
   document.getElementById('card-hand').classList.remove('visible');
   document.getElementById('battle-dock').style.display = 'none';
   { const _as = document.getElementById('action-status'); if (_as) _as.classList.remove('visible'); }
