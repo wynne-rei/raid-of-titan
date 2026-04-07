@@ -6206,7 +6206,7 @@ function resolveTargetRef(ref) {
 
 // 座標指定でチェストを生成
 function spawnChestAt(x, z) {
-  const ct = CHEST_TYPES['normal'];
+  const ct = CHEST_TYPES['building'];
   const group = new THREE.Group();
   const chest = new THREE.Group();
   chest.add(at(mcBox(8, 5, 6, ct.bodyColor), 0, 2.5, 0));
@@ -6236,7 +6236,7 @@ function spawnChestAt(x, z) {
   }
   group.position.set(x, 0, z);
   scene.add(group);
-  chests.push({ mesh: group, x, z });
+  chests.push({ mesh: group, x, z, type: 'building', tutorialChest: true });
 }
 
 // バトル状態をシリアライズ可能なオブジェクトに変換
@@ -11329,10 +11329,10 @@ function updateGhostPosition() {
 // ============================================================
 // チェスト種類定義
 const CHEST_TYPES = {
-  normal:    { name: '木のチェスト',   icon: '📦', bodyColor: 0x8B5E3C, lidColor: 0x6B3F1F, ringColor: 0xD2A06B, trimColor: 0x5C3A1E, lockColor: 0x888888, weight: 50 },
-  gold:      { name: 'ゴールドチェスト', icon: '💰', bodyColor: 0xFFD700, lidColor: 0xDAA520, ringColor: 0xFFEA70, trimColor: 0xB8860B, lockColor: 0xFFD700, weight: 20 },
-  blueprint: { name: '設計図チェスト', icon: '📐', bodyColor: 0x1E90FF, lidColor: 0x0066CC, ringColor: 0x66BBFF, trimColor: 0x003399, lockColor: 0x44AAFF, weight: 15 },
-  enhance:   { name: '強化の書チェスト', icon: '📜', bodyColor: 0x9B30FF, lidColor: 0x7B1FA2, ringColor: 0xCC77FF, trimColor: 0x5C0099, lockColor: 0xBB66FF, weight: 15 }
+  troop:     { name: '兵士チェスト',   icon: '⚔️', bodyColor: 0xCC3333, lidColor: 0x991111, ringColor: 0xFF6655, trimColor: 0x661111, lockColor: 0xDD4444, cardType: 'troop',    weight: 40 },
+  spell:     { name: '呪文チェスト',   icon: '✨', bodyColor: 0x9B30FF, lidColor: 0x7B1FA2, ringColor: 0xCC77FF, trimColor: 0x5C0099, lockColor: 0xBB66FF, cardType: 'spell',    weight: 25 },
+  building:  { name: '建物チェスト',   icon: '🏗️', bodyColor: 0xFFD700, lidColor: 0xDAA520, ringColor: 0xFFEA70, trimColor: 0xB8860B, lockColor: 0xFFD700, cardType: 'building', weight: 20 },
+  structure: { name: '施設チェスト',   icon: '🏰', bodyColor: 0x1E90FF, lidColor: 0x0066CC, ringColor: 0x66BBFF, trimColor: 0x003399, lockColor: 0x44AAFF, cardType: 'structure', weight: 15 }
 };
 
 function getRandomChestType() {
@@ -11342,7 +11342,7 @@ function getRandomChestType() {
     r -= def.weight;
     if (r <= 0) return id;
   }
-  return 'normal';
+  return 'troop';
 }
 
 function spawnChest() {
@@ -11388,10 +11388,9 @@ function spawnChest() {
   chest.add(at(mcBox(1.4, 0.3, 0.3, lock), 0, 5.2, 3.35));
 
   // ── 宝石（チェストタイプ別）──
-  if (chestType !== 'normal') {
-    // フタの上に宝石
+  // フタの上にチェストタイプ別の宝石装飾
+  if (chestType !== 'troop') {
     chest.add(at(mcBoxE(1.5, 1.5, 1.5, ct.ringColor, ct.ringColor, 1.2), 0, 9, 0));
-    // 側面に小宝石
     for (const sx of [-1, 1]) {
       chest.add(at(mcBoxE(0.6, 0.6, 0.4, ct.ringColor, ct.ringColor, 0.8), sx * 3, 4.5, 3.25));
     }
@@ -11474,11 +11473,13 @@ function updateChests(dt) {
   }
 }
 
-function getRandomCard() {
-  // 全カード（兵士・建物・施設すべて）からランダムで1枚
+function getRandomCard(cardType) {
+  // cardType指定時はそのタイプのみ、未指定なら全カードからランダム
   const pool = Object.keys(CARD_DEFS).filter(id => {
     const def = CARD_DEFS[id];
-    return def != null;
+    if (!def) return false;
+    if (cardType) return def.type === cardType;
+    return true;
   });
   if (pool.length === 0) return 'knight';
   return pool[Math.floor(Math.random() * pool.length)];
@@ -11489,7 +11490,7 @@ function pickupChest(chest, index) {
   scene.remove(chest.mesh);
   chests.splice(index, 1);
 
-  const chestType = chest.type || 'normal';
+  const chestType = chest.type || 'troop';
   const ct = CHEST_TYPES[chestType];
 
   // Pickup particles (色をチェストタイプに合わせる)
@@ -11511,13 +11512,8 @@ function pickupChest(chest, index) {
 
   const faction = humanPlayer ? humanPlayer.faction : 'fire';
 
-  // --- 特殊チェストのボーナス効果（カード配布とは別に発動） ---
-  if (chestType === 'gold') {
-    addGDP(faction, GOLD_CHEST_GDP);
-    addCommentary(`💰 ゴールドチェスト獲得！GDP+${GOLD_CHEST_GDP}！`, faction);
-  }
-
-  if (chestType === 'blueprint') {
+  // --- 施設チェスト: 施設を自動建設 ---
+  if (chestType === 'structure') {
     const availableStructures = STRUCTURE_IDS.filter(id => {
       const sdef = STRUCTURE_DEFS[id];
       const count = structures.filter(s => s.type === id && s.faction === faction && !s.destroyed).length;
@@ -11542,37 +11538,35 @@ function pickupChest(chest, index) {
         hp: sDef.hp, maxHp: sDef.hp, mesh, hpContainer, destroyed: false, attackTimer: 0
       });
       createBuildEffect(sx, sz, FACTIONS[faction].color);
-      addCommentary(`📐 設計図チェスト！${sDef.name}が建設された！`, faction);
+      addCommentary(`🏰 施設チェスト！${sDef.name}が建設された！`, faction);
     } else {
       addGDP(faction, 150);
-      addCommentary(`📐 施設上限！GDP+150に変換`, faction);
+      addCommentary(`🏰 施設上限！GDP+150に変換`, faction);
     }
+    // 施設チェストはカード配布なし — 通知して終了
+    const notify = document.createElement('div');
+    notify.className = 'card-pickup-notify';
+    notify.innerHTML = `<span style="font-size:24px">🏰</span> 施設が建設された！`;
+    document.body.appendChild(notify);
+    setTimeout(() => notify.remove(), 2500);
+    return;
   }
 
-  if (chestType === 'enhance') {
-    const myStructures = structures.filter(s => s.faction === faction && !s.destroyed);
-    if (myStructures.length > 0) {
-      const target = myStructures[Math.floor(Math.random() * myStructures.length)];
-      const sDef = STRUCTURE_DEFS[target.type];
-      target.maxHp = Math.floor(target.maxHp * ENHANCE_HP_MULT);
-      target.hp = Math.min(target.maxHp, target.hp + Math.floor(target.maxHp * 0.5));
-      createBuildEffect(target.x, target.z, 0xab47bc);
-      addCommentary(`📜 強化の書！${sDef.name}がパワーアップ！(HP+25%)`, faction);
-    }
+  // --- 建物チェスト: GDP+100ボーナス付き ---
+  if (chestType === 'building') {
+    addGDP(faction, GOLD_CHEST_GDP);
+    addCommentary(`🏗️ 建物チェスト獲得！GDP+${GOLD_CHEST_GDP}！`, faction);
   }
 
-  // --- 全チェスト共通: 必ずカードを1枚配布 ---
-  // チュートリアル中は必ず大砲を配布
-  const cardId = chest.tutorialChest ? 'cannon' : getRandomCard();
+  // --- 兵士・呪文・建物チェスト: 該当カテゴリからカードを配布 ---
+  const cardId = chest.tutorialChest ? 'cannon' : getRandomCard(ct.cardType);
   const def = CARD_DEFS[cardId];
 
-  // 通知（チェスト種類に応じた追加テキスト）
-  const bonusText = chestType === 'gold' ? ` & GDP+${GOLD_CHEST_GDP}` :
-                    chestType === 'blueprint' ? ' & 施設建設' :
-                    chestType === 'enhance' ? ' & 施設強化' : '';
+  // 通知
+  const bonusText = chestType === 'building' ? ` & GDP+${GOLD_CHEST_GDP}` : '';
   const notify = document.createElement('div');
   notify.className = 'card-pickup-notify';
-  if (chestType !== 'normal') notify.style.color = '#' + ct.ringColor.toString(16).padStart(6, '0');
+  notify.style.color = '#' + ct.ringColor.toString(16).padStart(6, '0');
   notify.textContent = `${ct.icon} ${def.icon} ${def.name} GET!${bonusText}`;
   document.body.appendChild(notify);
   setTimeout(() => notify.remove(), 1500);
@@ -14529,39 +14523,43 @@ function spawnTutorialChest() {
   const cx = kx + (Math.random() - 0.5) * 10;
   const cz = kz + 30;
 
-  const ct = CHEST_TYPES['normal'];
+  const ct = CHEST_TYPES['building'];
+  const trim = ct.trimColor;
+  const lock = ct.lockColor;
   const group = new THREE.Group();
   const chest = new THREE.Group();
 
   // 本体
-  chest.add(at(mcBox(8, 5, 6, 0xffc107), 0, 2.5, 0));
+  chest.add(at(mcBox(8, 5, 6, ct.bodyColor), 0, 2.5, 0));
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    chest.add(at(mcBox(0.8, 5.2, 0.8, 0x8B7500), sx * 3.8, 2.5, sz * 2.8));
+    chest.add(at(mcBox(0.8, 5.2, 0.8, trim), sx * 3.8, 2.5, sz * 2.8));
   }
-  chest.add(at(mcBox(8.2, 0.6, 6.2, 0x6B5900), 0, 0.3, 0));
-  chest.add(at(mcBox(8.2, 0.5, 0.4, 0x8B7500), 0, 1.5, 3.1));
-  chest.add(at(mcBox(8.2, 0.5, 0.4, 0x8B7500), 0, 3.5, 3.1));
+  chest.add(at(mcBox(8.2, 0.6, 6.2, trim), 0, 0.3, 0));
+  chest.add(at(mcBox(8.2, 0.5, 0.4, trim), 0, 1.5, 3.1));
+  chest.add(at(mcBox(8.2, 0.5, 0.4, trim), 0, 3.5, 3.1));
   // フタ
-  chest.add(at(mcBox(8.2, 2.5, 6.2, 0xffb300), 0, 6.3, 0));
-  chest.add(at(mcBox(7.8, 1, 5.8, 0xffb300), 0, 7.8, 0));
-  chest.add(at(mcBox(8.4, 0.4, 0.4, 0x8B7500), 0, 5.2, 3.15));
+  chest.add(at(mcBox(8.2, 2.5, 6.2, ct.lidColor), 0, 6.3, 0));
+  chest.add(at(mcBox(7.8, 1, 5.8, ct.lidColor), 0, 7.8, 0));
+  chest.add(at(mcBox(8.4, 0.4, 0.4, trim), 0, 5.2, 3.15));
   // 錠前
-  chest.add(at(mcBoxE(2, 2.2, 0.5, 0xddaa00, 0xffcc00, 0.5), 0, 4.5, 3.3));
+  chest.add(at(mcBoxE(2, 2.2, 0.5, lock, lock, 0.5), 0, 4.5, 3.3));
   chest.add(at(mcBox(0.6, 0.8, 0.3, 0x222222), 0, 4.2, 3.5));
+  // 宝石
+  chest.add(at(mcBoxE(1.5, 1.5, 1.5, ct.ringColor, ct.ringColor, 1.2), 0, 9, 0));
 
   chest.scale.set(1.5, 1.5, 1.5);
   group.add(chest);
 
   // グローリング
   const ringGeo = new THREE.RingGeometry(8, 10, 24);
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+  const ringMat = new THREE.MeshBasicMaterial({ color: ct.ringColor, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
   const ring = new THREE.Mesh(ringGeo, ringMat);
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.3;
   group.add(ring);
 
   for (let i = 0; i < 4; i++) {
-    const sparkle = mcBoxE(0.4, 0.4, 0.4, 0xffd700, 0xffd700, 1.5);
+    const sparkle = mcBoxE(0.4, 0.4, 0.4, ct.ringColor, ct.ringColor, 1.5);
     sparkle.position.set((Math.random() - 0.5) * 10, 8 + Math.random() * 6, (Math.random() - 0.5) * 10);
     sparkle.name = 'chestSparkle';
     group.add(sparkle);
@@ -14569,7 +14567,7 @@ function spawnTutorialChest() {
 
   group.position.set(cx, 0, cz);
   scene.add(group);
-  chests.push({ mesh: group, x: cx, z: cz, type: 'normal', tutorialChest: true });
+  chests.push({ mesh: group, x: cx, z: cz, type: 'building', tutorialChest: true });
 }
 
 function spawnTutorialGiant() {
