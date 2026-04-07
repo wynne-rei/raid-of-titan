@@ -7999,7 +7999,7 @@ function createMcWatchtower() {
   for (const [x,z] of [[-2.8,-2.8],[2.8,-2.8],[-2.8,2.8],[2.8,2.8]]) g.add(at(mcBox(0.4, 2, 0.4, 0x6B3513), x, 10.5, z));
   g.add(at(mcBox(0.3, 1.5, 0.3, 0x8B4513), 0, 11.5, 2.8));
   g.add(at(mcBoxE(0.5, 0.5, 0.5, 0xff8800, 0xff6600, 1.0), 0, 12.5, 2.8));
-  g.scale.set(3, 3, 3);
+  g.scale.set(9, 9, 9);
   return g;
 }
 
@@ -8009,7 +8009,7 @@ function createMcWall() {
   for (let i = -2; i <= 2; i++) g.add(at(mcBox(1.5, 2, 2.2, 0x999999), i*2.2, 7, 0));
   g.add(at(mcBox(3, 2, 0.3, 0x777777), -2, 2, 1.05));
   g.add(at(mcBox(3, 2, 0.3, 0x777777), 2, 4, 1.05));
-  g.scale.set(3, 3, 3);
+  g.scale.set(9, 9, 9);
   return g;
 }
 
@@ -11189,7 +11189,8 @@ function pickupChest(chest, index) {
   }
 
   // --- 全チェスト共通: 必ずカードを1枚配布 ---
-  const cardId = getRandomCard();
+  // チュートリアル中は必ず大砲を配布
+  const cardId = chest.tutorialChest ? 'cannon' : getRandomCard();
   const def = CARD_DEFS[cardId];
 
   // 通知（チェスト種類に応じた追加テキスト）
@@ -14191,7 +14192,7 @@ function spawnTutorialChest() {
 
   group.position.set(cx, 0, cz);
   scene.add(group);
-  chests.push({ mesh: group, x: cx, z: cz });
+  chests.push({ mesh: group, x: cx, z: cz, type: 'normal', tutorialChest: true });
 }
 
 function spawnTutorialGiant() {
