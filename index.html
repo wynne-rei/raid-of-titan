@@ -135,6 +135,7 @@ canvas { display: block; }
 .faction-btn[data-faction="fire"].selected { border-color: #e53935; color: #ff8a80; background: rgba(229,57,53,0.2); }
 .faction-btn[data-faction="ice"].selected { border-color: #42a5f5; color: #82c5ff; background: rgba(66,165,245,0.2); }
 .faction-btn[data-faction="earth"].selected { border-color: #66bb6a; color: #a0d8a0; background: rgba(102,187,106,0.2); }
+.faction-btn[data-faction="lightning"].selected { border-color: #ffc107; color: #ffe082; background: rgba(255,193,7,0.2); }
 
 /* PUSH TO START ボタン */
 .start-frame {
@@ -397,9 +398,10 @@ canvas { display: block; }
   transition: all 0.3s cubic-bezier(0.22,1,0.36,1);
   position: relative; overflow: hidden;
 }
-.faction-card[data-fac="fire"]  { --fc-rgb: 229,57,53; }
-.faction-card[data-fac="ice"]   { --fc-rgb: 66,165,245; }
-.faction-card[data-fac="earth"] { --fc-rgb: 102,187,106; }
+.faction-card[data-fac="fire"]      { --fc-rgb: 229,57,53; }
+.faction-card[data-fac="ice"]       { --fc-rgb: 66,165,245; }
+.faction-card[data-fac="earth"]     { --fc-rgb: 102,187,106; }
+.faction-card[data-fac="lightning"] { --fc-rgb: 255,193,7; }
 .faction-card::before {
   content: attr(data-icon);
   position: absolute; top: 50%; right: 20px; transform: translateY(-50%);
@@ -1471,9 +1473,10 @@ canvas { display: block; }
   position: relative;
   --vp-col: #888;
 }
-#victory-progress .vp-row[data-fac="fire"]  { --vp-col: #e53935; }
-#victory-progress .vp-row[data-fac="ice"]   { --vp-col: #42a5f5; }
-#victory-progress .vp-row[data-fac="earth"] { --vp-col: #66bb6a; }
+#victory-progress .vp-row[data-fac="fire"]      { --vp-col: #e53935; }
+#victory-progress .vp-row[data-fac="ice"]       { --vp-col: #42a5f5; }
+#victory-progress .vp-row[data-fac="earth"]     { --vp-col: #66bb6a; }
+#victory-progress .vp-row[data-fac="lightning"] { --vp-col: #ffc107; }
 #victory-progress .vp-icon {
   font-size: 15px;
   width: 18px;
@@ -2403,13 +2406,13 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
   margin-bottom: 36px; position: relative; z-index: 2;
 }
 .fs-cards {
-  display: flex; gap: 24px; flex-wrap: nowrap; justify-content: center;
-  padding: 0 20px; max-width: 1000px;
+  display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;
+  padding: 0 20px; max-width: 1100px;
   position: relative; z-index: 2;
   perspective: 1200px;
 }
 .fs-card {
-  width: 250px; padding: 28px 20px; border-radius: 8px;
+  width: 220px; padding: 24px 16px; border-radius: 8px;
   background: linear-gradient(180deg, rgba(20,20,35,0.95) 0%, rgba(10,10,20,0.98) 100%);
   border: 2px solid rgba(200,168,80,0.2);
   cursor: pointer; transition: all 0.5s cubic-bezier(0.22,1,0.36,1);
@@ -2437,6 +2440,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
 .fs-card[data-faction="fire"] { --fc-color: #e53935; --fc-glow: rgba(229,57,53,0.5); }
 .fs-card[data-faction="ice"] { --fc-color: #42a5f5; --fc-glow: rgba(66,165,245,0.5); }
 .fs-card[data-faction="earth"] { --fc-color: #66bb6a; --fc-glow: rgba(102,187,106,0.5); }
+.fs-card[data-faction="lightning"] { --fc-color: #ffc107; --fc-glow: rgba(255,193,7,0.5); }
 .fs-card .fs-icon {
   font-size: 56px; margin-bottom: 12px; display: block;
   transition: transform 0.5s ease, filter 0.5s ease;
@@ -2792,6 +2796,15 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
             <div class="fc-trait">自然回復</div>
           </div>
         </div>
+        <div class="faction-card" data-fac="lightning" data-icon="⚡">
+          <h3>⚡ 雷の国 — Nation of Lightning</h3>
+          <p>嵐を纏う電撃の民。圧倒的なスピードと貫通力で敵陣を一瞬で切り裂く。攻撃速度に優れ、素早い連撃で敵を翻弄する。</p>
+          <div class="fc-traits">
+            <div class="fc-trait">攻撃速度 +15%</div>
+            <div class="fc-trait">電撃型</div>
+            <div class="fc-trait">貫通効果</div>
+          </div>
+        </div>
       </div>
       <div class="lib-panel" data-panel="characters">
         <div class="char-card">
@@ -2923,6 +2936,13 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
       <div class="fs-desc">豊かな大地の恵みを受けし者たち。強靭な生命力と癒しの力で、持久戦を制する。</div>
       <button class="fs-inline-confirm" onclick="event.stopPropagation(); window.confirmFaction()">この国で戦う</button>
     </div>
+    <div class="fs-card" data-faction="lightning" onclick="window.selectFactionCard('lightning')">
+      <span class="fs-icon">⚡</span>
+      <div class="fs-name">雷の国</div>
+      <div class="fs-name-en">Nation of Lightning</div>
+      <div class="fs-desc">嵐を纏う電撃の民。圧倒的なスピードと貫通力で敵陣を一瞬で切り裂く。</div>
+      <button class="fs-inline-confirm" onclick="event.stopPropagation(); window.confirmFaction()">この国で戦う</button>
+    </div>
   </div>
 </div>
 
@@ -3030,6 +3050,11 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
       <div class="vp-bar"><div class="vp-fill"></div></div>
       <span class="vp-pct">0%</span>
     </div>
+    <div class="vp-row" data-fac="lightning">
+      <span class="vp-icon">⚡</span>
+      <div class="vp-bar"><div class="vp-fill"></div></div>
+      <span class="vp-pct">0%</span>
+    </div>
   </div>
 </div>
 
@@ -3118,6 +3143,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
       <button class="lobby-faction-btn fire" data-faction="fire"><span class="fi">🔥</span>火の国</button>
       <button class="lobby-faction-btn ice" data-faction="ice"><span class="fi">❄️</span>氷の国</button>
       <button class="lobby-faction-btn earth" data-faction="earth"><span class="fi">🌿</span>土の国</button>
+      <button class="lobby-faction-btn lightning" data-faction="lightning"><span class="fi">⚡</span>雷の国</button>
     </div>
     <div style="font-size:11px; color:#999; text-align:center; margin-top:8px;">※ ギフトは自国の配信者の味方として送られます（バトル中も変更OK）</div>
   </div>
@@ -3666,9 +3692,10 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
   background: linear-gradient(180deg, transparent 0%, var(--fac-glow, rgba(255,221,68,0.15)) 100%);
   opacity: 0; transition: opacity 0.3s;
 }
-.lobby-faction-btn.fire  { --fac-glow: rgba(229,57,53,0.25); }
-.lobby-faction-btn.ice   { --fac-glow: rgba(66,165,245,0.25); }
-.lobby-faction-btn.earth { --fac-glow: rgba(102,187,106,0.25); }
+.lobby-faction-btn.fire      { --fac-glow: rgba(229,57,53,0.25); }
+.lobby-faction-btn.ice       { --fac-glow: rgba(66,165,245,0.25); }
+.lobby-faction-btn.earth     { --fac-glow: rgba(102,187,106,0.25); }
+.lobby-faction-btn.lightning { --fac-glow: rgba(255,193,7,0.25); }
 .lobby-faction-btn:hover {
   border-color: rgba(255,221,68,0.6);
   transform: translateY(-3px);
@@ -4189,19 +4216,54 @@ const entityMixers = [];        // 全エンティティのAnimationMixer配列
 const fbxCharacterModels = {};  // { queen: fbxModel, knight: fbxModel, ... }
 let fbxCharactersReady = false;
 
-// キャラクターFBXモデル設定
-// 全キングに使用する統一FBXモデル（Medieval Soldier 1 = dwarfFemale）
-const KING_MODEL_KEY = 'dwarfFemale';
+// キャラクターFBXモデル設定（4キャラ＝各プレイヤー1体）
 const CHARACTER_FBX_CONFIG = {
+  queen: {
+    modelPath: 'assets/characters/queen/model.fbx',
+    idlePath:  'assets/characters/queen/idle.fbx',
+    walkPath:  'assets/characters/queen/walk.fbx',
+    textures: {
+      body:      { diffuse: 'assets/characters/queen/body_diffuse.png',      normal: 'assets/characters/queen/body_normal.png' },
+      dress:     { diffuse: 'assets/characters/queen/dress_diffuse.png',     normal: 'assets/characters/queen/dress_normal.png' },
+      hair:      { diffuse: 'assets/characters/queen/hair_diffuse.png',      normal: 'assets/characters/queen/hair_normal.png' },
+      headdress: { diffuse: 'assets/characters/queen/headdress_diffuse.png' },
+      hood:      { diffuse: 'assets/characters/queen/hood_diffuse.png' },
+      boots:     { diffuse: 'assets/characters/queen/boots_diffuse.png' },
+      eyes:      { diffuse: 'assets/characters/queen/eyes_diffuse.png' }
+    }
+  },
+  knight: {
+    modelPath: 'assets/characters/knight/model.fbx',
+    idlePath:  'assets/characters/knight/idle.fbx',
+    walkPath:  'assets/characters/knight/walk.fbx',
+    textures: {
+      body:    { diffuse: 'assets/characters/knight/body_diffuse.png',    normal: 'assets/characters/knight/body_normal.png' },
+      jacket:  { diffuse: 'assets/characters/knight/jacket_diffuse.png',  normal: 'assets/characters/knight/jacket_normal.png' },
+      hair:    { diffuse: 'assets/characters/knight/hair_diffuse.png',    normal: 'assets/characters/knight/hair_normal.png' },
+      boots:   { diffuse: 'assets/characters/knight/boots_diffuse.png',   normal: 'assets/characters/knight/boots_normal.png' },
+      eyes:    { diffuse: 'assets/characters/knight/eyes_diffuse.png' }
+    }
+  },
   dwarfFemale: {
     modelPath: 'assets/characters/dwarfFemale/model.fbx',
-    idlePath: 'assets/characters/dwarfFemale/idle.fbx',
-    walkPath: 'assets/characters/dwarfFemale/walk.fbx',
+    idlePath:  'assets/characters/dwarfFemale/idle.fbx',
+    walkPath:  'assets/characters/dwarfFemale/walk.fbx',
     textures: {
       body:    { diffuse: 'assets/characters/dwarfFemale/body_diffuse.png',    normal: 'assets/characters/dwarfFemale/body_normal.png' },
       overall: { diffuse: 'assets/characters/dwarfFemale/overall_diffuse.png', normal: 'assets/characters/dwarfFemale/overall_normal.png' },
       helmet:  { diffuse: 'assets/characters/dwarfFemale/helmet_diffuse.png' },
-      armor:   { diffuse: 'assets/characters/dwarfFemale/armor_diffuse.png',  normal: 'assets/characters/dwarfFemale/armor_normal.png' }
+      armor:   { diffuse: 'assets/characters/dwarfFemale/armor_diffuse.png',   normal: 'assets/characters/dwarfFemale/armor_normal.png' }
+    }
+  },
+  dwarfMale: {
+    modelPath: 'assets/characters/dwarfMale/model.fbx',
+    idlePath:  'assets/characters/dwarfMale/idle.fbx',
+    walkPath:  'assets/characters/dwarfMale/walk.fbx',
+    textures: {
+      body:    { diffuse: 'assets/characters/dwarfMale/body_diffuse.png',   normal: 'assets/characters/dwarfMale/body_normal.png' },
+      coat:    { diffuse: 'assets/characters/dwarfMale/coat_diffuse.png',   normal: 'assets/characters/dwarfMale/coat_normal.png' },
+      helmet:  { diffuse: 'assets/characters/dwarfMale/helmet_diffuse.png' },
+      armor:   { diffuse: 'assets/characters/dwarfMale/armor_diffuse.png',  normal: 'assets/characters/dwarfMale/armor_normal.png' }
     }
   }
 };
@@ -4211,14 +4273,23 @@ const TEXTURE_MATERIAL_KEYWORDS = {
   armor:     ['armor', 'sword', 'weapon', 'shield'],
   helmet:    ['helmet', 'helm', 'mask'],
   overall:   ['overall', 'cloth'],
-  body:      ['body', 'skin', 'face', 'jaw']
+  body:      ['body', 'skin', 'face', 'jaw'],
+  dress:     ['dress', 'gown', 'skirt'],
+  hair:      ['hair', 'braid'],
+  headdress: ['headdress', 'tiara', 'crown'],
+  hood:      ['hood', 'cape', 'cloak'],
+  boots:     ['boots', 'shoe', 'foot'],
+  eyes:      ['eyes', 'eye', 'iris'],
+  jacket:    ['jacket', 'tunic', 'shirt'],
+  coat:      ['coat', 'robe', 'mantle']
 };
 
 // 国ごとのキングモデル色味（マテリアルに掛け合わせ）
 const FACTION_KING_TINT = {
-  fire:  new THREE.Color(1.2, 0.8, 0.7),   // 暖色系（赤味）
-  ice:   new THREE.Color(0.7, 0.85, 1.2),  // 寒色系（青味）
-  earth: new THREE.Color(0.8, 1.1, 0.7)    // 自然色（緑味）
+  fire:      new THREE.Color(1.2, 0.8, 0.7),   // 暖色系（赤味）
+  ice:       new THREE.Color(0.7, 0.85, 1.2),  // 寒色系（青味）
+  earth:     new THREE.Color(0.8, 1.1, 0.7),   // 自然色（緑味）
+  lightning: new THREE.Color(1.1, 1.0, 0.6)    // 雷色（黄味）
 };
 
 // キャラクターFBXをプリロード
@@ -4342,19 +4413,29 @@ function cloneFBXForKing(charType, faction) {
     }
   });
 
+  // Z-upモデル（Blender/Maya）の自動補正: Y軸よりZ軸が大きければ横倒し
+  const rawBox = new THREE.Box3().setFromObject(srcModel);
+  const extY = rawBox.max.y - rawBox.min.y;
+  const extZ = rawBox.max.z - rawBox.min.z;
+  const needsRotation = extZ > extY * 1.5; // Z軸が明らかに長い → 横倒し
+  if (needsRotation) {
+    clone.rotation.x = -Math.PI / 2;
+    clone.updateMatrixWorld(true);
+  }
+
   // サイズ正規化: キングの高さを30に合わせる
-  const box = new THREE.Box3().setFromObject(srcModel);
+  const box = new THREE.Box3().setFromObject(clone);
   const modelHeight = box.max.y - box.min.y;
   const targetHeight = 30; // キャラクター高さ（既存のプリミティブと同等）
-  const scaleFactor = targetHeight / modelHeight;
-  clone.scale.set(scaleFactor, scaleFactor, scaleFactor);
+  const scaleFactor = targetHeight / Math.max(modelHeight, 0.01);
+  clone.scale.multiplyScalar(scaleFactor);
 
   // 足元を原点に合わせる
-  const center = box.getCenter(new THREE.Vector3());
+  const boxScaled = new THREE.Box3().setFromObject(clone);
   clone.position.set(
-    -center.x * scaleFactor,
-    -box.min.y * scaleFactor,
-    -center.z * scaleFactor
+    -boxScaled.getCenter(new THREE.Vector3()).x,
+    -boxScaled.min.y,
+    -boxScaled.getCenter(new THREE.Vector3()).z
   );
 
   group.add(clone);
@@ -4580,6 +4661,10 @@ const FACTION_PALETTES = {
   earth: {
     primary: 0x338833, secondary: 0x66bb55, dark: 0x114411,
     accent: 0xbbdd44, skin: 0xf0d8b8, armor: 0x446633
+  },
+  lightning: {
+    primary: 0xccaa22, secondary: 0xffdd44, dark: 0x554400,
+    accent: 0xffee66, skin: 0xf0d8b8, armor: 0x887722
   }
 };
 
@@ -4727,12 +4812,12 @@ let isOvertime = false;
 // ETERNAL WORLD — 終わらない三国戦争
 // ============================================================
 // GDP（国力指標）: 各国のパワーを数値化。キル・タワー・生存で増え、ロスで減る
-let factionGDP = { fire: 1000, ice: 1000, earth: 1000 };
+let factionGDP;  // initFactionMap()はFACTION_IDS定義後に呼ぶ（後方で初期化）
 // ワールド時間（秒、累積）: 1日=24分想定
 let worldTime = 0;
 const DAY_LENGTH_SEC = 24 * 60; // 24分 = 1日
 // キング復活クールダウン（国ごと）
-let kingReviveCooldown = { fire: 0, ice: 0, earth: 0 };
+let kingReviveCooldown;  // 後方で初期化
 // プレイヤーリスポーン状態
 let playerRespawnTimer = 0; // 0 でない間はリスポーン待機中
 const PLAYER_RESPAWN_DELAY = 8;
@@ -4801,33 +4886,39 @@ const dmgNumPool = [];
 // Performance: FBX unit object pool
 const fbxUnitPool = [];
 
-// Factions
+// Factions（4国）
 const FACTIONS = {
-  fire:  { name: '火の国', icon: '🔥', color: 0xe53935, colorHex: '#e53935', bgColor: '#4a1010' },
-  ice:   { name: '氷の国', icon: '❄️', color: 0x42a5f5, colorHex: '#42a5f5', bgColor: '#0d2a4a' },
-  earth: { name: '土の国', icon: '🌿', color: 0x66bb6a, colorHex: '#66bb6a', bgColor: '#1a3a1a' }
+  fire:      { name: '火の国', icon: '🔥', color: 0xe53935, colorHex: '#e53935', bgColor: '#4a1010' },
+  ice:       { name: '氷の国', icon: '❄️', color: 0x42a5f5, colorHex: '#42a5f5', bgColor: '#0d2a4a' },
+  earth:     { name: '土の国', icon: '🌿', color: 0x66bb6a, colorHex: '#66bb6a', bgColor: '#1a3a1a' },
+  lightning: { name: '雷の国', icon: '⚡', color: 0xffc107, colorHex: '#ffc107', bgColor: '#3a3000' }
 };
-const FACTION_IDS = ['fire', 'ice', 'earth'];
-let selectedFaction = 'fire'; // player's chosen faction
+const FACTION_IDS = ['fire', 'ice', 'earth', 'lightning'];
+let selectedFaction = 'fire';
 
-// 64-player system
-const NUM_PLAYERS = 64;
-const PLAYER_NAMES = ['あなた'];
-for (let i = 1; i < NUM_PLAYERS; i++) PLAYER_NAMES.push(`Bot ${i}`);
-// Generate positions in 8x8 grid
-const PLAYER_POSITIONS = [];
-{
-  const cols = 8, rows = 8;
-  const spacingX = 600, spacingZ = 600;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      PLAYER_POSITIONS.push({
-        x: (c - (cols - 1) / 2) * spacingX,
-        z: (r - (rows - 1) / 2) * spacingZ
-      });
-    }
-  }
+// ヘルパー: 全国分の初期値オブジェクトを生成
+function initFactionMap(value) {
+  return Object.fromEntries(FACTION_IDS.map(f => [f, typeof value === 'function' ? value(f) : value]));
 }
+
+// FACTION_IDS定義後に遅延初期化
+factionGDP = initFactionMap(1000);
+kingReviveCooldown = initFactionMap(0);
+
+// 4人対戦システム（1プレイヤー + 3 BOT、各自1国）
+const NUM_PLAYERS = 4;
+const PLAYER_NAMES = ['あなた', 'Bot 1', 'Bot 2', 'Bot 3'];
+
+// 4プレイヤーの配置（四方に配置）
+const PLAYER_POSITIONS = [
+  { x: 0,                    z: -ARENA_L * 0.35 },  // 南（プレイヤー）
+  { x:  ARENA_W_BASE * 0.35, z: 0 },                // 東
+  { x: 0,                    z:  ARENA_L * 0.35 },   // 北
+  { x: -ARENA_W_BASE * 0.35, z: 0 }                  // 西
+];
+
+// 各プレイヤーのFBXキャラクターモデル対応
+const PLAYER_CHARACTER_MAP = ['queen', 'knight', 'dwarfFemale', 'dwarfMale'];
 let players = [];
 let humanPlayer = null; // reference to players[0]
 
@@ -4862,7 +4953,7 @@ let groundPlane;
 let territoryShift = 0;
 
 // Auto-spawn system
-let factionSpawnTimers = { fire: 5, ice: 5, earth: 5 };
+let factionSpawnTimers = initFactionMap(5);
 
 // Raid Event System
 let raidTimer = 20;
@@ -5239,8 +5330,8 @@ function resetQueenLevel() {
 // ============================================================
 // FACTION LEVEL SYSTEM
 // ============================================================
-let factionLevels = { fire: 1, ice: 1, earth: 1 };
-let factionXP = { fire: 0, ice: 0, earth: 0 };
+let factionLevels = initFactionMap(1);
+let factionXP = initFactionMap(0);
 const FACTION_XP_TABLE = [0, 50, 120, 220, 360, 550, 800, 1100, 1500, 999999]; // max lv10
 const FACTION_MAX_LEVEL = 10;
 
@@ -5303,8 +5394,8 @@ function updateFactionLevelUI(factionId) {
 }
 
 function resetFactionLevels() {
-  factionLevels = { fire: 1, ice: 1, earth: 1 };
-  factionXP = { fire: 0, ice: 0, earth: 0 };
+  factionLevels = initFactionMap(1);
+  factionXP = initFactionMap(0);
 }
 
 // ============================================================
@@ -6539,17 +6630,22 @@ function buildArena() {
   const stoneTex = generateTexture('stone', 512);
   stoneTex.repeat.set(40, 40);
 
-  // ============ 3国テリトリ地面 (テクスチャ+Perlinノイズ起伏) ============
+  // ============ 4国テリトリ地面 (テクスチャ+Perlinノイズ起伏) ============
   const segX = 64, segZ = 64;
   const terrainW = arenaW * 3, terrainL = ARENA_L * 3;
 
-  // 各国の領域中心（8×8グリッドの大まかな区分）
-  // fire = z < -ARENA_L*0.2, earth = z > ARENA_L*0.2, ice = middle
-  const factionZones = [
-    { id: 'fire',  zMin: -terrainL/2, zMax: -ARENA_L * 0.15, color: 0x8b3a2a, tex: lavaTex,  roughness: 0.7 },
-    { id: 'ice',   zMin: -ARENA_L * 0.15, zMax: ARENA_L * 0.15, color: 0xc8dce8, tex: snowTex, roughness: 0.85 },
-    { id: 'earth', zMin: ARENA_L * 0.15, zMax: terrainL/2, color: 0x3a6b28, tex: grassTex, roughness: 0.75 },
-  ];
+  // 雷テクスチャ（石ベース）
+  const thunderTex = generateTexture('stone', 512);
+  thunderTex.repeat.set(40, 40);
+
+  // 4象限: 十字分割（X=0, Z=0 が国境線）
+  // SW=火(南), NE=氷(東), NW=土(北), SE=雷(西) — PLAYER_POSITIONSに対応
+  const factionZoneColors = {
+    fire:      { color: 0x8b3a2a, tex: lavaTex,    roughness: 0.7 },
+    ice:       { color: 0xc8dce8, tex: snowTex,    roughness: 0.85 },
+    earth:     { color: 0x3a6b28, tex: grassTex,   roughness: 0.75 },
+    lightning: { color: 0x8a7a30, tex: thunderTex, roughness: 0.65 }
+  };
 
   // メインテレイン（起伏あり）
   const terrainGeo = new THREE.PlaneGeometry(terrainW, terrainL, segX, segZ);
@@ -6578,19 +6674,23 @@ function buildArena() {
     pos.setY(i, h);
     heightCache[i] = h;
 
-    // 国ごとの頂点色（テクスチャに重ねるtint）
-    let zone = factionZones[1]; // default ice
-    for (const z of factionZones) {
-      if (wz >= z.zMin && wz < z.zMax) { zone = z; break; }
-    }
-    // 境界グラデーション
-    let blend = 1.0;
+    // 4象限の国色（十字分割: X=0, Z=0が国境）
+    // Player0=南(z<0), Player1=東(x>0), Player2=北(z>0), Player3=西(x<0)
+    let zoneFaction;
+    if (wz < 0 && Math.abs(wz) >= Math.abs(wx)) zoneFaction = 'fire';       // 南
+    else if (wx > 0 && Math.abs(wx) > Math.abs(wz)) zoneFaction = 'ice';     // 東
+    else if (wz > 0 && Math.abs(wz) >= Math.abs(wx)) zoneFaction = 'earth';  // 北
+    else zoneFaction = 'lightning';                                             // 西
+
+    // 国境グラデーション（X=0, Z=0付近）
     const borderW = ARENA_L * 0.08;
-    for (const z of factionZones) {
-      if (Math.abs(wz - z.zMin) < borderW) blend = Math.abs(wz - z.zMin) / borderW;
-      if (Math.abs(wz - z.zMax) < borderW) blend = Math.abs(wz - z.zMax) / borderW;
-    }
-    const zColor = new THREE.Color(zone.color);
+    const distToBorderX = Math.abs(wx);
+    const distToBorderZ = Math.abs(wz);
+    const minBorderDist = Math.min(distToBorderX, distToBorderZ);
+    const blend = Math.min(1.0, minBorderDist / borderW);
+
+    const zoneData = factionZoneColors[zoneFaction];
+    const zColor = new THREE.Color(zoneData.color);
     const neutral = new THREE.Color(0x8a9088);
     zColor.lerp(neutral, 1 - blend);
     colors[i * 3] = zColor.r;
@@ -6743,7 +6843,7 @@ function buildArena() {
 function buildFactionBases() {
   const addObj = (obj) => { scene.add(obj); arenaObjects.push(obj); };
 
-  // === 火の国拠点 (z < 0 エリア中心付近) ===
+  // === 火の国拠点 (南: z < 0) ===
   const fireCenter = { x: 0, z: -ARENA_L * 0.5 };
   {
     // 溶岩色の城壁（4辺）
@@ -6784,8 +6884,8 @@ function buildFactionBases() {
     // PointLightは影パスが重いためemissiveマテリアルで代替
   }
 
-  // === 氷の国拠点 (z ≈ 0 中央エリア) ===
-  const iceCenter = { x: 0, z: 0 };
+  // === 氷の国拠点 (東: x > 0) ===
+  const iceCenter = { x: ARENA_W_BASE * 0.5, z: 0 };
   {
     const iceMat = new THREE.MeshToonMaterial({ color: 0x88ccee, transparent: true, opacity: 0.7, roughness: 0.1, metalness: 0.6 });
     // 氷の結晶塔 × 3
@@ -6817,7 +6917,7 @@ function buildFactionBases() {
     // PointLight削除（パフォーマンス最適化）
   }
 
-  // === 土の国拠点 (z > 0 エリア中心付近) ===
+  // === 土の国拠点 (北: z > 0) ===
   const earthCenter = { x: 0, z: ARENA_L * 0.5 };
   {
     // 巨木
@@ -6871,6 +6971,43 @@ function buildFactionBases() {
     orb.position.set(earthCenter.x + 50, 13, earthCenter.z - 40);
     addObj(orb);
     // PointLight削除（パフォーマンス最適化）
+  }
+
+  // === 雷の国拠点 (西: x < 0) ===
+  const lightningCenter = { x: -ARENA_W_BASE * 0.5, z: 0 };
+  {
+    // 雷の塔（金属質の尖塔）
+    const metalMat = new THREE.MeshToonMaterial({ color: 0x887722, roughness: 0.3, metalness: 0.7 });
+    const spire = new THREE.Mesh(new THREE.ConeGeometry(10, 120, 8), metalMat);
+    spire.position.set(lightningCenter.x, 60, lightningCenter.z);
+    addObj(spire);
+    // 避雷針（頂上の球）
+    const orbMat = new THREE.MeshToonMaterial({ color: 0xffdd44, emissive: 0xffaa00, emissiveIntensity: 0.6, roughness: 0.2 });
+    const lightningOrb = new THREE.Mesh(new THREE.SphereGeometry(8, 16, 12), orbMat);
+    lightningOrb.position.set(lightningCenter.x, 125, lightningCenter.z);
+    addObj(lightningOrb);
+    // コイル型装飾（トーラス × 3）
+    const coilMat = new THREE.MeshToonMaterial({ color: 0xccaa22, roughness: 0.4, metalness: 0.5 });
+    [30, 55, 80].forEach(h => {
+      const coil = new THREE.Mesh(new THREE.TorusGeometry(16, 2, 8, 16), coilMat);
+      coil.position.set(lightningCenter.x, h, lightningCenter.z);
+      coil.rotation.x = Math.PI / 2;
+      addObj(coil);
+    });
+    // 金属板の床（六角形風の台座）
+    const plateMat = new THREE.MeshToonMaterial({ color: 0x554400, roughness: 0.5, metalness: 0.6 });
+    const platform = new THREE.Mesh(new THREE.CylinderGeometry(60, 65, 5, 6), plateMat);
+    platform.position.set(lightningCenter.x, 2.5, lightningCenter.z);
+    addObj(platform);
+    // 旗（黄）
+    [-1, 1].forEach(side => {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 50, 8), new THREE.MeshToonMaterial({ color: 0x333333 }));
+      pole.position.set(lightningCenter.x + side * 70, 25, lightningCenter.z - 70);
+      addObj(pole);
+      const flag = new THREE.Mesh(new THREE.PlaneGeometry(25, 15), new THREE.MeshToonMaterial({ color: 0xccaa00, side: THREE.DoubleSide, emissive: 0x554400, emissiveIntensity: 0.2 }));
+      flag.position.set(lightningCenter.x + side * 70 + 12, 42, lightningCenter.z - 70);
+      addObj(flag);
+    });
   }
 }
 
@@ -7227,16 +7364,16 @@ function createTower(x, z, playerId, faction) {
   const color = factionData.color;
   const side = playerId;
 
-  // Determine character type: player uses selectedCharacter, bots use queen
-  const charType = (playerId === 0) ? selectedCharacter : 'queen';
+  // 各プレイヤーに固有キャラ割り当て（Player0=選択制、Bot1-3=PLAYER_CHARACTER_MAP順）
+  const charType = (playerId === 0) ? selectedCharacter : (PLAYER_CHARACTER_MAP[playerId] || 'queen');
   const dressColor = color;
   const dressAccent = 0xffd700;
 
-  // プレイヤーのキングのみFBX（45サブメッシュのため64体は重すぎる）
-  // BOTはシンプル3メッシュ + バウンスアニメで軽量化
-  const useFBX = (playerId === 0) && fbxCharactersReady && fbxCharacterModels[KING_MODEL_KEY];
+  // 4人対戦: 全プレイヤーにFBXモデルを使用（4体×45DC=180DC、予算内）
+  const modelKey = (playerId === 0) ? selectedCharacter : (PLAYER_CHARACTER_MAP[playerId] || 'queen');
+  const useFBX = fbxCharactersReady && fbxCharacterModels[modelKey];
   const mesh = useFBX
-    ? cloneFBXForKing(KING_MODEL_KEY, faction)
+    ? cloneFBXForKing(modelKey, faction)
     : createSimpleCharacterMesh(charType, dressColor, dressAccent);
 
   mesh.position.set(x, 0, z);
@@ -7285,23 +7422,12 @@ function isAlly(sideA, sideB) {
 
 function buildTowers() {
   players = [];
-  // Distribute 63 bots across 3 factions: 21 each, player's faction has 20 bots + player = 21
-  const botPool = [];
-  const botsPerFaction = Math.floor((NUM_PLAYERS - 1) / 3); // 21
-  FACTION_IDS.forEach(f => {
-    const count = f === selectedFaction ? botsPerFaction - 1 : botsPerFaction; // -1 for player
-    for (let j = 0; j < count; j++) botPool.push(f);
-  });
-  // Fill remainder
-  while (botPool.length < NUM_PLAYERS - 1) botPool.push(selectedFaction);
-  // Shuffle
-  for (let i = botPool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [botPool[i], botPool[j]] = [botPool[j], botPool[i]];
-  }
+  // 4人対戦: 1プレイヤー=1国（Player0=選択国、Bot1-3=残り3国）
+  const remainingFactions = FACTION_IDS.filter(f => f !== selectedFaction);
+  const factionAssignment = [selectedFaction, ...remainingFactions];
 
   for (let i = 0; i < NUM_PLAYERS; i++) {
-    const faction = i === 0 ? selectedFaction : botPool[i - 1];
+    const faction = factionAssignment[i];
     const factionData = FACTIONS[faction];
     const pos = PLAYER_POSITIONS[i];
     const tower = createTower(pos.x, pos.z, i, faction);
@@ -7350,7 +7476,7 @@ function addGDP(faction, amount) {
   factionGDP[faction] = Math.max(0, (factionGDP[faction] || 0) + amount);
 }
 function getTotalGDP() {
-  return (factionGDP.fire || 0) + (factionGDP.ice || 0) + (factionGDP.earth || 0);
+  return FACTION_IDS.reduce((sum, f) => sum + (factionGDP[f] || 0), 0);
 }
 function getGDPShare(fid) {
   const total = getTotalGDP();
@@ -7369,7 +7495,7 @@ function updateGDPDisplay() {
   if (!root) return;
   const myFac = humanPlayer ? humanPlayer.faction : null;
   const top = getTopFaction();
-  const maxGdp = Math.max(factionGDP.fire, factionGDP.ice, factionGDP.earth, 1);
+  const maxGdp = Math.max(...FACTION_IDS.map(f => factionGDP[f] || 0), 1);
   root.querySelectorAll('.vp-row').forEach(row => {
     const fid = row.getAttribute('data-fac');
     const gdp = Math.round(factionGDP[fid] || 0);
@@ -10146,7 +10272,8 @@ window.hideDeckEditor = function hideDeckEditor() {
 const CARD_FACTIONS = {
   fire: ['knight', 'miniPekka', 'valkyrie', 'wizard', 'fireball', 'rage'],
   ice: ['archer', 'musketeer', 'skeletonArmy', 'babyDragon', 'freeze', 'arrows'],
-  earth: ['giant', 'goblins', 'hogRider', 'cannon', 'infernoTower']
+  earth: ['giant', 'goblins', 'hogRider', 'cannon', 'infernoTower'],
+  lightning: ['knight', 'archer', 'wizard', 'giant', 'fireball', 'arrows']
 };
 
 // Buildings = player-placeable, others = auto-spawn from faction
@@ -10154,7 +10281,8 @@ const BUILDING_CARDS = ['cannon', 'infernoTower'];
 const AUTO_SPAWN_CARDS = {
   fire: ['knight', 'miniPekka', 'valkyrie', 'wizard', 'fireball', 'rage'],
   ice: ['archer', 'musketeer', 'skeletonArmy', 'babyDragon', 'freeze', 'arrows'],
-  earth: ['giant', 'goblins', 'hogRider']
+  earth: ['giant', 'goblins', 'hogRider'],
+  lightning: ['knight', 'archer', 'wizard', 'giant']
 };
 
 function toggleDeckCard(id) {
@@ -11943,10 +12071,10 @@ window.startBattle = function() {
   // ワールド時間はセッションをまたいで累積（ロード時に上書きされる）
   if (typeof worldTime !== 'number') worldTime = 0;
   // GDP はロード時に上書きされるが、初期セッションでは 1000 固定
-  if (!factionGDP || typeof factionGDP.fire !== 'number') factionGDP = { fire: 1000, ice: 1000, earth: 1000 };
+  if (!factionGDP || typeof factionGDP[FACTION_IDS[0]] !== 'number') factionGDP = initFactionMap(1000);
   playerRespawnTimer = 0;
   isPaused = false;
-  kingReviveCooldown = { fire: 0, ice: 0, earth: 0 };
+  kingReviveCooldown = initFactionMap(0);
   hideRespawnCountdown();
   // Minimap dots clear
   try {
@@ -11988,11 +12116,7 @@ window.startBattle = function() {
   document.getElementById('player-stats-panel').classList.remove('open');
 
   // Reset auto-spawn timers
-  factionSpawnTimers = {
-    fire: 3 + Math.random() * 2,
-    ice: 3 + Math.random() * 2,
-    earth: 3 + Math.random() * 2
-  };
+  factionSpawnTimers = initFactionMap(() => 3 + Math.random() * 2);
 
   // Reset raid system
   raidTimer = 20;
@@ -12287,7 +12411,7 @@ function startTutorial() {
 
   // Create minimal players array: just player + 1 enemy bot
   players = [];
-  const enemyFaction = selectedFaction === 'fire' ? 'ice' : 'fire';
+  const enemyFaction = FACTION_IDS.find(f => f !== selectedFaction) || FACTION_IDS[0];
 
   // Player tower at center
   const playerTower = createTower(0, 0, 0, selectedFaction);
