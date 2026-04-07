@@ -16,93 +16,21 @@ canvas { display: block; }
   overflow: hidden;
   background: #0a0e14;
 }
-/* 背景: 雪山と霧の風景 */
+/* 背景: デザイン画像 */
 #title-screen .bg-layer {
   position: absolute; inset: 0; z-index: 0;
 }
-#title-screen .bg-layer .bg-sky {
-  position: absolute; inset: 0;
-  background: linear-gradient(180deg, #3a4a5e 0%, #6a7a8e 18%, #8a9aae 30%, #aab8c8 40%, #c8d0d8 50%, #9aacb8 60%, #5a7080 75%, #2a3a4a 90%, #1a2030 100%);
-}
-#title-screen .bg-layer .bg-mountains {
-  position: absolute; bottom: 20%; left: 0; right: 0; height: 80%;
-  z-index: 1;
-}
-#title-screen .bg-layer .bg-fog {
-  position: absolute; bottom: 15%; left: 0; right: 0; height: 30%;
-  background: linear-gradient(180deg, transparent 0%, rgba(180,200,210,0.3) 40%, rgba(150,180,200,0.5) 70%, rgba(100,130,150,0.4) 100%);
-  z-index: 3;
-  animation: fogDrift 8s ease-in-out infinite;
-}
-@keyframes fogDrift {
-  0%,100% { opacity: 0.8; transform: translateX(0); }
-  50% { opacity: 1; transform: translateX(-20px); }
-}
-#title-screen .bg-layer .bg-ground {
-  position: absolute; bottom: 0; left: 0; right: 0; height: 25%;
-  background: linear-gradient(180deg, #3a4540 0%, #2a3530 30%, #1a2520 60%, #101a18 100%);
-  z-index: 2;
-}
-#title-screen .bg-layer .bg-rocks {
-  position: absolute; bottom: 0; left: 0; right: 0; height: 15%;
-  z-index: 4;
+#title-screen .title-bg-img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: center;
 }
 #title-screen .bg-layer .bg-vignette {
   position: absolute; inset: 0; z-index: 10;
-  background: radial-gradient(ellipse at 50% 45%, transparent 30%, rgba(0,0,0,0.4) 70%, rgba(0,0,0,0.8) 100%);
   pointer-events: none;
-}
-#title-screen .bg-layer .bg-particles {
-  position: absolute; inset: 0; z-index: 5; pointer-events: none;
-}
-.snow-particle {
-  position: absolute; width: 2px; height: 2px; background: rgba(255,255,255,0.6);
-  border-radius: 50%; animation: snowFall linear infinite;
-}
-@keyframes snowFall {
-  0% { transform: translateY(-10px) translateX(0); opacity: 0; }
-  10% { opacity: 0.6; }
-  90% { opacity: 0.4; }
-  100% { transform: translateY(100vh) translateX(30px); opacity: 0; }
 }
 
 /* タイトルテキスト */
-#title-screen .title-container {
-  position: absolute; top: 8%; left: 0; right: 0;
-  z-index: 20;
-  text-align: center;
-}
-#title-screen .title-en {
-  font-family: 'Georgia', 'Times New Roman', serif;
-  font-size: clamp(48px, 8vw, 90px);
-  color: #d0c8b8;
-  letter-spacing: 8px;
-  line-height: 1;
-  text-shadow:
-    0 2px 4px rgba(0,0,0,0.8),
-    0 0 40px rgba(180,170,150,0.15),
-    0 0 80px rgba(150,140,120,0.08);
-  font-weight: normal;
-  font-style: italic;
-}
-#title-screen .title-en .of {
-  font-size: 0.5em; letter-spacing: 4px; font-style: italic;
-  vertical-align: 6px; margin: 0 8px; color: #a0988a;
-}
-#title-screen .title-jp {
-  font-family: 'Georgia', 'Hiragino Mincho ProN', serif;
-  font-size: clamp(16px, 2.5vw, 28px);
-  color: #a09880;
-  letter-spacing: 12px;
-  margin-top: 8px;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-}
-
-/* フィギュア（マント姿の人物シルエット） */
-#title-screen .figure-container {
-  position: absolute; bottom: 18%; left: 50%; transform: translateX(-50%);
-  z-index: 6; pointer-events: none;
-}
+/* タイトル・人物はデザイン画像に含まれるためCSS不要 */
 
 /* 下部UI */
 #title-screen .bottom-ui {
@@ -192,9 +120,11 @@ canvas { display: block; }
 
 /* ===== Main Menu (Hero buttons + Icon row) ===== */
 #title-screen .main-menu {
-  position: absolute; bottom: 6%; left: 50%; transform: translateX(-50%);
+  position: absolute; inset: 0;
   z-index: 20; display: flex; flex-direction: column; align-items: center;
-  gap: 22px;
+  justify-content: center; gap: 16px;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(3px);
 }
 
 /* Hero buttons (primary CTA) */
@@ -2676,89 +2606,15 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
 
 <!-- Title Screen -->
 <div id="title-screen">
-  <!-- 背景レイヤー -->
+  <!-- 背景: デザイン画像 -->
   <div class="bg-layer">
-    <div class="bg-sky"></div>
-    <!-- 雪山SVG -->
-    <div class="bg-mountains">
-      <svg width="100%" height="100%" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="mt1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8898a8"/><stop offset="40%" stop-color="#607080"/><stop offset="100%" stop-color="#3a4a5a"/></linearGradient>
-          <linearGradient id="mt2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#9aacbc"/><stop offset="30%" stop-color="#7088a0"/><stop offset="100%" stop-color="#4a5a68"/></linearGradient>
-          <linearGradient id="snow1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#d8e0e8"/><stop offset="100%" stop-color="#a0b0c0"/></linearGradient>
-          <linearGradient id="treeLine" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2a3830"/><stop offset="100%" stop-color="#1a2820"/></linearGradient>
-        </defs>
-        <!-- 遠景の山々 -->
-        <polygon points="0,400 150,100 300,350 400,80 550,300 700,60 850,280 1000,120 1200,350 1200,600 0,600" fill="url(#mt1)" opacity="0.6"/>
-        <!-- 中景の大きな山 -->
-        <polygon points="200,600 600,40 1000,600" fill="url(#mt2)" opacity="0.8"/>
-        <polygon points="350,600 600,40 750,300 600,250" fill="url(#snow1)" opacity="0.4"/>
-        <polygon points="600,40 680,180 620,160" fill="#d0dae0" opacity="0.6"/>
-        <!-- 左の山 -->
-        <polygon points="-100,600 200,150 500,600" fill="#506878" opacity="0.7"/>
-        <polygon points="50,600 200,150 300,350" fill="url(#snow1)" opacity="0.3"/>
-        <!-- 右の山 -->
-        <polygon points="800,600 1050,200 1300,600" fill="#506878" opacity="0.7"/>
-        <polygon points="950,600 1050,200 1150,400" fill="url(#snow1)" opacity="0.3"/>
-        <!-- 針葉樹ライン（中景） -->
-        <polygon points="0,480 20,450 40,480 60,445 80,480 100,440 120,478 140,448 160,480 180,442 200,480 220,450 240,478 260,440 280,480 300,448 320,480 340,442 360,480 380,450 400,478 420,442 440,480 460,445 480,480 500,448 520,478 540,440 560,480 580,450 600,480 620,445 640,480 660,442 680,478 700,448 720,480 740,440 760,478 780,450 800,480 820,442 840,480 860,448 880,478 900,445 920,480 940,440 960,480 980,450 1000,478 1020,445 1040,480 1060,448 1080,478 1100,442 1120,480 1140,450 1160,478 1180,445 1200,480 1200,600 0,600" fill="url(#treeLine)" opacity="0.8"/>
-        <!-- 手前の針葉樹（より大きく） -->
-        <polygon points="50,600 70,490 90,600" fill="#1a2820"/>
-        <polygon points="130,600 155,470 180,600" fill="#1a2820"/>
-        <polygon points="1020,600 1050,480 1080,600" fill="#1a2820"/>
-        <polygon points="1100,600 1130,460 1160,600" fill="#1a2820"/>
-        <!-- 霧/水面（谷間） -->
-        <ellipse cx="600" cy="540" rx="500" ry="40" fill="#8aa0b0" opacity="0.2"/>
-        <ellipse cx="600" cy="550" rx="400" ry="25" fill="#a0b8c8" opacity="0.15"/>
-      </svg>
-    </div>
-    <div class="bg-fog"></div>
-    <div class="bg-ground"></div>
-    <!-- 岩場SVG -->
-    <div class="bg-rocks">
-      <svg width="100%" height="100%" viewBox="0 0 1200 200" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
-        <polygon points="0,200 0,80 100,100 200,60 350,90 400,50 500,80 550,70 600,90 700,40 800,70 850,55 950,80 1050,50 1100,80 1200,60 1200,200" fill="#2a3530"/>
-        <polygon points="0,200 50,120 150,140 250,100 400,120 500,90 600,130 750,100 900,110 1000,80 1100,120 1200,100 1200,200" fill="#1e2a25"/>
-        <polygon points="0,200 100,160 300,140 500,160 700,130 900,160 1100,145 1200,170 1200,200" fill="#151f1a"/>
-        <!-- 前景の岩 -->
-        <polygon points="450,200 470,150 520,130 570,140 600,120 650,150 680,200" fill="#252f2a"/>
-        <polygon points="500,200 530,160 560,145 590,155 620,200" fill="#1a2420"/>
-      </svg>
-    </div>
-    <!-- マントの人物シルエット -->
-    <div class="figure-container">
-      <svg width="120" height="200" viewBox="0 0 80 140" xmlns="http://www.w3.org/2000/svg">
-        <!-- 頭 -->
-        <ellipse cx="40" cy="18" rx="8" ry="10" fill="#1a2220"/>
-        <!-- フード -->
-        <path d="M28,22 Q30,5 40,3 Q50,5 52,22" fill="#222e28" stroke="#2a3830" stroke-width="0.5"/>
-        <!-- 体（マント） -->
-        <path d="M25,22 L20,120 Q40,125 60,120 L55,22 Q40,28 25,22" fill="#1e2a24"/>
-        <!-- マントのしわ -->
-        <path d="M30,40 Q35,60 28,90" stroke="#283830" stroke-width="1" fill="none" opacity="0.5"/>
-        <path d="M50,40 Q45,65 52,95" stroke="#283830" stroke-width="1" fill="none" opacity="0.5"/>
-        <!-- ブーツ -->
-        <rect x="28" y="118" width="10" height="12" rx="2" fill="#151e1a"/>
-        <rect x="44" y="118" width="10" height="12" rx="2" fill="#151e1a"/>
-        <!-- 剣の柄（背中から覗く） -->
-        <line x1="50" y1="8" x2="58" y2="0" stroke="#5a6860" stroke-width="2"/>
-        <line x1="56" y1="2" x2="60" y2="6" stroke="#5a6860" stroke-width="1.5"/>
-      </svg>
-    </div>
-    <!-- 雪パーティクル -->
-    <div class="bg-particles" id="snow-particles"></div>
+    <img src="title_bg.png" class="title-bg-img" alt="">
     <div class="bg-vignette"></div>
   </div>
 
-  <!-- タイトル -->
-  <div class="title-container">
-    <div class="title-en">RAID <span class="of">OF</span> TITAN</div>
-    <div class="title-jp">レイド オブ タイタン</div>
-  </div>
-
-  <!-- PUSH TO START プロンプト -->
-  <div class="push-to-start" id="push-to-start" onclick="window.showMainMenu()">
-    <div class="pts-bar">
+  <!-- PUSH TO START（画面全体をクリック可能に） -->
+  <div class="push-to-start" id="push-to-start" onclick="window.showMainMenu()" style="position:absolute;inset:0;z-index:15;cursor:pointer;">
+    <div class="pts-bar" style="display:none;">
       <span class="pts-text">PUSH TO START</span>
     </div>
   </div>
