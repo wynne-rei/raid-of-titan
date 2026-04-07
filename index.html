@@ -7765,8 +7765,8 @@ function returnToPool(mesh) {
 }
 
 function createUnitMesh(cardId, def, baseColor) {
-  // FBXモデルが使える場合はプールから取得
-  if (fbxModelReady && fbxGiantModel) {
+  // FBXモデルが使える場合はプールから取得（建物カードは除外）
+  if (fbxModelReady && fbxGiantModel && !BUILDING_CARDS.includes(cardId)) {
     return getPooledFBXUnit(cardId, def);
   }
   // フォールバック: 従来のプリミティブ生成
