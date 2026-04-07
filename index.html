@@ -22,7 +22,14 @@ canvas { display: block; }
 }
 #title-screen .title-bg-img {
   position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; object-position: center;
+  object-fit: contain; object-position: center;
+  background: #0a0e14;
+}
+/* 横長画面では上下に黒帯、縦長画面ではcoverに切替 */
+@media (max-aspect-ratio: 16/10) {
+  #title-screen .title-bg-img {
+    object-fit: cover; object-position: center top;
+  }
 }
 #title-screen .bg-layer .bg-vignette {
   position: absolute; inset: 0; z-index: 10;
