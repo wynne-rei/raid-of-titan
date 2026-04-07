@@ -4354,6 +4354,8 @@ function preloadCharacterModels() {
         fbxCharacterModels[charType] = fbx;
         fbxCharacterModels[charType]._animations = { idle: null, walk: null };
 
+        // （デバッグ済み: 全モデルのrootボーンはrotation.x=-π/2でZ-up→Y-up変換）
+
         // アニメーションFBXを別途ロード
         const animPromises = [];
         if (config.idlePath) {
@@ -4450,15 +4452,22 @@ function cloneFBXForKing(charType, faction) {
     group.userData.animations = {};
     entityMixers.push(mixer);
 
+    // rootボーンのトラックを除外したクリップを作成（アニメーションがルートの-π/2回転を上書きするのを防ぐ）
+    function stripRootTracks(clip) {
+      if (!clip) return clip;
+      const filtered = clip.tracks.filter(t => !t.name.startsWith('root.'));
+      return new THREE.AnimationClip(clip.name, clip.duration, filtered);
+    }
+
     // Idleアニメーションをデフォルト再生
     if (anims.idle) {
-      const idleAction = mixer.clipAction(anims.idle);
+      const idleAction = mixer.clipAction(stripRootTracks(anims.idle));
       idleAction.play();
       group.userData.animations.idle = idleAction;
     }
     // Walkアニメーション（移動時に切り替え用）
     if (anims.walk) {
-      const walkAction = mixer.clipAction(anims.walk);
+      const walkAction = mixer.clipAction(stripRootTracks(anims.walk));
       walkAction.play();
       // 移動中はwalk、停止中はidle
       if (anims.idle) {
