@@ -4311,8 +4311,8 @@ function preloadCharacterModels() {
               }
             }
 
-            child.castShadow = true;
-            child.receiveShadow = true;
+            child.castShadow = false;
+            child.receiveShadow = false;
           }
         });
 
@@ -4367,12 +4367,12 @@ function cloneFBXForKing(charType) {
   const group = new THREE.Group();
   const clone = SkeletonUtils.clone(srcModel);
 
-  // マテリアルを個別にクローン
+  // マテリアルを個別にクローン（castShadowオフでパフォーマンス改善）
   clone.traverse((child) => {
     if (child.isMesh || child.isSkinnedMesh) {
       child.material = child.material.clone();
-      child.castShadow = true;
-      child.receiveShadow = true;
+      child.castShadow = false;
+      child.receiveShadow = false;
     }
   });
 
@@ -4447,8 +4447,8 @@ function preloadFBXModels() {
               metalness: 0.3,
               roughness: 0.7
             });
-            child.castShadow = true;
-            child.receiveShadow = true;
+            child.castShadow = false;
+            child.receiveShadow = false;
           }
         });
         fbxGiantModel = fbx;
@@ -4474,11 +4474,11 @@ function cloneFBXForUnit(cardId, def) {
   // SkeletonUtils.clone() でスケルトン（骨格）ごと正しくクローン
   const clone = SkeletonUtils.clone(fbxGiantModel);
 
-  // マテリアル共有（パフォーマンス最適化: clone廃止）
+  // マテリアル共有（パフォーマンス最適化: castShadowオフ）
   clone.traverse((child) => {
     if (child.isMesh || child.isSkinnedMesh) {
-      child.castShadow = true;
-      child.receiveShadow = true;
+      child.castShadow = false;
+      child.receiveShadow = false;
     }
   });
 
@@ -4730,6 +4730,19 @@ const CARD_DEFS = {
 // GAME STATE
 // ============================================================
 let scene, camera, renderer, clock;
+window._getDebugInfo = () => {
+  const r = renderer, info = r?.info;
+  return {
+    drawCalls: info?.render?.calls,
+    triangles: info?.render?.triangles,
+    textures: info?.memory?.textures,
+    geometries: info?.memory?.geometries,
+    sceneChildren: scene?.children?.length,
+    entities: typeof entities !== 'undefined' ? entities.length : 0,
+    towers: typeof towers !== 'undefined' ? towers.length : 0,
+    mixers: typeof entityMixers !== 'undefined' ? entityMixers.length : 0
+  };
+};
 let gameState = 'MENU';
 let matchTimer = 0; // 経過時間（秒、そのセッションの生存時間）
 let matchElixirSpent = 0; // 試合で使ったエリクサー合計
@@ -6250,9 +6263,12 @@ function initThree() {
   camera.position.set(0, 40, -1340);
   camera.lookAt(0, 5, -1150);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true });
+  // モバイルや低スペック端末ではantialiasオフ
+  const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+  renderer = new THREE.WebGLRenderer({ antialias: !isMobile, powerPreference: 'high-performance' });
+  window._renderer = renderer; // デバッグ用
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   document.body.appendChild(renderer.domElement);
@@ -6269,10 +6285,12 @@ function initThree() {
   sun.position.set(200, 400, -100);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
-  sun.shadow.camera.left = -3500;
-  sun.shadow.camera.right = 3500;
-  sun.shadow.camera.top = 3500;
-  sun.shadow.camera.bottom = -3500;
+  sun.shadow.camera.left = -500;
+  sun.shadow.camera.right = 500;
+  sun.shadow.camera.top = 500;
+  sun.shadow.camera.bottom = -500;
+  sun.shadow.camera.near = 50;
+  sun.shadow.camera.far = 1000;
   scene.add(sun);
   window._sunLight = sun;
   window._ambientLight = ambient;
@@ -6547,7 +6565,7 @@ function buildArena() {
   stoneTex.repeat.set(40, 40);
 
   // ============ 3国テリトリ地面 (テクスチャ+Perlinノイズ起伏) ============
-  const segX = 128, segZ = 128;
+  const segX = 64, segZ = 64;
   const terrainW = arenaW * 3, terrainL = ARENA_L * 3;
 
   // 各国の領域中心（8×8グリッドの大まかな区分）
@@ -6806,10 +6824,8 @@ function buildFactionBases() {
       flag.position.set(fireCenter.x + side * 80 + 12, 42, fireCenter.z - 80);
       addObj(flag);
     });
-    // PointLight
-    const fireLight = new THREE.PointLight(0xff4400, 0.6, 400);
-    fireLight.position.set(fireCenter.x, 80, fireCenter.z);
-    addObj(fireLight);
+    // 軽量な擬似光源（影なし）
+    // PointLightは影パスが重いためemissiveマテリアルで代替
   }
 
   // === 氷の国拠点 (z ≈ 0 中央エリア) ===
@@ -6842,10 +6858,7 @@ function buildFactionBases() {
       iceWall.position.set(iceCenter.x + side * 60, 20, iceCenter.z);
       addObj(iceWall);
     });
-    // PointLight
-    const iceLight = new THREE.PointLight(0x4488ff, 0.5, 350);
-    iceLight.position.set(iceCenter.x, 60, iceCenter.z);
-    addObj(iceLight);
+    // PointLight削除（パフォーマンス最適化）
   }
 
   // === 土の国拠点 (z > 0 エリア中心付近) ===
@@ -6902,10 +6915,7 @@ function buildFactionBases() {
     const orb = new THREE.Mesh(new THREE.SphereGeometry(5, 16, 12), new THREE.MeshToonMaterial({ color: 0x44cc44, emissive: 0x22aa22, emissiveIntensity: 0.6, roughness: 0.2 }));
     orb.position.set(earthCenter.x + 50, 13, earthCenter.z - 40);
     addObj(orb);
-    // PointLight
-    const earthLight = new THREE.PointLight(0x44aa44, 0.5, 350);
-    earthLight.position.set(earthCenter.x, 80, earthCenter.z);
-    addObj(earthLight);
+    // PointLight削除（パフォーマンス最適化）
   }
 }
 
@@ -6915,12 +6925,13 @@ function buildFactionBases() {
 function buildClouds() {
   cloudMeshes = [];
   const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false });
-  for (let i = 0; i < 20; i++) {
+  const sharedCloudGeo = new THREE.SphereGeometry(40, 6, 4); // 低ポリ共有ジオメトリ
+  for (let i = 0; i < 10; i++) {
     const cloudGroup = new THREE.Group();
-    // 雲 = 3-5個の扁平楕円の集合
-    const blobCount = 3 + Math.floor(Math.random() * 3);
+    // 雲 = 2-3個の扁平楕円の集合
+    const blobCount = 2 + Math.floor(Math.random() * 2);
     for (let j = 0; j < blobCount; j++) {
-      const blob = new THREE.Mesh(new THREE.SphereGeometry(30 + Math.random() * 50, 12, 8), cloudMat.clone());
+      const blob = new THREE.Mesh(sharedCloudGeo, cloudMat);
       blob.scale.set(1 + Math.random() * 1.5, 0.3 + Math.random() * 0.3, 0.8 + Math.random() * 0.8);
       blob.position.set((Math.random() - 0.5) * 60, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 40);
       cloudGroup.add(blob);
@@ -7233,13 +7244,14 @@ function createTower(x, z, playerId, faction) {
   const dressColor = color;
   const dressAccent = 0xffd700;
 
-  // FBXキャラクターモデルが利用可能ならFBXを使う、なければプリミティブ
-  const mesh = (fbxCharactersReady && fbxCharacterModels[charType])
+  // FBXはプレイヤーのキングのみ使用（BOTはプリミティブ＝軽量）
+  const useFBX = (playerId === 0) && fbxCharactersReady && fbxCharacterModels[charType];
+  const mesh = useFBX
     ? cloneFBXForKing(charType)
     : createCharacterMesh(charType, dressColor, dressAccent);
 
   mesh.position.set(x, 0, z);
-  mesh.castShadow = true;
+  mesh.castShadow = false;
   scene.add(mesh);
 
   // HP bar
@@ -7928,8 +7940,8 @@ function createUnitMesh(cardId, def, baseColor) {
     }
   }
 
-  // 全子メッシュにcastShadow付与
-  group.traverse(child => { if (child.isMesh) child.castShadow = true; });
+  // ユニットのcastShadowオフ（パフォーマンス最適化）
+  group.traverse(child => { if (child.isMesh) { child.castShadow = false; child.receiveShadow = false; } });
   // Bad North風アウトライン
   addOutline(group, 0.05);
   return group;
@@ -12230,6 +12242,14 @@ function updateKingMovement(dt) {
 
   // Rotate the queen to face the camera's forward direction
   playerKingTower.mesh.rotation.y = -cameraYaw;
+
+  // 影のフラスタムをプレイヤー位置に追従（近くだけ影描画）
+  if (window._sunLight) {
+    const s = window._sunLight;
+    s.target.position.set(kx, 0, kz);
+    s.target.updateMatrixWorld();
+    s.position.set(kx + 200, 400, kz - 100);
+  }
 }
 
 // ============================================================
