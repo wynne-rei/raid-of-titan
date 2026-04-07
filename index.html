@@ -4763,25 +4763,31 @@ function updateEntityAnimations(dt) {
     if (dx * dx + dz * dz > MAX_ANIM_DIST_SQ) continue;
 
     const isMoving = e.state === 'moving';
-    const swingSpeed = isMoving ? 8 : 2; // 移動中は速く、待機中はゆっくり
-    const swingAmp = isMoving ? 0.6 : 0.15;
+    const isAttacking = e.state === 'attacking';
+    const swingSpeed = isMoving ? 8 : isAttacking ? 12 : 2;
+    const swingAmp = isMoving ? 0.6 : isAttacking ? 0.3 : 0.15;
     const t = now * swingSpeed + i * 1.7; // ユニットごとにオフセット
+
+    // 攻撃中はボディが軽く上下する
+    if (isAttacking) {
+      m.position.y = (m.position.y || 0) + Math.sin(t * 2) * 0.3;
+    }
 
     // 名前付きパーツを探してスイング
     m.traverse(child => {
       if (!child.name) return;
       switch(child.name) {
         case 'armL':
-          child.rotation.x = Math.sin(t) * swingAmp;
+          child.rotation.x = isAttacking ? -0.3 : Math.sin(t) * swingAmp;
           break;
         case 'armR':
-          child.rotation.x = -Math.sin(t) * swingAmp;
+          child.rotation.x = isAttacking ? -1.0 + Math.abs(Math.sin(t * 2)) * 1.2 : -Math.sin(t) * swingAmp;
           break;
         case 'legL':
-          child.rotation.x = -Math.sin(t) * swingAmp * 0.8;
+          child.rotation.x = isAttacking ? 0 : -Math.sin(t) * swingAmp * 0.8;
           break;
         case 'legR':
-          child.rotation.x = Math.sin(t) * swingAmp * 0.8;
+          child.rotation.x = isAttacking ? 0 : Math.sin(t) * swingAmp * 0.8;
           break;
         case 'wingL':
           child.rotation.z = 0.2 + Math.sin(t * 1.5) * 0.4;
@@ -6172,21 +6178,23 @@ function resolveTargetRef(ref) {
 // 座標指定でチェストを生成
 function spawnChestAt(x, z) {
   const group = new THREE.Group();
-  const bodyGeo = new THREE.BoxGeometry(12, 10, 10);
-  const bodyMat = new THREE.MeshToonMaterial({ color: 0xffc107, emissive: 0xff8f00, emissiveIntensity: 0.3 });
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 5;
-  group.add(body);
-  const lidGeo = new THREE.BoxGeometry(13, 4, 11);
-  const lidMat = new THREE.MeshToonMaterial({ color: 0xffb300 });
-  const lid = new THREE.Mesh(lidGeo, lidMat);
-  lid.position.y = 12;
-  group.add(lid);
-  const ringGeo = new THREE.RingGeometry(14, 16, 16);
+  // Chest body (dark wood)
+  group.add(at(mcBox(5, 4, 4, 0xffc107), 0, 2, 0));
+  // Chest lid
+  group.add(at(mcBox(5.4, 2, 4.4, 0xffb300), 0, 5, 0));
+  // Lock plate
+  group.add(at(mcBox(1.2, 1.5, 0.3, 0xccaa00), 0, 3.5, 2.15));
+  // Lock keyhole
+  group.add(at(mcBox(0.4, 0.6, 0.2, 0x333333), 0, 3.3, 2.3));
+  // Metal bands
+  group.add(at(mcBox(5.2, 0.4, 0.3, 0x888866), 0, 1.5, 2.05));
+  group.add(at(mcBox(5.2, 0.4, 0.3, 0x888866), 0, 3.5, 2.05));
+  // Glow ring
+  const ringGeo = new THREE.RingGeometry(5, 6, 16);
   const ringMat = new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
   const ring = new THREE.Mesh(ringGeo, ringMat);
   ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 1;
+  ring.position.y = 0.5;
   group.add(ring);
   group.position.set(x, 0, z);
   scene.add(group);
@@ -7977,6 +7985,7 @@ function createMcFarm() {
   g.add(at(mcBox(3, 0.5, 3, 0xcc4444), -2, 4, -2));
   for (let x = 0; x < 3; x++) for (let z = 0; z < 3; z++)
     g.add(at(mcBox(0.8, 1.2, 0.8, 0x55aa22), x*1.5, 2.2, z*1.5));
+  g.scale.set(3, 3, 3);
   return g;
 }
 
@@ -7990,6 +7999,7 @@ function createMcWatchtower() {
   for (const [x,z] of [[-2.8,-2.8],[2.8,-2.8],[-2.8,2.8],[2.8,2.8]]) g.add(at(mcBox(0.4, 2, 0.4, 0x6B3513), x, 10.5, z));
   g.add(at(mcBox(0.3, 1.5, 0.3, 0x8B4513), 0, 11.5, 2.8));
   g.add(at(mcBoxE(0.5, 0.5, 0.5, 0xff8800, 0xff6600, 1.0), 0, 12.5, 2.8));
+  g.scale.set(3, 3, 3);
   return g;
 }
 
@@ -7999,6 +8009,7 @@ function createMcWall() {
   for (let i = -2; i <= 2; i++) g.add(at(mcBox(1.5, 2, 2.2, 0x999999), i*2.2, 7, 0));
   g.add(at(mcBox(3, 2, 0.3, 0x777777), -2, 2, 1.05));
   g.add(at(mcBox(3, 2, 0.3, 0x777777), 2, 4, 1.05));
+  g.scale.set(3, 3, 3);
   return g;
 }
 
@@ -8012,6 +8023,7 @@ function createMcSmithy() {
   g.add(at(mcBox(2, 0.4, 1.2, 0x444444), -2, 1.7, 3));
   g.add(at(mcBox(0.3, 2, 0.3, 0x8B4513), -1, 2, 3.5));
   g.add(at(mcBox(0.8, 0.8, 0.8, 0x555555), -1, 3.2, 3.5));
+  g.scale.set(3, 3, 3);
   return g;
 }
 
@@ -8026,6 +8038,7 @@ function createMcAltar() {
     g.add(at(mcBox(0.4, 1.5, 0.4, 0xeeeecc), x, 2, z));
     g.add(at(mcBoxE(0.3, 0.5, 0.3, 0xffaa00, 0xff8800, 1.0), x, 3, z));
   }
+  g.scale.set(3, 3, 3);
   return g;
 }
 
@@ -9914,6 +9927,7 @@ function initBotDeck() {
 }
 
 function updateAllBotsAI(dt) {
+  if (gameState === 'TUTORIAL') return;
   players.forEach(p => {
     if (p.isHuman || p.eliminated) return;
 
@@ -11016,35 +11030,36 @@ function spawnChest() {
 
   const group = new THREE.Group();
 
-  // Chest body
-  const bodyGeo = new THREE.BoxGeometry(12, 10, 10);
-  const bodyMat = new THREE.MeshToonMaterial({ color: ct.bodyColor, emissive: ct.bodyColor, emissiveIntensity: 0.3 });
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 5;
+  // Chest body (dark wood)
+  const body = at(mcBox(5, 4, 4, ct.bodyColor), 0, 2, 0);
   group.add(body);
 
-  // Chest lid
-  const lidGeo = new THREE.BoxGeometry(13, 4, 11);
-  const lidMat = new THREE.MeshToonMaterial({ color: ct.lidColor });
-  const lid = new THREE.Mesh(lidGeo, lidMat);
-  lid.position.y = 12;
+  // Chest lid (slightly lighter, slightly wider)
+  const lid = at(mcBox(5.4, 2, 4.4, ct.lidColor), 0, 5, 0);
   group.add(lid);
 
-  // Glow ring
-  const ringGeo = new THREE.RingGeometry(14, 16, 16);
+  // Lock plate (metal)
+  group.add(at(mcBox(1.2, 1.5, 0.3, 0xccaa00), 0, 3.5, 2.15));
+
+  // Lock keyhole
+  group.add(at(mcBox(0.4, 0.6, 0.2, 0x333333), 0, 3.3, 2.3));
+
+  // Metal bands on body
+  group.add(at(mcBox(5.2, 0.4, 0.3, 0x888866), 0, 1.5, 2.05));
+  group.add(at(mcBox(5.2, 0.4, 0.3, 0x888866), 0, 3.5, 2.05));
+
+  // Glow ring on ground
+  const ringGeo = new THREE.RingGeometry(5, 6, 16);
   const ringMat = new THREE.MeshBasicMaterial({ color: ct.ringColor, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
   const ring = new THREE.Mesh(ringGeo, ringMat);
   ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 1;
+  ring.position.y = 0.5;
   group.add(ring);
 
-  // ゴールド/設計図/強化チェストには特別マーカー
+  // Special marker for gold/blueprint/enhance chests
   if (chestType !== 'normal') {
-    const markerGeo = new THREE.SphereGeometry(2, 8, 8);
-    const markerMat = new THREE.MeshBasicMaterial({ color: ct.ringColor, transparent: true, opacity: 0.7 });
-    const marker = new THREE.Mesh(markerGeo, markerMat);
-    marker.position.y = 16;
-    group.add(marker);
+    const markerOrb = at(mcBoxE(1.2, 1.2, 1.2, ct.ringColor, ct.ringColor, 1.0), 0, 7, 0);
+    group.add(markerOrb);
   }
 
   group.position.set(x, 0, z);
@@ -13955,6 +13970,8 @@ function startTutorial() {
   towers = [];
   chests.forEach(c => scene.remove(c.mesh));
   chests = [];
+  structures.forEach(s => { if (s.mesh) scene.remove(s.mesh); if (s.hpContainer) s.hpContainer.remove(); });
+  structures = [];
   document.getElementById('hp-bars-container').innerHTML = '';
 
   // Reset state
@@ -14153,26 +14170,23 @@ function spawnTutorialChest() {
 
   const group = new THREE.Group();
 
-  // Chest body
-  const bodyGeo = new THREE.BoxGeometry(12, 10, 10);
-  const bodyMat = new THREE.MeshToonMaterial({ color: 0xffc107, emissive: 0xff8f00, emissiveIntensity: 0.3 });
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 5;
-  group.add(body);
-
+  // Chest body (dark wood)
+  group.add(at(mcBox(5, 4, 4, 0xffc107), 0, 2, 0));
   // Chest lid
-  const lidGeo = new THREE.BoxGeometry(13, 4, 11);
-  const lidMat = new THREE.MeshToonMaterial({ color: 0xffb300 });
-  const lid = new THREE.Mesh(lidGeo, lidMat);
-  lid.position.y = 12;
-  group.add(lid);
-
+  group.add(at(mcBox(5.4, 2, 4.4, 0xffb300), 0, 5, 0));
+  // Lock plate
+  group.add(at(mcBox(1.2, 1.5, 0.3, 0xccaa00), 0, 3.5, 2.15));
+  // Lock keyhole
+  group.add(at(mcBox(0.4, 0.6, 0.2, 0x333333), 0, 3.3, 2.3));
+  // Metal bands
+  group.add(at(mcBox(5.2, 0.4, 0.3, 0x888866), 0, 1.5, 2.05));
+  group.add(at(mcBox(5.2, 0.4, 0.3, 0x888866), 0, 3.5, 2.05));
   // Glow ring
-  const ringGeo = new THREE.RingGeometry(14, 16, 16);
+  const ringGeo = new THREE.RingGeometry(5, 6, 16);
   const ringMat = new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
   const ring = new THREE.Mesh(ringGeo, ringMat);
   ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 1;
+  ring.position.y = 0.5;
   group.add(ring);
 
   group.position.set(cx, 0, cz);
