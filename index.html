@@ -4738,6 +4738,8 @@ function updateEntityAnimations(dt) {
   const MAX_ANIM_DIST_SQ = 800 * 800;
   const camX = camera ? camera.position.x : 0;
   const camZ = camera ? camera.position.z : 0;
+
+  // FBX AnimationMixer更新
   for (let i = entityMixers.length - 1; i >= 0; i--) {
     const mixer = entityMixers[i];
     if (!mixer) continue;
@@ -4745,9 +4747,50 @@ function updateEntityAnimations(dt) {
     if (root && root.parent) {
       const pos = root.parent.position;
       const dx = pos.x - camX, dz = pos.z - camZ;
-      if (dx * dx + dz * dz > MAX_ANIM_DIST_SQ) continue; // 画面外スキップ
+      if (dx * dx + dz * dz > MAX_ANIM_DIST_SQ) continue;
     }
     mixer.update(dt);
+  }
+
+  // マイクラ風ユニット: 腕・脚・翼のスイングアニメーション
+  const now = performance.now() * 0.005; // ゆっくりスイング
+  for (let i = 0; i < entities.length; i++) {
+    const e = entities[i];
+    if (!e.mesh || e.hp <= 0) continue;
+    const m = e.mesh;
+    // 距離カリング
+    const dx = m.position.x - camX, dz = m.position.z - camZ;
+    if (dx * dx + dz * dz > MAX_ANIM_DIST_SQ) continue;
+
+    const isMoving = e.state === 'moving';
+    const swingSpeed = isMoving ? 8 : 2; // 移動中は速く、待機中はゆっくり
+    const swingAmp = isMoving ? 0.6 : 0.15;
+    const t = now * swingSpeed + i * 1.7; // ユニットごとにオフセット
+
+    // 名前付きパーツを探してスイング
+    m.traverse(child => {
+      if (!child.name) return;
+      switch(child.name) {
+        case 'armL':
+          child.rotation.x = Math.sin(t) * swingAmp;
+          break;
+        case 'armR':
+          child.rotation.x = -Math.sin(t) * swingAmp;
+          break;
+        case 'legL':
+          child.rotation.x = -Math.sin(t) * swingAmp * 0.8;
+          break;
+        case 'legR':
+          child.rotation.x = Math.sin(t) * swingAmp * 0.8;
+          break;
+        case 'wingL':
+          child.rotation.z = 0.2 + Math.sin(t * 1.5) * 0.4;
+          break;
+        case 'wingR':
+          child.rotation.z = -0.2 - Math.sin(t * 1.5) * 0.4;
+          break;
+      }
+    });
   }
 }
 
