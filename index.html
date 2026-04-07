@@ -11330,9 +11330,9 @@ function updateGhostPosition() {
 // チェスト種類定義
 const CHEST_TYPES = {
   troop:     { name: '兵士チェスト',   icon: '⚔️', bodyColor: 0xCC3333, lidColor: 0x991111, ringColor: 0xFF6655, trimColor: 0x661111, lockColor: 0xDD4444, cardType: 'troop',    weight: 40 },
-  spell:     { name: '呪文チェスト',   icon: '✨', bodyColor: 0x9B30FF, lidColor: 0x7B1FA2, ringColor: 0xCC77FF, trimColor: 0x5C0099, lockColor: 0xBB66FF, cardType: 'spell',    weight: 25 },
+  spell:     { name: '呪文チェスト',   icon: '✨', bodyColor: 0xFF1493, lidColor: 0xCC0066, ringColor: 0xFF69B4, trimColor: 0x880044, lockColor: 0xFF3399, cardType: 'spell',    weight: 25 },
   building:  { name: '建物チェスト',   icon: '🏗️', bodyColor: 0xFFD700, lidColor: 0xDAA520, ringColor: 0xFFEA70, trimColor: 0xB8860B, lockColor: 0xFFD700, cardType: 'building', weight: 20 },
-  structure: { name: '施設チェスト',   icon: '🏰', bodyColor: 0x1E90FF, lidColor: 0x0066CC, ringColor: 0x66BBFF, trimColor: 0x003399, lockColor: 0x44AAFF, cardType: 'structure', weight: 15 }
+  structure: { name: '施設チェスト',   icon: '🏰', bodyColor: 0x2ECC71, lidColor: 0x1B8A4E, ringColor: 0x5DEFA0, trimColor: 0x0E6630, lockColor: 0x3DDB80, cardType: 'structure', weight: 15 }
 };
 
 function getRandomChestType() {
@@ -11512,58 +11512,18 @@ function pickupChest(chest, index) {
 
   const faction = humanPlayer ? humanPlayer.faction : 'fire';
 
-  // --- 施設チェスト: 施設を自動建設 ---
-  if (chestType === 'structure') {
-    const availableStructures = STRUCTURE_IDS.filter(id => {
-      const sdef = STRUCTURE_DEFS[id];
-      const count = structures.filter(s => s.type === id && s.faction === faction && !s.destroyed).length;
-      return count < sdef.maxPerFaction;
-    });
-    if (availableStructures.length > 0) {
-      const sType = availableStructures[Math.floor(Math.random() * availableStructures.length)];
-      const sDef = STRUCTURE_DEFS[sType];
-      const basePos = PLAYER_POSITIONS[0];
-      const sx = basePos.x + (Math.random() - 0.5) * 80;
-      const sz = basePos.z + (Math.random() - 0.5) * 80;
-      const mesh = createStructureMesh(sType, faction);
-      mesh.position.set(sx, 0, sz);
-      scene.add(mesh);
-      const hpContainer = document.createElement('div');
-      hpContainer.className = 'hp-bar-container structure-hp';
-      hpContainer.innerHTML = `<div class="hp-bar-label">${sDef.icon} ${sDef.name}</div>
-        <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:100%;background:${FACTIONS[faction].colorHex}"></div></div>`;
-      document.getElementById('hp-bars')?.appendChild(hpContainer);
-      structures.push({
-        type: sType, faction, x: sx, z: sz,
-        hp: sDef.hp, maxHp: sDef.hp, mesh, hpContainer, destroyed: false, attackTimer: 0
-      });
-      createBuildEffect(sx, sz, FACTIONS[faction].color);
-      addCommentary(`🏰 施設チェスト！${sDef.name}が建設された！`, faction);
-    } else {
-      addGDP(faction, 150);
-      addCommentary(`🏰 施設上限！GDP+150に変換`, faction);
-    }
-    // 施設チェストはカード配布なし — 通知して終了
-    const notify = document.createElement('div');
-    notify.className = 'card-pickup-notify';
-    notify.innerHTML = `<span style="font-size:24px">🏰</span> 施設が建設された！`;
-    document.body.appendChild(notify);
-    setTimeout(() => notify.remove(), 2500);
-    return;
-  }
-
-  // --- 建物チェスト: GDP+100ボーナス付き ---
-  if (chestType === 'building') {
+  // --- 建物・施設チェスト: GDP+200ボーナス付き ---
+  if (chestType === 'building' || chestType === 'structure') {
     addGDP(faction, GOLD_CHEST_GDP);
-    addCommentary(`🏗️ 建物チェスト獲得！GDP+${GOLD_CHEST_GDP}！`, faction);
+    addCommentary(`${ct.icon} ${ct.name}獲得！GDP+${GOLD_CHEST_GDP}！`, faction);
   }
 
-  // --- 兵士・呪文・建物チェスト: 該当カテゴリからカードを配布 ---
+  // --- 全チェスト共通: 該当カテゴリからカードを配布 ---
   const cardId = chest.tutorialChest ? 'cannon' : getRandomCard(ct.cardType);
   const def = CARD_DEFS[cardId];
 
   // 通知
-  const bonusText = chestType === 'building' ? ` & GDP+${GOLD_CHEST_GDP}` : '';
+  const bonusText = (chestType === 'building' || chestType === 'structure') ? ` & GDP+${GOLD_CHEST_GDP}` : '';
   const notify = document.createElement('div');
   notify.className = 'card-pickup-notify';
   notify.style.color = '#' + ct.ringColor.toString(16).padStart(6, '0');
