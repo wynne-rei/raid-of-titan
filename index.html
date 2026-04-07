@@ -4143,6 +4143,14 @@ body.ui-stream #now-live-overlay { display: none !important; }
     </button>
     <div style="color:#888; font-size:11px; margin-bottom:16px;">あなたがホストとなり、仲間を招待できます</div>
 
+    <button id="player-mode-continue" onclick="window.continueAsHost()" style="display:none; width:100%; padding:16px; margin-bottom:12px;
+      font-size:17px; font-weight:bold; color:#fff; cursor:pointer;
+      background:linear-gradient(135deg,#4a2a6b,#8050c8); border:1px solid rgba(128,80,200,0.5);
+      border-radius:10px; letter-spacing:1px;">
+      📜 続きから始める
+    </button>
+    <div id="player-mode-continue-desc" style="display:none; color:#888; font-size:11px; margin-bottom:16px;">前回のバトルの続きからプレイ</div>
+
     <button onclick="window.showCoopJoinInput()" style="display:block; width:100%; padding:16px; margin-bottom:12px;
       font-size:17px; font-weight:bold; color:#fff; cursor:pointer;
       background:linear-gradient(135deg,#1a4a6b,#3080c8); border:1px solid rgba(48,128,200,0.5);
@@ -11964,11 +11972,20 @@ window.openPlayerModeDialog = function() {
   dlg.style.display = 'flex';
   document.getElementById('coop-join-area').style.display = 'none';
   document.getElementById('coop-join-status').textContent = '';
+  // 続きからボタンの表示制御
+  const hasSave = hasBattleSave() || hasSaveData();
+  document.getElementById('player-mode-continue').style.display = hasSave ? 'block' : 'none';
+  document.getElementById('player-mode-continue-desc').style.display = hasSave ? 'block' : 'none';
 };
 
 window.startAsHost = function() {
   document.getElementById('player-mode-dialog').style.display = 'none';
   window.startNewGame();
+};
+
+window.continueAsHost = function() {
+  document.getElementById('player-mode-dialog').style.display = 'none';
+  window.continueGame();
 };
 
 window.showCoopJoinInput = function() {
@@ -12224,8 +12241,10 @@ function finishIntro() {
     container.querySelector('.intro-red-flash').classList.remove('active');
     const _titan = container.querySelector('.intro-titan');
     if (_titan) _titan.classList.remove('rise');
-    // Proceed to tutorial if not done, else faction/char select
-    if (!tutorialDone) {
+    // 続きからの場合はバトル復元、それ以外はチュートリアル or 国選択
+    if (_pendingContinue) {
+      executePendingContinue();
+    } else if (!tutorialDone) {
       startTutorial();
     } else {
       showFactionSelect();
@@ -12233,23 +12252,39 @@ function finishIntro() {
   }, 900);
 }
 
+let _pendingContinue = false;
+
 window.continueGame = function() {
-  unlockSpeech(); // ← ユーザージェスチャー内で即座にunlock
+  unlockSpeech();
+  // イントロムービーを再生してからバトル復元
+  _pendingContinue = true;
+  loadFullProgress();
+  // 常時配信モードON
+  localStorage.setItem('cr3d_stream_mode', 'streamer');
+  window.__streamPreference = 'streamer';
+  startIntroMovie();
+};
+
+function executePendingContinue() {
+  _pendingContinue = false;
+  // 他の画面が表示されていたら閉じる
+  const fs = document.getElementById('faction-select-screen');
+  if (fs) fs.classList.remove('visible');
+  const cs = document.getElementById('char-select-screen');
+  if (cs) cs.classList.remove('visible');
+
   // バトル途中セーブがあれば優先的に復元
   const battleRaw = localStorage.getItem('cr3d_battle_save');
   if (battleRaw) {
     try {
       const data = JSON.parse(battleRaw);
-      loadFullProgress(); // メニューデータも復元
       restoreBattleState(data);
       return;
     } catch(e) { console.error('バトル復元失敗:', e); }
   }
   // バトルセーブがなければ通常の続きから
-  if (!hasSaveData()) return;
-  loadFullProgress();
   startBattle();
-};
+}
 
 window.selectFaction = function(faction) {
   selectedFaction = faction;
