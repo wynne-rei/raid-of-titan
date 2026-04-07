@@ -6437,23 +6437,9 @@ function restoreBattleState(data) {
       const def = CARD_DEFS[ed.cardId];
       if (!def) return;
 
-      // メッシュ生成
+      // メッシュ生成（マイクラ風はスケール不要）
       const mesh = createUnitMesh(ed.cardId, def, def.color);
-      const unitScale = (def.type === 'troop') ? 10 : 1;
-      if (unitScale > 1) mesh.scale.set(unitScale, unitScale, unitScale);
-
-      // 旗（陣営表示）
-      const flagSize = unitScale > 1 ? 3 : 1.5;
-      const flagGeo = new THREE.BoxGeometry(flagSize, flagSize * 2.5, flagSize * 1.5);
-      const pColor = (players[ed.side] && FACTIONS[players[ed.side].faction]) ? FACTIONS[players[ed.side].faction].color : 0xffffff;
-      const flagMat = new THREE.MeshToonMaterial({ color: pColor, emissive: pColor, emissiveIntensity: 0.3 });
-      const flag = new THREE.Mesh(flagGeo, flagMat);
-      flag.position.y = ((def.size[1] || def.size[0]) / 2 + 4);
-      mesh.add(flag);
-      const poleH = unitScale > 1 ? 8 : 6;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, poleH, 10), new THREE.MeshToonMaterial({ color: 0x888888 }));
-      pole.position.y = ((def.size[1] || def.size[0]) / 2 + 1);
-      mesh.add(pole);
+      const unitScale = 1;
 
       mesh.position.set(ed.px, ed.py, ed.pz);
       mesh.castShadow = false;
@@ -7790,22 +7776,30 @@ function createMcMiniPekka(accent) {
 function createMcBabyDragon(accent) {
   accent = accent || 0x44aa55;
   const g = new THREE.Group();
+  // 胴体
   g.add(at(mcBox(4, 3.5, 5, accent), 0, 10, 0));
+  // 腹
   g.add(at(mcBox(3, 2, 0.5, 0x88cc88), 0, 9.8, 2.7));
+  // 頭
   g.add(at(mcBox(3.5, 3.5, 3.5, accent), 0, 12.5, 2));
+  // 目（白）
   g.add(at(mcBox(1.2, 1.2, 0.3, 0xffffff), -0.8, 13, 3.8));
   g.add(at(mcBox(1.2, 1.2, 0.3, 0xffffff), 0.8, 13, 3.8));
+  // 瞳
   g.add(at(mcBox(0.6, 0.7, 0.2, 0x111111), -0.8, 13, 4));
   g.add(at(mcBox(0.6, 0.7, 0.2, 0x111111), 0.8, 13, 4));
+  // 角
   const hL = at(mcBox(0.5, 1.5, 0.5, 0xddcc88), -1.2, 14.5, 1.5); hL.rotation.z=0.3; g.add(hL);
   const hR = at(mcBox(0.5, 1.5, 0.5, 0xddcc88), 1.2, 14.5, 1.5); hR.rotation.z=-0.3; g.add(hR);
+  // 翼
   const wL = at(mcBox(5, 0.3, 3, 0x339944), -4.5, 11, -0.5); wL.rotation.z=0.2; wL.name='wingL'; g.add(wL);
   const wR = at(mcBox(5, 0.3, 3, 0x339944), 4.5, 11, -0.5); wR.rotation.z=-0.2; wR.name='wingR'; g.add(wR);
+  // 尻尾
   g.add(at(mcBox(1.5, 1.5, 2, accent), 0, 9.5, -3));
   g.add(at(mcBox(1, 1, 2, accent), 0, 9.5, -4.5));
+  // 尻尾の炎
   g.add(at(mcBoxE(1.5, 0.4, 1.5, 0xff6600, 0xff4400, 0.5), 0, 9.5, -5.5));
-  g.add(at(mcBox(1.2, 1.5, 1.2, accent), -1.2, 7.8, 1));
-  g.add(at(mcBox(1.2, 1.5, 1.2, accent), 1.2, 7.8, 1));
+  // 足は削除（飛行ユニットなので不要。浮遊はspawnEntityのfly判定で処理）
   return g;
 }
 
@@ -8986,31 +8980,15 @@ function spawnEntity(cardId, x, z, side) {
     const mesh = createUnitMesh(cardId, def, def.color);
     const isFBX = mesh.userData && mesh.userData.isFBX;
 
-    // 兵士ユニットは巨大化（キングタワーの10倍）、施設はそのまま
-    // FBXモデルは cloneFBXForUnit 内で unitScale 込みのサイズに調整済み
-    const unitScale = (def.type === 'troop') ? 10 : 1;
-    if (unitScale > 1 && !isFBX) mesh.scale.set(unitScale, unitScale, unitScale);
+    // マイクラ風メッシュはスケール不要（座標が既に適切サイズ）
+    // FBXモデルは cloneFBXForUnit 内で調整済み
+    const unitScale = 1;
 
-    // Side indicator (colored flag matching player)
-    const pColor = (players[side] && FACTIONS[players[side].faction]) ? FACTIONS[players[side].faction].color : 0xffffff;
-    const flagMat = new THREE.MeshToonMaterial({ color: pColor, emissive: pColor, emissiveIntensity: 0.3 });
-    if (isFBX) {
-      // FBXモデル: 陣営はHPバーの色で識別。マーカー不要
-    } else {
-      // プリミティブモデル: 従来の旗
-      const flagSize = unitScale > 1 ? 3 : 1.5;
-      const flagGeo = new THREE.BoxGeometry(flagSize, flagSize * 2.5, flagSize * 1.5);
-      const flag = new THREE.Mesh(flagGeo, flagMat);
-      flag.position.y = ((def.size[1] || def.size[0]) / 2 + 4);
-      mesh.add(flag);
-      const poleH = unitScale > 1 ? 8 : 6;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, poleH, 10), new THREE.MeshToonMaterial({ color: 0x888888 }));
-      pole.position.y = ((def.size[1] || def.size[0]) / 2 + 1);
-      mesh.add(pole);
-    }
+    // Side indicator (colored flag matching player) — マイクラ風はHPバーの色で識別
+    // 旗は不要（マイクラ風はユニット自体に陣営色が反映済み）
 
     const baseH = (def.size[1] || def.size[0]) / 2;
-    const posY = isFBX ? 0 : (def.fly ? 80 * unitScale : baseH * unitScale);
+    const posY = def.fly ? 15 : 0;
     mesh.position.set(x + ox, posY, z + oz);
     mesh.castShadow = false;
     scene.add(mesh);
@@ -9058,12 +9036,12 @@ function spawnEntity(cardId, x, z, side) {
     // 自分(観戦中なら観戦対象)のユニットには足元に金色リングマーカー
     const focusId = (isSpectator && spectatedPlayerId >= 0) ? spectatedPlayerId : 0;
     if (side === focusId) {
-      const ringR = isFBX ? 8 : (unitScale > 1 ? 8 : 3);
+      const ringR = 5;
       const ringGeo = new THREE.RingGeometry(ringR * 0.85, ringR, 24);
       const ringMat = new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false });
       const ring = new THREE.Mesh(ringGeo, ringMat);
       ring.rotation.x = -Math.PI / 2;
-      ring.position.y = isFBX ? 0.6 : (-baseH * unitScale + 0.6);
+      ring.position.y = 0.6;
       mesh.add(ring);
       entity.selfRing = ring;
     }
