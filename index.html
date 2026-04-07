@@ -1098,6 +1098,9 @@ canvas { display: block; }
 .hand-card.card-spell    { border-left-color: #c792ea; }
 .hand-card.card-building { border-left-color: #ffb84d; }
 .hand-card.card-structure { border-left-color: #ffd700; border-left-width: 4px; }
+.hand-card.card-structure.cat-attack { border-left-color: #ff5252; }
+.hand-card.card-structure.cat-defense { border-left-color: #448aff; }
+.hand-card.card-building.cat-attack { border-left-color: #ff7043; }
 .hand-card:hover {
   border-color: rgba(220,180,90,0.85);
   transform: translateY(-8px);
@@ -1166,6 +1169,8 @@ canvas { display: block; }
 .hand-card.card-spell    .hc-type-icon { color: #c792ea; }
 .hand-card.card-building .hc-type-icon { color: #ffb84d; }
 .hand-card.card-structure .hc-type-icon { color: #ffd700; }
+.hand-card.cat-attack .hc-type-icon { color: #ff5252 !important; }
+.hand-card.cat-defense .hc-type-icon { color: #448aff !important; }
 .hc-cost.gdp-cost { background: linear-gradient(135deg, #ffd700, #ff8f00) !important; color: #000 !important; font-weight: bold; }
 /* ミニステータス行 */
 .hand-card .hc-stats {
@@ -4948,44 +4953,44 @@ const CARD_DEFS = {
     dmg: 0, radius: 50, rageDuration: 6.0, rageBoost: 1.4, unlockLevel: 6
   },
   cannon: {
-    name: '大砲', cost: 3, type: 'building', icon: '💣',
+    name: '大砲', cost: 3, type: 'building', category: 'attack', icon: '💣',
     hp: 500, dmg: 80, range: 55, attackSpeed: 1.0,
     lifetime: 30, target: 'ground', color: 0x78909c, unlockLevel: 2,
     shape: 'cylinder', size: [6, 8, 6], count: 1
   },
   infernoTower: {
-    name: 'インフェルノタワー', cost: 5, type: 'building', icon: '🔥',
+    name: 'インフェルノタワー', cost: 5, type: 'building', category: 'attack', icon: '🔥',
     hp: 600, dmg: 20, dmgMax: 200, range: 60, attackSpeed: 0.4,
     lifetime: 35, target: 'both', color: 0xd32f2f, unlockLevel: 1,
     shape: 'cylinder', size: [5, 12, 5], count: 1
   },
   // === 永続施設カード（GDP消費・手札から配置） ===
   struct_farm: {
-    name: '農場', cost: 150, type: 'structure', icon: '🌾',
+    name: '農場', cost: 150, type: 'structure', category: 'defense', icon: '🌾',
     hp: 800, color: 0x8bc34a, unlockLevel: 1, count: 1,
     structureId: 'farm', costType: 'gdp',
     description: 'エリクサー回復速度+15%'
   },
   struct_watchtower: {
-    name: '見張り塔', cost: 200, type: 'structure', icon: '🗼',
+    name: '見張り塔', cost: 200, type: 'structure', category: 'attack', icon: '🗼',
     hp: 600, dmg: 40, range: 80, attackSpeed: 1.5, color: 0x795548, unlockLevel: 1, count: 1,
     structureId: 'watchtower', costType: 'gdp',
     description: '範囲内の敵を自動攻撃'
   },
   struct_wall: {
-    name: '城壁', cost: 100, type: 'structure', icon: '🧱',
+    name: '城壁', cost: 100, type: 'structure', category: 'defense', icon: '🧱',
     hp: 1500, color: 0x9e9e9e, unlockLevel: 1, count: 1,
     structureId: 'wall', costType: 'gdp',
     description: '敵の侵入を阻む壁'
   },
   struct_smithy: {
-    name: '鍛冶場', cost: 250, type: 'structure', icon: '⚒️',
+    name: '鍛冶場', cost: 250, type: 'structure', category: 'attack', icon: '⚒️',
     hp: 700, color: 0xf44336, unlockLevel: 1, count: 1,
     structureId: 'smithy', costType: 'gdp',
     description: '味方ユニット攻撃力+20%'
   },
   struct_altar: {
-    name: '祭壇', cost: 300, type: 'structure', icon: '🔮',
+    name: '祭壇', cost: 300, type: 'structure', category: 'defense', icon: '🔮',
     hp: 500, color: 0x9c27b0, unlockLevel: 1, count: 1,
     structureId: 'altar', costType: 'gdp',
     description: 'GDP収入+30%'
@@ -11008,7 +11013,12 @@ function updateGhostPosition() {
     if (vec.z > 0 && vec.z < 1) {
       const sx = (vec.x * 0.5 + 0.5) * window.innerWidth;
       const sy = (-vec.y * 0.5 + 0.5) * window.innerHeight;
-      const typeLabel = def.type === 'structure' ? '永続施設' : def.type === 'building' ? '設置施設' : def.type === 'spell' ? '範囲魔法' : 'ユニット';
+      const catLabel = def.category === 'attack' ? '攻撃施設' : def.category === 'defense' ? '防御施設' : '';
+      const typeLabel = def.type === 'structure'
+        ? (catLabel || '永続施設')
+        : def.type === 'building'
+          ? (catLabel || '設置施設')
+          : def.type === 'spell' ? '範囲魔法' : 'ユニット';
       const costUnit = def.type === 'structure' ? '💰GDP' : '💧';
       label.innerHTML = `<span class="gl-icon">${def.icon}</span>${def.name}<span class="gl-sub">${typeLabel} · ${def.cost}${costUnit}</span>`;
       label.style.left = sx + 'px';
@@ -11295,6 +11305,7 @@ function renderHand() {
     if (!def) return '';
     const isStructure = def.type === 'structure';
     const typeClass = isStructure ? 'card-structure' : `card-${def.type}`;
+    const catClass = def.category ? `cat-${def.category}` : '';
 
     // 施設カード: GDP消費、通常カード: エリクサー消費
     let disabled = '';
@@ -11311,7 +11322,11 @@ function renderHand() {
     }
 
     const selected = i === selectedCardIndex ? 'selected' : '';
-    const typeIcon = isStructure ? '🏗️' : def.type === 'building' ? '🏰' : def.type === 'spell' ? '✨' : '⚔️';
+    const typeIcon = isStructure
+      ? (def.category === 'attack' ? '⚔️' : '🛡️')
+      : def.type === 'building'
+        ? (def.category === 'attack' ? '⚔️' : '🏰')
+        : def.type === 'spell' ? '✨' : '⚔️';
 
     // Mini stats row: 種別ごとに内容を変える
     let statsHTML = '';
@@ -11351,7 +11366,7 @@ function renderHand() {
 
     const costLabel = isStructure ? `💰${def.cost}` : def.cost;
 
-    return `<div class="hand-card ${typeClass} ${disabled} ${selected}" data-card-index="${i}" data-card-id="${cardId}">
+    return `<div class="hand-card ${typeClass} ${catClass} ${disabled} ${selected}" data-card-index="${i}" data-card-id="${cardId}">
       <div class="hc-type-icon">${typeIcon}</div>
       <div class="card-icon">${def.icon}</div>
       <div class="hc-info">
@@ -11405,7 +11420,12 @@ function renderHand() {
   function buildTooltip(cardId) {
     const def = CARD_DEFS[cardId];
     if (!def) return '';
-    const typeLabel = def.type === 'structure' ? 'STRUCTURE' : def.type === 'building' ? 'BUILDING' : def.type === 'spell' ? 'SPELL' : 'TROOP';
+    const categoryLabel = def.category === 'attack' ? '攻撃施設' : def.category === 'defense' ? '防御施設' : '';
+    const typeLabel = def.type === 'structure'
+      ? (categoryLabel || 'STRUCTURE')
+      : def.type === 'building'
+        ? (categoryLabel || 'BUILDING')
+        : def.type === 'spell' ? 'SPELL' : 'TROOP';
     const stats = [];
     if (def.hp) stats.push({ l: 'HP', v: def.hp });
     if (def.dmg) stats.push({ l: 'DMG', v: def.dmg });
@@ -11440,9 +11460,14 @@ function renderHand() {
       freeze: '範囲内の敵を凍結。',
       rage: '味方の攻撃/移動速度UP。',
       cannon: '地上を撃つ設置砲。寿命あり。',
-      infernoTower: '連続照射で大物も溶かす。'
+      infernoTower: '連続照射で大物も溶かす。',
+      struct_farm: 'エリクサー回復速度+15%。',
+      struct_watchtower: '範囲内の敵を自動攻撃。',
+      struct_wall: '敵の侵入を阻む壁。',
+      struct_smithy: '味方ユニット攻撃力+20%。',
+      struct_altar: 'GDP収入+30%。'
     };
-    const desc = descMap[cardId] || '';
+    const desc = descMap[cardId] || def.description || '';
 
     return `
       <div class="ct-header">
