@@ -5745,6 +5745,19 @@ const CAM_SHOULDER_X = 8; // right shoulder offset
 const CAM_LOOK_HEIGHT = 22; // look at head height
 let isRightMouseDown = false;
 
+// 観戦用見下ろしカメラ（Trials of Midgard風）
+let specCamX = 0;         // 注視点X
+let specCamZ = 0;         // 注視点Z
+let specCamHeight = 350;  // カメラ高さ
+let specCamAngle = 0.95;  // 俯角（ラジアン, ~55度）
+let specCamYaw = 0;       // 水平回転
+const SPEC_CAM_HEIGHT_MIN = 150;
+const SPEC_CAM_HEIGHT_MAX = 800;
+const SPEC_CAM_PAN_SPEED = 400; // WASD移動速度
+let isSpecPanning = false; // マウスドラッグ中か
+let specPanStartX = 0;
+let specPanStartY = 0;
+
 // Chest system
 let chests = [];
 let chestSpawnTimer = 0;
@@ -11463,6 +11476,11 @@ function focusSpectatedPlayer() {
   const p = players.find(pl => pl.id === spectatedPlayerId);
   if (!p || !p.kingTower) return;
   playerKingTower = p.kingTower;
+  // 見下ろしカメラの注視点をプレイヤー位置にスナップ
+  if (p.kingTower.mesh) {
+    specCamX = p.kingTower.mesh.position.x;
+    specCamZ = p.kingTower.mesh.position.z;
+  }
 }
 
 // 視聴者モード更新ループ
@@ -12278,8 +12296,24 @@ function setupInput() {
 
     // Right-drag for camera rotation
     if (isRightMouseDown) {
-      cameraYaw += e.movementX * 0.005;
-      cameraPitch = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, cameraPitch + e.movementY * 0.005));
+      if (isSpectator) {
+        // 観戦モード: 右ドラッグでカメラ回転
+        specCamYaw += e.movementX * 0.004;
+        specCamAngle = Math.max(0.3, Math.min(1.4, specCamAngle + e.movementY * 0.004));
+      } else {
+        cameraYaw += e.movementX * 0.005;
+        cameraPitch = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, cameraPitch + e.movementY * 0.005));
+      }
+    }
+    // 観戦モード: 左ドラッグでパン移動
+    if (isSpectator && isSpecPanning) {
+      const panScale = specCamHeight * 0.003;
+      const sinY = Math.sin(specCamYaw);
+      const cosY = Math.cos(specCamYaw);
+      const dx = -e.movementX * panScale;
+      const dz = -e.movementY * panScale;
+      specCamX += dx * cosY - dz * sinY;
+      specCamZ += dx * sinY + dz * cosY;
     }
     // ギフト配置モード中はゴーストをマウス位置に追従
     if (giftPlacementMode) updateGiftGhostFromMouse();
@@ -12287,11 +12321,24 @@ function setupInput() {
 
   renderer.domElement.addEventListener('mousedown', (e) => {
     if (e.button === 2) isRightMouseDown = true;
+    // 観戦モード: 中ボタンまたは左ボタンでパン
+    if (isSpectator && (e.button === 0 || e.button === 1) && !giftPlacementMode && !placementMode) {
+      isSpecPanning = true;
+    }
   });
 
   renderer.domElement.addEventListener('mouseup', (e) => {
     if (e.button === 2) isRightMouseDown = false;
+    if (e.button === 0 || e.button === 1) isSpecPanning = false;
   });
+
+  // 観戦モード: スクロールでズーム
+  renderer.domElement.addEventListener('wheel', (e) => {
+    if (isSpectator) {
+      specCamHeight = Math.max(SPEC_CAM_HEIGHT_MIN, Math.min(SPEC_CAM_HEIGHT_MAX, specCamHeight + e.deltaY * 0.5));
+      e.preventDefault();
+    }
+  }, { passive: false });
 
   renderer.domElement.addEventListener('click', (e) => {
     if (gameState !== 'PLAYING' && gameState !== 'OVERTIME' && gameState !== 'TUTORIAL') return;
@@ -12354,24 +12401,56 @@ function setupInput() {
 
 // King tower movement + camera follow
 function updateKingMovement(dt) {
-  // 視聴者モード中はカメラ追尾対象をspectatedPlayerに同期
+  // 観戦モード: 見下ろしカメラ（Trials of Midgard風）
   if (isSpectator) {
     const target = players.find(p => p.id === spectatedPlayerId);
     if (target && target.kingTower && !target.kingTower.destroyed) {
       playerKingTower = target.kingTower;
     }
+
+    // WASD/矢印キーでパン移動
+    let panX = 0, panZ = 0;
+    if (keysPressed['w']) panZ = 1;
+    if (keysPressed['s']) panZ = -1;
+    if (keysPressed['a']) panX = -1;
+    if (keysPressed['d']) panX = 1;
+    if (panX !== 0 || panZ !== 0) {
+      const len = Math.sqrt(panX * panX + panZ * panZ);
+      const sinY = Math.sin(specCamYaw);
+      const cosY = Math.cos(specCamYaw);
+      const speed = SPEC_CAM_PAN_SPEED * (specCamHeight / 350) * dt;
+      specCamX += (panX * cosY - panZ * sinY) / len * speed;
+      specCamZ += (panX * sinY + panZ * cosY) / len * speed;
+    }
+    // マップ範囲内にクランプ
+    const halfW = arenaW / 2;
+    specCamX = Math.max(-halfW, Math.min(halfW, specCamX));
+    specCamZ = Math.max(-ARENA_L / 2, Math.min(ARENA_L / 2, specCamZ));
+
+    // カメラ配置: 斜め上から見下ろし
+    const camX = specCamX + specCamHeight * Math.sin(specCamYaw) * Math.cos(specCamAngle);
+    const camY = specCamHeight * Math.sin(specCamAngle);
+    const camZ = specCamZ - specCamHeight * Math.cos(specCamYaw) * Math.cos(specCamAngle);
+    camera.position.set(camX, camY, camZ);
+    camera.lookAt(specCamX, 0, specCamZ);
+
+    // 影のフラスタムも追従
+    if (window._sunLight) {
+      const s = window._sunLight;
+      s.target.position.set(specCamX, 0, specCamZ);
+      s.target.updateMatrixWorld();
+    }
+    return;
   }
+
   if (!playerKingTower || playerKingTower.destroyed) return;
 
   // WASD movement relative to camera direction
   let inputX = 0, inputZ = 0;
-  // 視聴者モード中は移動入力を受け付けない（カメラは対象を追尾するだけ）
-  if (!isSpectator) {
-    if (keysPressed['w'] || keysPressed['arrowup']) inputZ = 1;
-    if (keysPressed['s'] || keysPressed['arrowdown']) inputZ = -1;
-    if (keysPressed['a'] || keysPressed['arrowleft']) inputX = 1;
-    if (keysPressed['d'] || keysPressed['arrowright']) inputX = -1;
-  }
+  if (keysPressed['w'] || keysPressed['arrowup']) inputZ = 1;
+  if (keysPressed['s'] || keysPressed['arrowdown']) inputZ = -1;
+  if (keysPressed['a'] || keysPressed['arrowleft']) inputX = 1;
+  if (keysPressed['d'] || keysPressed['arrowright']) inputX = -1;
 
   const isMoving = (inputX !== 0 || inputZ !== 0);
 
