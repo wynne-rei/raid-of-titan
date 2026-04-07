@@ -645,6 +645,7 @@ canvas { display: block; }
 .card-troop { background: linear-gradient(180deg, #1a2a10 0%, #0d1a05 100%); }
 .card-spell { background: linear-gradient(180deg, #2a1500 0%, #1a0a00 100%); }
 .card-building { background: linear-gradient(180deg, #1a1025 0%, #0d0818 100%); }
+.card-structure { background: linear-gradient(180deg, #2a2000 0%, #1a1400 100%); }
 .card-faction-fire { background: linear-gradient(180deg, #2a0a05 0%, #180500 100%); border-color: #3a1510; }
 .card-faction-fire:hover { border-color: #e53935; }
 .card-faction-ice { background: linear-gradient(180deg, #0a1520 0%, #050a18 100%); border-color: #152535; }
@@ -1096,6 +1097,7 @@ canvas { display: block; }
 .hand-card.card-troop    { border-left-color: #7bc96f; }
 .hand-card.card-spell    { border-left-color: #c792ea; }
 .hand-card.card-building { border-left-color: #ffb84d; }
+.hand-card.card-structure { border-left-color: #ffd700; border-left-width: 4px; }
 .hand-card:hover {
   border-color: rgba(220,180,90,0.85);
   transform: translateY(-8px);
@@ -1163,6 +1165,8 @@ canvas { display: block; }
 .hand-card.card-troop    .hc-type-icon { color: #7bc96f; }
 .hand-card.card-spell    .hc-type-icon { color: #c792ea; }
 .hand-card.card-building .hc-type-icon { color: #ffb84d; }
+.hand-card.card-structure .hc-type-icon { color: #ffd700; }
+.hc-cost.gdp-cost { background: linear-gradient(135deg, #ffd700, #ff8f00) !important; color: #000 !important; font-weight: bold; }
 /* ミニステータス行 */
 .hand-card .hc-stats {
   display: flex; justify-content: space-between; align-items: center;
@@ -4954,6 +4958,37 @@ const CARD_DEFS = {
     hp: 600, dmg: 20, dmgMax: 200, range: 60, attackSpeed: 0.4,
     lifetime: 35, target: 'both', color: 0xd32f2f, unlockLevel: 1,
     shape: 'cylinder', size: [5, 12, 5], count: 1
+  },
+  // === 永続施設カード（GDP消費・手札から配置） ===
+  struct_farm: {
+    name: '農場', cost: 150, type: 'structure', icon: '🌾',
+    hp: 800, color: 0x8bc34a, unlockLevel: 1, count: 1,
+    structureId: 'farm', costType: 'gdp',
+    description: 'エリクサー回復速度+15%'
+  },
+  struct_watchtower: {
+    name: '見張り塔', cost: 200, type: 'structure', icon: '🗼',
+    hp: 600, dmg: 40, range: 80, attackSpeed: 1.5, color: 0x795548, unlockLevel: 1, count: 1,
+    structureId: 'watchtower', costType: 'gdp',
+    description: '範囲内の敵を自動攻撃'
+  },
+  struct_wall: {
+    name: '城壁', cost: 100, type: 'structure', icon: '🧱',
+    hp: 1500, color: 0x9e9e9e, unlockLevel: 1, count: 1,
+    structureId: 'wall', costType: 'gdp',
+    description: '敵の侵入を阻む壁'
+  },
+  struct_smithy: {
+    name: '鍛冶場', cost: 250, type: 'structure', icon: '⚒️',
+    hp: 700, color: 0xf44336, unlockLevel: 1, count: 1,
+    structureId: 'smithy', costType: 'gdp',
+    description: '味方ユニット攻撃力+20%'
+  },
+  struct_altar: {
+    name: '祭壇', cost: 300, type: 'structure', icon: '🔮',
+    hp: 500, color: 0x9c27b0, unlockLevel: 1, count: 1,
+    structureId: 'altar', costType: 'gdp',
+    description: 'GDP収入+30%'
   }
 };
 
@@ -10730,6 +10765,20 @@ function createGhostMesh(cardId) {
   const def = CARD_DEFS[cardId];
   if (!def) return null;
 
+  // 施設カード: createStructureMeshを半透明ゴースト化
+  if (def.type === 'structure' && def.structureId) {
+    const faction = humanPlayer ? humanPlayer.faction : 'fire';
+    const ghost = createStructureMesh(def.structureId, faction);
+    ghost.traverse(child => {
+      if (child.material) {
+        child.material = child.material.clone();
+        child.material.transparent = true;
+        child.material.opacity = 0.5;
+      }
+    });
+    return ghost;
+  }
+
   const group = new THREE.Group();
 
   if (def.type === 'spell') {
@@ -10818,7 +10867,21 @@ function playCard(index) {
   if (index < 0 || index >= handCards.length) return;
   const cardId = handCards[index];
   const def = CARD_DEFS[cardId];
-  if (elixir < def.cost) return;
+
+  // 施設カード: GDP消費チェック
+  if (def.type === 'structure') {
+    const faction = humanPlayer ? humanPlayer.faction : 'fire';
+    const gdp = factionGDP[faction] || 0;
+    if (gdp < def.cost) return;
+    // 上限チェック
+    if (def.structureId) {
+      const existing = structures.filter(s => s.type === def.structureId && s.faction === faction && !s.destroyed).length;
+      const maxPer = STRUCTURE_DEFS[def.structureId]?.maxPerFaction || 99;
+      if (existing >= maxPer) return;
+    }
+  } else {
+    if (elixir < def.cost) return;
+  }
 
   // ツールチップを消す
   const _tt = document.getElementById('card-tooltip');
@@ -10857,9 +10920,16 @@ function confirmPlacement() {
   const placeX = ghostMesh.position.x;
   const placeZ = ghostMesh.position.z;
 
-  elixir -= def.cost;
-  matchElixirSpent += def.cost;
-  spawnEntity(cardId, placeX, placeZ, 0);
+  // 施設カード: buildStructureで建設（GDP消費）
+  if (def.type === 'structure' && def.structureId) {
+    const faction = humanPlayer ? humanPlayer.faction : 'fire';
+    const result = buildStructure(def.structureId, placeX, placeZ, faction);
+    if (!result) return; // GDP不足・上限の場合は配置キャンセル
+  } else {
+    elixir -= def.cost;
+    matchElixirSpent += def.cost;
+    spawnEntity(cardId, placeX, placeZ, 0);
+  }
 
   // 砕け演出: 先に該当カードDOMへ.shatter付与してからデータ削除
   const usedIdx = selectedCardIndex;
@@ -10938,8 +11008,9 @@ function updateGhostPosition() {
     if (vec.z > 0 && vec.z < 1) {
       const sx = (vec.x * 0.5 + 0.5) * window.innerWidth;
       const sy = (-vec.y * 0.5 + 0.5) * window.innerHeight;
-      const typeLabel = def.type === 'building' ? '設置施設' : def.type === 'spell' ? '範囲魔法' : 'ユニット';
-      label.innerHTML = `<span class="gl-icon">${def.icon}</span>${def.name}<span class="gl-sub">${typeLabel} · ${def.cost}💧</span>`;
+      const typeLabel = def.type === 'structure' ? '永続施設' : def.type === 'building' ? '設置施設' : def.type === 'spell' ? '範囲魔法' : 'ユニット';
+      const costUnit = def.type === 'structure' ? '💰GDP' : '💧';
+      label.innerHTML = `<span class="gl-icon">${def.icon}</span>${def.name}<span class="gl-sub">${typeLabel} · ${def.cost}${costUnit}</span>`;
       label.style.left = sx + 'px';
       label.style.top = sy + 'px';
       label.classList.add('visible');
@@ -11253,16 +11324,47 @@ function renderHand() {
   container.classList.add('visible');
 
   // Build new hand content
+  const myFaction = humanPlayer ? humanPlayer.faction : 'fire';
+  const myGdp = factionGDP[myFaction] || 0;
+
   const cardCells = handCards.map((cardId, i) => {
     const def = CARD_DEFS[cardId];
-    const typeClass = `card-${def.type}`;
-    const disabled = elixir < def.cost ? 'disabled' : '';
+    if (!def) return '';
+    const isStructure = def.type === 'structure';
+    const typeClass = isStructure ? 'card-structure' : `card-${def.type}`;
+
+    // 施設カード: GDP消費、通常カード: エリクサー消費
+    let disabled = '';
+    if (isStructure) {
+      disabled = myGdp < def.cost ? 'disabled' : '';
+      // 上限チェック
+      if (!disabled && def.structureId) {
+        const existing = structures.filter(s => s.type === def.structureId && s.faction === myFaction && !s.destroyed).length;
+        const maxPer = STRUCTURE_DEFS[def.structureId]?.maxPerFaction || 99;
+        if (existing >= maxPer) disabled = 'disabled';
+      }
+    } else {
+      disabled = elixir < def.cost ? 'disabled' : '';
+    }
+
     const selected = i === selectedCardIndex ? 'selected' : '';
-    const typeIcon = def.type === 'building' ? '🏰' : def.type === 'spell' ? '✨' : '⚔️';
+    const typeIcon = isStructure ? '🏗️' : def.type === 'building' ? '🏰' : def.type === 'spell' ? '✨' : '⚔️';
 
     // Mini stats row: 種別ごとに内容を変える
     let statsHTML = '';
-    if (def.type === 'troop' || def.type === 'building') {
+    if (isStructure) {
+      const sDef = STRUCTURE_DEFS[def.structureId];
+      const existing = sDef ? structures.filter(s => s.type === def.structureId && s.faction === myFaction && !s.destroyed).length : 0;
+      const maxPer = sDef?.maxPerFaction || '?';
+      statsHTML = `
+        <div class="hc-stats">
+          <span class="hc-stat" style="color:#aaa;font-size:9px">${def.description || ''}</span>
+        </div>
+        <div class="hc-stats">
+          <span class="hc-stat"><span class="hcs-ico">❤</span>${def.hp >= 1000 ? (def.hp/1000).toFixed(1)+'k' : def.hp}</span>
+          <span class="hc-stat" style="color:#888">${existing}/${maxPer}</span>
+        </div>`;
+    } else if (def.type === 'troop' || def.type === 'building') {
       const hp = def.hp || 0;
       const dmg = def.dmg || 0;
       const spd = def.speed != null ? def.speed : (def.type === 'building' ? '—' : 0);
@@ -11284,6 +11386,8 @@ function renderHand() {
         </div>`;
     }
 
+    const costLabel = isStructure ? `💰${def.cost}` : def.cost;
+
     return `<div class="hand-card ${typeClass} ${disabled} ${selected}" data-card-index="${i}" data-card-id="${cardId}">
       <div class="hc-type-icon">${typeIcon}</div>
       <div class="card-icon">${def.icon}</div>
@@ -11291,7 +11395,7 @@ function renderHand() {
         <div class="hc-name">${def.name}</div>
       </div>
       ${statsHTML}
-      <div class="hc-cost">${def.cost}</div>
+      <div class="hc-cost${isStructure ? ' gdp-cost' : ''}">${costLabel}</div>
     </div>`;
   });
 
@@ -11318,7 +11422,14 @@ function renderHand() {
     const idx = parseInt(card.dataset.cardIndex);
     if (isNaN(idx) || idx >= handCards.length) return;
     const def = CARD_DEFS[handCards[idx]];
-    if (!def || elixir < def.cost) return;
+    if (!def) return;
+    // 施設カード: GDP、通常: エリクサーチェック
+    if (def.type === 'structure') {
+      const faction = humanPlayer ? humanPlayer.faction : 'fire';
+      if ((factionGDP[faction] || 0) < def.cost) return;
+    } else {
+      if (elixir < def.cost) return;
+    }
     if (selectedCardIndex === idx) {
       cancelPlacement();
     } else {
@@ -11331,7 +11442,7 @@ function renderHand() {
   function buildTooltip(cardId) {
     const def = CARD_DEFS[cardId];
     if (!def) return '';
-    const typeLabel = def.type === 'building' ? 'BUILDING' : def.type === 'spell' ? 'SPELL' : 'TROOP';
+    const typeLabel = def.type === 'structure' ? 'STRUCTURE' : def.type === 'building' ? 'BUILDING' : def.type === 'spell' ? 'SPELL' : 'TROOP';
     const stats = [];
     if (def.hp) stats.push({ l: 'HP', v: def.hp });
     if (def.dmg) stats.push({ l: 'DMG', v: def.dmg });
@@ -11439,7 +11550,8 @@ const CARD_FACTIONS = {
 };
 
 // Buildings = player-placeable, others = auto-spawn from faction
-const BUILDING_CARDS = ['cannon', 'infernoTower'];
+const BUILDING_CARDS = ['cannon', 'infernoTower', 'struct_farm', 'struct_watchtower', 'struct_wall', 'struct_smithy', 'struct_altar'];
+const STRUCTURE_CARDS = ['struct_farm', 'struct_watchtower', 'struct_wall', 'struct_smithy', 'struct_altar'];
 const AUTO_SPAWN_CARDS = {
   fire: ['knight', 'miniPekka', 'valkyrie', 'wizard', 'fireball', 'rage'],
   ice: ['archer', 'musketeer', 'skeletonArmy', 'babyDragon', 'freeze', 'arrows'],
