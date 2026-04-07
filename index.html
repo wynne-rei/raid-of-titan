@@ -2726,7 +2726,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
   <!-- メインメニュー -->
   <div class="main-menu" id="main-menu">
     <div class="menu-heroes">
-      <button class="hero-btn hero-streamer" onclick="window.startNewGame()">
+      <button class="hero-btn hero-streamer" onclick="window.openPlayerModeDialog()">
         <span class="hero-icon">🎥</span>
         <span class="hero-label">プレイヤーとして戦う</span>
       </button>
@@ -4124,6 +4124,53 @@ body.ui-stream #now-live-overlay { display: none !important; }
   <div style="font-size:10px; color:#aaa; letter-spacing:2px; margin-bottom:4px;">ROOM CODE</div>
   <div id="net-room-code" style="font-size:28px; font-weight:bold; color:#fff; letter-spacing:6px; font-family:monospace;">------</div>
   <div id="net-viewer-count" style="font-size:11px; color:#8f8; margin-top:4px;">0 人が観戦中</div>
+</div>
+
+<!-- プレイヤーモード選択ダイアログ -->
+<div id="player-mode-dialog" style="display:none; position:fixed; inset:0; z-index:99999;
+  background:rgba(0,0,0,0.85); backdrop-filter:blur(12px);
+  justify-content:center; align-items:center;">
+  <div style="background:rgba(20,20,40,0.95); border:1px solid rgba(200,168,80,0.4);
+    border-radius:16px; padding:36px; text-align:center; max-width:440px; width:90%;">
+    <div style="font-size:22px; font-weight:bold; color:#c8a850; margin-bottom:8px; letter-spacing:2px;">⚔️ プレイモード</div>
+    <div style="color:#999; font-size:13px; margin-bottom:24px;">新しくゲームを始めるか、仲間のゲームに参加しよう</div>
+
+    <button onclick="window.startAsHost()" style="display:block; width:100%; padding:16px; margin-bottom:12px;
+      font-size:17px; font-weight:bold; color:#fff; cursor:pointer;
+      background:linear-gradient(135deg,#6b3a1a,#c87030); border:1px solid rgba(200,120,48,0.5);
+      border-radius:10px; letter-spacing:1px;">
+      🏰 新しく始める（ホスト）
+    </button>
+    <div style="color:#888; font-size:11px; margin-bottom:16px;">あなたがホストとなり、仲間を招待できます</div>
+
+    <button onclick="window.showCoopJoinInput()" style="display:block; width:100%; padding:16px; margin-bottom:12px;
+      font-size:17px; font-weight:bold; color:#fff; cursor:pointer;
+      background:linear-gradient(135deg,#1a4a6b,#3080c8); border:1px solid rgba(48,128,200,0.5);
+      border-radius:10px; letter-spacing:1px;">
+      🤝 ルームコードで参加
+    </button>
+    <div style="color:#888; font-size:11px; margin-bottom:20px;">ホストのルームコードを入力して仲間として参戦</div>
+
+    <!-- ルームコード入力エリア（初期非表示） -->
+    <div id="coop-join-area" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.1);">
+      <div style="color:#aaa; font-size:13px; margin-bottom:12px;">ホストのルームコードを入力</div>
+      <input type="text" id="coop-room-input" maxlength="6" placeholder="ABCDEF"
+        style="text-transform:uppercase; text-align:center; font-size:32px; letter-spacing:8px;
+        font-family:monospace; width:200px; padding:10px; border:2px solid rgba(48,128,200,0.5);
+        border-radius:8px; background:rgba(0,0,0,0.4); color:#fff; outline:none;"
+        onkeydown="if(event.key==='Enter') window.joinAsCoopPlayer()">
+      <div style="margin-top:12px;">
+        <button onclick="window.joinAsCoopPlayer()" style="padding:10px 24px; font-size:15px;
+          background:linear-gradient(135deg,#1a6b4a,#30c880); color:#fff; border:none;
+          border-radius:8px; cursor:pointer; font-weight:bold;">接続</button>
+      </div>
+      <div id="coop-join-status" style="margin-top:8px; font-size:12px; color:#999; min-height:18px;"></div>
+    </div>
+
+    <button onclick="document.getElementById('player-mode-dialog').style.display='none'"
+      style="margin-top:12px; padding:8px 20px; font-size:13px; color:#888; background:none;
+      border:1px solid rgba(255,255,255,0.15); border-radius:6px; cursor:pointer;">✕ 戻る</button>
+  </div>
 </div>
 
 <!-- マルチプレイ: 観戦参加ダイアログ -->
@@ -11556,8 +11603,14 @@ function initHostNetworking() {
     });
     conn.on('close', () => {
       netConnections = netConnections.filter(c => c !== conn);
+      // 協力プレイヤーだった場合はタワーを削除
+      if (conn._coopPlayerId != null) {
+        removeCoopPlayer(conn._coopPlayerId);
+        addCommentary(`👋 仲間が離脱しました`, selectedFaction);
+        console.log('[NET] Co-op player', conn._coopPlayerId, 'disconnected');
+      }
       updateNetViewerCount();
-      console.log('[NET] Spectator disconnected');
+      console.log('[NET] Peer disconnected');
     });
     conn.on('error', (err) => {
       console.error('[NET] Connection error:', err);
@@ -11577,6 +11630,59 @@ function initHostNetworking() {
 
 // ホスト: 観戦者からのコマンドを処理
 function handleSpectatorCommand(data, conn) {
+  // 協力プレイヤーのjoinリクエスト
+  if (data._netMeta.type === 'join') {
+    const charType = data.character || 'knight';
+    const newPlayer = addCoopPlayer(charType);
+    if (newPlayer) {
+      conn._coopPlayerId = newPlayer.id;
+      conn.send({ _netMeta: { type: 'joined' }, playerId: newPlayer.id, faction: selectedFaction });
+      console.log('[NET] Co-op player joined as', newPlayer.id, 'char:', charType);
+      addCommentary(`🤝 仲間が参戦！ ${FACTIONS[selectedFaction].icon} ${FACTIONS[selectedFaction].name}の戦士が加わった！`, selectedFaction);
+    } else {
+      conn.send({ _netMeta: { type: 'full' } });
+      console.log('[NET] Co-op join rejected: room full');
+    }
+    return;
+  }
+  // 協力プレイヤーのキング移動
+  if (data._netMeta.type === 'move') {
+    const pid = conn._coopPlayerId;
+    if (pid == null) return;
+    const p = players.find(pl => pl.id === pid);
+    if (!p || p.eliminated || !p.kingTower || p.kingTower.destroyed) return;
+    const kt = p.kingTower;
+    if (data.dx != null && data.dz != null) {
+      kt.mesh.position.x += data.dx;
+      kt.mesh.position.z += data.dz;
+      // マップ内にクランプ
+      const halfW = arenaW / 2, halfL = ARENA_L / 2;
+      kt.mesh.position.x = Math.max(-halfW, Math.min(halfW, kt.mesh.position.x));
+      kt.mesh.position.z = Math.max(-halfL, Math.min(halfL, kt.mesh.position.z));
+    }
+    return;
+  }
+  // 協力プレイヤーのカード召喚
+  if (data._netMeta.type === 'coopSpawn') {
+    const pid = conn._coopPlayerId;
+    if (pid == null) return;
+    const p = players.find(pl => pl.id === pid);
+    if (!p || p.eliminated) return;
+    const { cardId, x, z } = data;
+    const def = CARD_DEFS[cardId];
+    if (!def) return;
+    // エリクサーチェック
+    if (p.elixir < def.cost) return;
+    p.elixir -= def.cost;
+    if (def.type === 'spell') {
+      castSpell(cardId, x, z, p.id);
+    } else {
+      spawnEntity(cardId, x, z, p.id);
+    }
+    console.log('[NET] Co-op player', pid, 'spawned:', cardId);
+    return;
+  }
+  // ダイバーのユニット召喚（既存処理）
   if (data._netMeta.type === 'spawn') {
     const { cardId, x, z, faction } = data;
     const def = CARD_DEFS[cardId];
@@ -11834,6 +11940,122 @@ window.startNewGame = function() {
   window.__streamPreference = 'streamer';
   // Phase 2: Show intro movie before battle
   startIntroMovie();
+};
+
+// ============================================================
+// プレイヤーモード選択（ホスト/参加）
+// ============================================================
+window.openPlayerModeDialog = function() {
+  const dlg = document.getElementById('player-mode-dialog');
+  dlg.style.display = 'flex';
+  document.getElementById('coop-join-area').style.display = 'none';
+  document.getElementById('coop-join-status').textContent = '';
+};
+
+window.startAsHost = function() {
+  document.getElementById('player-mode-dialog').style.display = 'none';
+  window.startNewGame();
+};
+
+window.showCoopJoinInput = function() {
+  const area = document.getElementById('coop-join-area');
+  area.style.display = 'block';
+  const input = document.getElementById('coop-room-input');
+  input.value = '';
+  document.getElementById('coop-join-status').textContent = '';
+  setTimeout(() => input.focus(), 100);
+};
+
+let isCoopPlayer = false;
+let myCoopPlayerId = -1;
+
+window.joinAsCoopPlayer = function() {
+  const input = document.getElementById('coop-room-input');
+  const code = input.value.toUpperCase().trim();
+  if (code.length !== 6) {
+    document.getElementById('coop-join-status').textContent = '6文字のコードを入力してください';
+    document.getElementById('coop-join-status').style.color = '#f66';
+    return;
+  }
+  document.getElementById('coop-join-status').textContent = '接続中...';
+  document.getElementById('coop-join-status').style.color = '#ff6';
+  initCoopNetworking(code);
+};
+
+function initCoopNetworking(code) {
+  if (peerInstance) { peerInstance.destroy(); peerInstance = null; }
+  const hostId = 'rot-' + code.toUpperCase();
+  console.log('[NET-COOP] Connecting to host:', hostId);
+  try {
+    peerInstance = new Peer();
+  } catch(e) {
+    document.getElementById('coop-join-status').textContent = 'PeerJS初期化に失敗しました';
+    document.getElementById('coop-join-status').style.color = '#f66';
+    return;
+  }
+  peerInstance.on('open', () => {
+    hostConnection = peerInstance.connect(hostId, { reliable: true });
+    hostConnection.on('open', () => {
+      console.log('[NET-COOP] Connected to host, sending join request');
+      document.getElementById('coop-join-status').textContent = '接続成功！キャラ選択中...';
+      document.getElementById('coop-join-status').style.color = '#8f8';
+      // キャラ選択画面へ遷移（国はホストが決定済み）
+      document.getElementById('player-mode-dialog').style.display = 'none';
+      isCoopPlayer = true;
+      isNetSpectator = true; // ゲームロジックはホスト側で実行
+      // キャラ選択画面を表示
+      showCharSelect();
+    });
+    hostConnection.on('data', (data) => {
+      if (data && data._netMeta) {
+        if (data._netMeta.type === 'joined') {
+          myCoopPlayerId = data.playerId;
+          selectedFaction = data.faction;
+          console.log('[NET-COOP] Joined as player', myCoopPlayerId, 'faction:', selectedFaction);
+        } else if (data._netMeta.type === 'state') {
+          receiveHostState(data);
+        } else if (data._netMeta.type === 'hostDisconnect') {
+          document.getElementById('net-disconnect-overlay').style.display = 'flex';
+        }
+      }
+    });
+    hostConnection.on('close', () => {
+      console.log('[NET-COOP] Host disconnected');
+      document.getElementById('net-disconnect-overlay').style.display = 'flex';
+    });
+    hostConnection.on('error', (err) => {
+      console.error('[NET-COOP] Connection error:', err);
+      document.getElementById('coop-join-status').textContent = '接続エラー: ' + err.type;
+      document.getElementById('coop-join-status').style.color = '#f66';
+    });
+  });
+  peerInstance.on('error', (err) => {
+    console.error('[NET-COOP] Peer error:', err);
+    if (err.type === 'peer-unavailable') {
+      document.getElementById('coop-join-status').textContent = 'ルームが見つかりません';
+    } else {
+      document.getElementById('coop-join-status').textContent = '接続エラー: ' + err.type;
+    }
+    document.getElementById('coop-join-status').style.color = '#f66';
+  });
+}
+
+// 協力プレイヤーのキャラ選択確定時
+const _origConfirmCharacter = window.confirmCharacter;
+window.confirmCharacter = function() {
+  if (isCoopPlayer && hostConnection) {
+    // ホストにjoinリクエストを送信
+    hostConnection.send({ _netMeta: { type: 'join' }, character: _charPick || 'knight' });
+    selectedCharacter = _charPick || 'knight';
+    // キャラ選択画面を閉じてバトル画面へ
+    crossFadeScreen(document.getElementById('char-select-screen'), () => {
+      gameState = 'PLAYING';
+      enterSpectatorMode(); // 観戦カメラで開始、状態受信後に自分のキングに追従
+    });
+    return;
+  }
+  // ホストの場合は元の処理
+  if (_origConfirmCharacter) _origConfirmCharacter();
 };
 
 // 図鑑モーダルのタブ切替
