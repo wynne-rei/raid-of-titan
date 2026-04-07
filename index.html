@@ -2730,12 +2730,8 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
         <span class="hero-icon">🎥</span>
         <span class="hero-label">配信者として戦う</span>
       </button>
-      <button class="hero-btn hero-viewer" onclick="window.startSpectatorMode()">
+      <button class="hero-btn hero-viewer" onclick="window.openNetSpectatorDialog()">
         <span class="hero-icon">📺</span>
-        <span class="hero-label">視聴者として参戦</span>
-      </button>
-      <button class="hero-btn hero-viewer" onclick="window.openNetSpectatorDialog()" style="background:linear-gradient(135deg,#2a4a7a,#3b6baa);">
-        <span class="hero-icon">🌐</span>
         <span class="hero-label">観戦で参加</span>
       </button>
     </div>
@@ -4155,23 +4151,60 @@ body.ui-stream #now-live-overlay { display: none !important; }
 <!-- マルチプレイ: 観戦参加ダイアログ -->
 <div id="net-join-dialog" style="display:none; position:fixed; inset:0; z-index:99999;
   background:rgba(0,0,0,0.85); backdrop-filter:blur(12px);
-  display:none; justify-content:center; align-items:center;">
+  justify-content:center; align-items:center;">
   <div style="background:rgba(20,20,40,0.95); border:1px solid rgba(160,96,255,0.4);
-    border-radius:16px; padding:40px; text-align:center; max-width:400px; width:90%;">
-    <div style="font-size:32px; margin-bottom:8px;">🌐</div>
-    <h2 style="color:#fff; margin:0 0 8px 0; font-size:22px;">マルチプレイ観戦</h2>
-    <p style="color:#aaa; font-size:13px; margin:0 0 24px 0;">ホストのルームコードを入力してください</p>
-    <input type="text" id="net-room-input" maxlength="6" placeholder="ABCDEF"
-      style="text-transform:uppercase; text-align:center; font-size:32px; letter-spacing:8px;
-      font-family:monospace; width:200px; padding:12px; background:rgba(255,255,255,0.1);
-      border:2px solid rgba(160,96,255,0.5); border-radius:8px; color:#fff; outline:none;">
-    <div id="net-join-status" style="color:#ff6; font-size:13px; margin-top:12px; min-height:20px;"></div>
-    <div style="margin-top:20px; display:flex; gap:12px; justify-content:center;">
-      <button onclick="window.joinAsNetSpectator()" style="padding:12px 28px; font-size:16px;
+    border-radius:16px; padding:36px; text-align:center; max-width:440px; width:90%;">
+    <div style="font-size:32px; margin-bottom:8px;">📺</div>
+    <h2 style="color:#fff; margin:0 0 20px 0; font-size:22px;">観戦で参加</h2>
+
+    <!-- モード選択タブ -->
+    <div id="spec-mode-tabs" style="display:flex; gap:8px; margin-bottom:20px;">
+      <button id="spec-tab-net" onclick="window.switchSpecTab('net')" style="flex:1; padding:10px 0; font-size:14px;
         background:linear-gradient(135deg,#6c3baa,#a060ff); color:#fff; border:none;
-        border-radius:8px; cursor:pointer; font-weight:bold;">接続</button>
-      <button onclick="window.closeNetJoinDialog()" style="padding:12px 28px; font-size:16px;
+        border-radius:8px; cursor:pointer; font-weight:bold;">🌐 ルームに接続</button>
+      <button id="spec-tab-local" onclick="window.switchSpecTab('local')" style="flex:1; padding:10px 0; font-size:14px;
         background:rgba(255,255,255,0.1); color:#ccc; border:1px solid rgba(255,255,255,0.2);
+        border-radius:8px; cursor:pointer;">📺 AI対戦を観戦</button>
+    </div>
+
+    <!-- ネット観戦パネル -->
+    <div id="spec-panel-net">
+      <p style="color:#aaa; font-size:13px; margin:0 0 16px 0;">ホストのルームコードを入力</p>
+      <input type="text" id="net-room-input" maxlength="6" placeholder="ABCDEF"
+        style="text-transform:uppercase; text-align:center; font-size:32px; letter-spacing:8px;
+        font-family:monospace; width:200px; padding:12px; background:rgba(255,255,255,0.1);
+        border:2px solid rgba(160,96,255,0.5); border-radius:8px; color:#fff; outline:none;">
+      <div id="net-join-status" style="color:#ff6; font-size:13px; margin-top:12px; min-height:20px;"></div>
+      <div style="margin-top:16px;">
+        <button onclick="window.joinAsNetSpectator()" style="padding:12px 28px; font-size:16px;
+          background:linear-gradient(135deg,#6c3baa,#a060ff); color:#fff; border:none;
+          border-radius:8px; cursor:pointer; font-weight:bold;">接続</button>
+      </div>
+    </div>
+
+    <!-- ローカル観戦パネル -->
+    <div id="spec-panel-local" style="display:none;">
+      <p style="color:#aaa; font-size:13px; margin:0 0 16px 0;">AI同士の4国対戦をリアルタイム観戦</p>
+      <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin:16px 0;">
+        <span style="font-size:36px;">🔥</span>
+        <span style="color:#666; font-size:20px;">vs</span>
+        <span style="font-size:36px;">❄️</span>
+        <span style="color:#666; font-size:20px;">vs</span>
+        <span style="font-size:36px;">💎</span>
+        <span style="color:#666; font-size:20px;">vs</span>
+        <span style="font-size:36px;">⚡</span>
+      </div>
+      <div style="margin-top:16px;">
+        <button onclick="document.getElementById('net-join-dialog').style.display='none'; window.startSpectatorMode()" style="padding:12px 28px; font-size:16px;
+          background:linear-gradient(135deg,#3b6b3b,#50aa50); color:#fff; border:none;
+          border-radius:8px; cursor:pointer; font-weight:bold;">観戦開始</button>
+      </div>
+    </div>
+
+    <!-- 戻るボタン（共通） -->
+    <div style="margin-top:20px;">
+      <button onclick="window.closeNetJoinDialog()" style="padding:10px 24px; font-size:14px;
+        background:rgba(255,255,255,0.08); color:#999; border:1px solid rgba(255,255,255,0.15);
         border-radius:8px; cursor:pointer;">戻る</button>
     </div>
   </div>
@@ -11728,9 +11761,37 @@ function cleanupNetworking() {
 }
 
 // UI handlers
+window.switchSpecTab = function(mode) {
+  const tabNet = document.getElementById('spec-tab-net');
+  const tabLocal = document.getElementById('spec-tab-local');
+  const panelNet = document.getElementById('spec-panel-net');
+  const panelLocal = document.getElementById('spec-panel-local');
+  if (mode === 'net') {
+    tabNet.style.background = 'linear-gradient(135deg,#6c3baa,#a060ff)';
+    tabNet.style.color = '#fff';
+    tabNet.style.border = 'none';
+    tabLocal.style.background = 'rgba(255,255,255,0.1)';
+    tabLocal.style.color = '#ccc';
+    tabLocal.style.border = '1px solid rgba(255,255,255,0.2)';
+    panelNet.style.display = 'block';
+    panelLocal.style.display = 'none';
+    setTimeout(() => document.getElementById('net-room-input')?.focus(), 100);
+  } else {
+    tabLocal.style.background = 'linear-gradient(135deg,#3b6b3b,#50aa50)';
+    tabLocal.style.color = '#fff';
+    tabLocal.style.border = 'none';
+    tabNet.style.background = 'rgba(255,255,255,0.1)';
+    tabNet.style.color = '#ccc';
+    tabNet.style.border = '1px solid rgba(255,255,255,0.2)';
+    panelNet.style.display = 'none';
+    panelLocal.style.display = 'block';
+  }
+};
 window.openNetSpectatorDialog = function() {
   const dlg = document.getElementById('net-join-dialog');
   dlg.style.display = 'flex';
+  // デフォルトでネットタブを表示
+  window.switchSpecTab('net');
   const input = document.getElementById('net-room-input');
   input.value = '';
   document.getElementById('net-join-status').textContent = '';
