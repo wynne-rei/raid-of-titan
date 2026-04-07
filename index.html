@@ -4190,33 +4190,9 @@ const fbxCharacterModels = {};  // { queen: fbxModel, knight: fbxModel, ... }
 let fbxCharactersReady = false;
 
 // キャラクターFBXモデル設定
+// 全キングに使用する統一FBXモデル（Medieval Soldier 1 = dwarfFemale）
+const KING_MODEL_KEY = 'dwarfFemale';
 const CHARACTER_FBX_CONFIG = {
-  queen: {
-    modelPath: 'assets/characters/queen/model.fbx',
-    idlePath: 'assets/characters/queen/idle.fbx',
-    walkPath: 'assets/characters/queen/walk.fbx',
-    textures: {
-      body:      { diffuse: 'assets/characters/queen/body_diffuse.png',  normal: 'assets/characters/queen/body_normal.png' },
-      dress:     { diffuse: 'assets/characters/queen/dress_diffuse.png', normal: 'assets/characters/queen/dress_normal.png' },
-      eyes:      { diffuse: 'assets/characters/queen/eyes_diffuse.png' },
-      hair:      { diffuse: 'assets/characters/queen/hair_diffuse.png',  normal: 'assets/characters/queen/hair_normal.png' },
-      boots:     { diffuse: 'assets/characters/queen/boots_diffuse.png' },
-      hood:      { diffuse: 'assets/characters/queen/hood_diffuse.png' },
-      headdress: { diffuse: 'assets/characters/queen/headdress_diffuse.png' }
-    }
-  },
-  knight: {
-    modelPath: 'assets/characters/knight/model.fbx',
-    idlePath: 'assets/characters/knight/idle.fbx',
-    walkPath: 'assets/characters/knight/walk.fbx',
-    textures: {
-      body:   { diffuse: 'assets/characters/knight/body_diffuse.png',   normal: 'assets/characters/knight/body_normal.png' },
-      hair:   { diffuse: 'assets/characters/knight/hair_diffuse.png',   normal: 'assets/characters/knight/hair_normal.png' },
-      eyes:   { diffuse: 'assets/characters/knight/eyes_diffuse.png' },
-      jacket: { diffuse: 'assets/characters/knight/jacket_diffuse.png', normal: 'assets/characters/knight/jacket_normal.png' },
-      boots:  { diffuse: 'assets/characters/knight/boots_diffuse.png',  normal: 'assets/characters/knight/boots_normal.png' }
-    }
-  },
   dwarfFemale: {
     modelPath: 'assets/characters/dwarfFemale/model.fbx',
     idlePath: 'assets/characters/dwarfFemale/idle.fbx',
@@ -4227,17 +4203,6 @@ const CHARACTER_FBX_CONFIG = {
       helmet:  { diffuse: 'assets/characters/dwarfFemale/helmet_diffuse.png' },
       armor:   { diffuse: 'assets/characters/dwarfFemale/armor_diffuse.png',  normal: 'assets/characters/dwarfFemale/armor_normal.png' }
     }
-  },
-  dwarfMale: {
-    modelPath: 'assets/characters/dwarfMale/model.fbx',
-    idlePath: 'assets/characters/dwarfMale/idle.fbx',
-    walkPath: 'assets/characters/dwarfMale/walk.fbx',
-    textures: {
-      body:   { diffuse: 'assets/characters/dwarfMale/body_diffuse.png',   normal: 'assets/characters/dwarfMale/body_normal.png' },
-      coat:   { diffuse: 'assets/characters/dwarfMale/coat_diffuse.png',   normal: 'assets/characters/dwarfMale/coat_normal.png' },
-      helmet: { diffuse: 'assets/characters/dwarfMale/helmet_diffuse.png' },
-      armor:  { diffuse: 'assets/characters/dwarfMale/armor_diffuse.png', normal: 'assets/characters/dwarfMale/armor_normal.png' }
-    }
   }
 };
 
@@ -4245,16 +4210,15 @@ const CHARACTER_FBX_CONFIG = {
 const TEXTURE_MATERIAL_KEYWORDS = {
   armor:     ['armor', 'sword', 'weapon', 'shield'],
   helmet:    ['helmet', 'helm', 'mask'],
-  coat:      ['coat', 'cloak', 'robe'],
-  dress:     ['dress', 'sundress', 'skirt'],
-  jacket:    ['jacket', 'shirt', 'torso'],
   overall:   ['overall', 'cloth'],
-  boots:     ['boot', 'shoe', 'feet'],
-  hood:      ['hood', 'fur', 'cape'],
-  headdress: ['headdress', 'crown', 'head_acc'],
-  eyes:      ['eye'],
-  hair:      ['hair'],
   body:      ['body', 'skin', 'face', 'jaw']
+};
+
+// 国ごとのキングモデル色味（マテリアルに掛け合わせ）
+const FACTION_KING_TINT = {
+  fire:  new THREE.Color(1.2, 0.8, 0.7),   // 暖色系（赤味）
+  ice:   new THREE.Color(0.7, 0.85, 1.2),  // 寒色系（青味）
+  earth: new THREE.Color(0.8, 1.1, 0.7)    // 自然色（緑味）
 };
 
 // キャラクターFBXをプリロード
@@ -4360,17 +4324,19 @@ function preloadCharacterModels() {
 }
 
 // キャラクターFBXをクローンしてキング用メッシュを生成
-function cloneFBXForKing(charType) {
+function cloneFBXForKing(charType, faction) {
   const srcModel = fbxCharacterModels[charType];
   if (!srcModel) return null;
 
   const group = new THREE.Group();
   const clone = SkeletonUtils.clone(srcModel);
 
-  // マテリアルを個別にクローン（castShadowオフでパフォーマンス改善）
+  // マテリアルを個別にクローン + 国カラー適用
+  const tint = faction && FACTION_KING_TINT[faction];
   clone.traverse((child) => {
     if (child.isMesh || child.isSkinnedMesh) {
       child.material = child.material.clone();
+      if (tint) child.material.color.multiply(tint);
       child.castShadow = false;
       child.receiveShadow = false;
     }
@@ -4519,11 +4485,20 @@ function cloneFBXForUnit(cardId, def) {
 
 // 毎フレームのアニメーション更新
 function updateEntityAnimations(dt) {
+  // 距離カリング: カメラから遠いキャラのアニメーションはスキップ（CPU負荷削減）
+  const MAX_ANIM_DIST_SQ = 800 * 800;
+  const camX = camera ? camera.position.x : 0;
+  const camZ = camera ? camera.position.z : 0;
   for (let i = entityMixers.length - 1; i >= 0; i--) {
     const mixer = entityMixers[i];
-    if (mixer) {
-      mixer.update(dt);
+    if (!mixer) continue;
+    const root = mixer.getRoot();
+    if (root && root.parent) {
+      const pos = root.parent.position;
+      const dx = pos.x - camX, dz = pos.z - camZ;
+      if (dx * dx + dz * dz > MAX_ANIM_DIST_SQ) continue; // 画面外スキップ
     }
+    mixer.update(dt);
   }
 }
 
@@ -7257,16 +7232,12 @@ function createTower(x, z, playerId, faction) {
   const dressColor = color;
   const dressAccent = 0xffd700;
 
-  // FBXはプレイヤーのキングのみ使用、BOTは超軽量3メッシュ版
-  const useFBX = (playerId === 0) && fbxCharactersReady && fbxCharacterModels[charType];
+  // プレイヤーのキングのみFBX（45サブメッシュのため64体は重すぎる）
+  // BOTはシンプル3メッシュ + バウンスアニメで軽量化
+  const useFBX = (playerId === 0) && fbxCharactersReady && fbxCharacterModels[KING_MODEL_KEY];
   const mesh = useFBX
-    ? cloneFBXForKing(charType)
-    : (playerId === 0)
-      ? createCharacterMesh(charType, dressColor, dressAccent)
-      : createSimpleCharacterMesh(charType, dressColor, dressAccent);
-
-  // プレイヤーキングのみアウトライン追加（BOTは省略でドローコール大幅削減）
-  if (playerId === 0 && !useFBX) addOutline(mesh, 0.06);
+    ? cloneFBXForKing(KING_MODEL_KEY, faction)
+    : createSimpleCharacterMesh(charType, dressColor, dressAccent);
 
   mesh.position.set(x, 0, z);
   mesh.castShadow = false;
@@ -12849,6 +12820,16 @@ function updateGame(dt) {
 
   // BOT キング復活処理 & プレイヤーリスポーン
   tryReviveBotKings(dt);
+
+  // BOTキングのバウンスアニメ（シンプルメッシュのみ、FBXはAnimationMixerで処理）
+  for (let i = 1; i < towers.length; i++) {
+    const t = towers[i];
+    if (t.destroyed || !t.mesh || t.mesh.userData.isFBXKing) continue;
+    const elapsed = matchTimer + i * 0.5; // 各BOTでオフセットして同期を避ける
+    t.mesh.children.forEach(child => {
+      if (child.isMesh) child.position.y += Math.sin(elapsed * 2.5) * 0.03; // 微妙な上下揺れ
+    });
+  }
   if (playerRespawnTimer > 0) {
     playerRespawnTimer -= dt;
     showRespawnCountdown(playerRespawnTimer);
