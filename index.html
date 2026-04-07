@@ -6082,7 +6082,7 @@ function restoreBattleState(data) {
       mesh.add(pole);
 
       mesh.position.set(ed.px, ed.py, ed.pz);
-      mesh.castShadow = true;
+      mesh.castShadow = false;
       scene.add(mesh);
 
       // HPバー
@@ -6651,54 +6651,49 @@ function buildArena() {
     addObj(road);
   });
 
-  // ============ 遠景の針葉樹（高品質版） ============
+  // ============ 遠景の針葉樹（軽量版：20本、各3メッシュ） ============
   const treeTrunkMat = new THREE.MeshToonMaterial({ color: 0x3a2820, roughness: 0.9 });
   const treeLeafMat = new THREE.MeshToonMaterial({ color: 0x2a5a38, roughness: 0.8 });
   const treeSnowMat = new THREE.MeshToonMaterial({ color: 0xd8e8f0, roughness: 0.7 });
-  for (let i = 0; i < 80; i++) {
+  const sharedTrunkGeo = new THREE.CylinderGeometry(2, 5, 30, 6);
+  const sharedConeGeo = new THREE.ConeGeometry(14, 40, 6);
+  const sharedSnowGeo = new THREE.ConeGeometry(9, 10, 6);
+  for (let i = 0; i < 20; i++) {
     const angle = Math.random() * Math.PI * 2;
     const dist = arenaW * 0.9 + Math.random() * arenaW * 0.6;
     const tx = Math.cos(angle) * dist;
     const tz = Math.sin(angle) * dist;
     const treeH = 50 + Math.random() * 70;
     const treeGroup = new THREE.Group();
-    // 幹（セグメント増加で滑らか）
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 4, treeH * 0.35, 12), treeTrunkMat);
-    trunk.position.y = treeH * 0.175;
-    trunk.castShadow = true;
+    const trunk = new THREE.Mesh(sharedTrunkGeo, treeTrunkMat);
+    trunk.position.y = 15;
+    trunk.scale.y = treeH / 60;
     treeGroup.add(trunk);
-    // 葉（4段コーン、セグメント増加）
-    for (let j = 0; j < 4; j++) {
-      const coneR = (14 - j * 3) + Math.random() * 3;
-      const coneH = treeH * 0.3;
-      const cone = new THREE.Mesh(new THREE.ConeGeometry(coneR, coneH, 12), treeLeafMat);
-      cone.position.y = treeH * 0.28 + j * coneH * 0.5;
-      cone.castShadow = true;
-      treeGroup.add(cone);
-      // 雪帽子
-      const snowCap = new THREE.Mesh(new THREE.ConeGeometry(coneR * 0.65, coneH * 0.25, 12), treeSnowMat);
-      snowCap.position.y = treeH * 0.28 + j * coneH * 0.5 + coneH * 0.35;
-      treeGroup.add(snowCap);
-    }
+    const cone = new THREE.Mesh(sharedConeGeo, treeLeafMat);
+    cone.position.y = treeH * 0.55;
+    cone.scale.set(1, treeH / 50, 1);
+    treeGroup.add(cone);
+    const snowCap = new THREE.Mesh(sharedSnowGeo, treeSnowMat);
+    snowCap.position.y = treeH * 0.8;
+    treeGroup.add(snowCap);
     treeGroup.position.set(tx, 0, tz);
     addObj(treeGroup);
   }
 
-  // ============ 遠景の山（高品質版） ============
+  // ============ 遠景の山（軽量版：castShadowオフ） ============
   const mountainMat = new THREE.MeshToonMaterial({ color: 0x5a6a7a, roughness: 0.8 });
   const mountainSnowMat = new THREE.MeshToonMaterial({ color: 0xd0dce8, roughness: 0.6 });
-  for (let i = 0; i < 12; i++) {
-    const angle = (i / 12) * Math.PI * 2 + Math.random() * 0.25;
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2 + Math.random() * 0.25;
     const dist = arenaW * 1.8 + Math.random() * arenaW;
     const mx = Math.cos(angle) * dist;
     const mz = Math.sin(angle) * dist;
     const mh = 400 + Math.random() * 600;
     const mr = 250 + Math.random() * 350;
-    const mt = new THREE.Mesh(new THREE.ConeGeometry(mr, mh, 8), mountainMat);
+    const mt = new THREE.Mesh(new THREE.ConeGeometry(mr, mh, 6), mountainMat);
     mt.position.set(mx, mh / 2, mz);
-    mt.castShadow = true;
     addObj(mt);
-    const snowTop = new THREE.Mesh(new THREE.ConeGeometry(mr * 0.45, mh * 0.3, 8), mountainSnowMat);
+    const snowTop = new THREE.Mesh(new THREE.ConeGeometry(mr * 0.45, mh * 0.3, 6), mountainSnowMat);
     snowTop.position.set(mx, mh * 0.68, mz);
     addObj(snowTop);
   }
@@ -6711,13 +6706,11 @@ function buildArena() {
   [-arenaW / 2, arenaW / 2].forEach(x => {
     const wall = new THREE.Mesh(new THREE.BoxGeometry(25, wallH, ARENA_L / 2), wallMat);
     wall.position.set(x, wallH / 2, -ARENA_L / 4);
-    wall.castShadow = true;
     addObj(wall);
   });
   [-ARENA_W_BASE / 2, ARENA_W_BASE / 2].forEach(x => {
     const wall = new THREE.Mesh(new THREE.BoxGeometry(25, wallH, ARENA_L / 2), wallMat);
     wall.position.set(x, wallH / 2, ARENA_L / 4);
-    wall.castShadow = true;
     addObj(wall);
   });
   const backWall1 = new THREE.Mesh(new THREE.BoxGeometry(arenaW, wallH, 25), wallMat);
@@ -6746,31 +6739,21 @@ function buildArena() {
   groundPlane.position.y = 0;
   addObj(groundPlane);
 
-  // ============ 岩のデコレーション（高品質版） ============
+  // ============ 岩のデコレーション（軽量版：15個、共有ジオメトリ） ============
   const rockMat2 = new THREE.MeshToonMaterial({ map: stoneTex, color: 0x7a8a90, roughness: 0.85 });
-  for (let i = 0; i < 60; i++) {
+  const sharedRockGeo = new THREE.DodecahedronGeometry(10, 0);
+  for (let i = 0; i < 15; i++) {
     const rx = (Math.random() - 0.5) * (arenaW - 200);
     const rz = (Math.random() - 0.5) * ARENA_L;
     if (Math.abs(rz) < 20) continue;
-    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(8 + Math.random() * 8, 1), rockMat2);
+    const rock = new THREE.Mesh(sharedRockGeo, rockMat2);
     rock.position.set(rx, getTerrainHeight(rx, rz) + 3, rz);
     rock.scale.set(0.4 + Math.random() * 0.8, 0.3 + Math.random() * 0.5, 0.4 + Math.random() * 0.8);
     rock.rotation.set(Math.random(), Math.random(), Math.random());
-    rock.castShadow = true;
     addObj(rock);
   }
 
-  // ============ 小さな草の束（アリーナ内） ============
-  const grassBladeMat = new THREE.MeshToonMaterial({ color: 0x4a7a3a, roughness: 0.9, side: THREE.DoubleSide });
-  for (let i = 0; i < 300; i++) {
-    const gx = (Math.random() - 0.5) * arenaW * 1.5;
-    const gz = (Math.random() - 0.5) * ARENA_L * 1.5;
-    const h = 2 + Math.random() * 6;
-    const blade = new THREE.Mesh(new THREE.ConeGeometry(0.3, h, 3), grassBladeMat);
-    blade.position.set(gx, getTerrainHeight(gx, gz) + h / 2, gz);
-    blade.rotation.z = (Math.random() - 0.5) * 0.4;
-    addObj(blade);
-  }
+  // 草は完全削除（300メッシュ→0、パフォーマンス最適化）
 
   // ============ 各国拠点建造物 ============
   buildFactionBases();
@@ -6797,14 +6780,12 @@ function buildFactionBases() {
       const geo = isX ? new THREE.BoxGeometry(12, wallH, wallSize) : new THREE.BoxGeometry(wallSize, wallH, 12);
       const wall = new THREE.Mesh(geo, wallMat);
       wall.position.set(fireCenter.x + dx * wallSize/2, wallH/2, fireCenter.z + dz * wallSize/2);
-      wall.castShadow = true;
       addObj(wall);
     });
     // 火の塔（中央）
     const towerMat = new THREE.MeshToonMaterial({ color: 0x8b1a1a, emissive: 0x330000, emissiveIntensity: 0.3, roughness: 0.4, metalness: 0.3 });
     const tower = new THREE.Mesh(new THREE.CylinderGeometry(12, 16, 100, 16), towerMat);
     tower.position.set(fireCenter.x, 50, fireCenter.z);
-    tower.castShadow = true;
     addObj(tower);
     const towerTop = new THREE.Mesh(new THREE.ConeGeometry(18, 30, 16), new THREE.MeshToonMaterial({ color: 0xaa2200, emissive: 0xff3300, emissiveIntensity: 0.5 }));
     towerTop.position.set(fireCenter.x, 115, fireCenter.z);
@@ -6839,7 +6820,7 @@ function buildFactionBases() {
       crystal.position.set(iceCenter.x + ox, h / 2 + 20, iceCenter.z + oz);
       crystal.scale.set(1, h / 30, 1);
       crystal.rotation.y = idx * 0.7;
-      crystal.castShadow = true;
+      // castShadow削除（パフォーマンス最適化）
       addObj(crystal);
       // 台座
       const base = new THREE.Mesh(new THREE.CylinderGeometry(8, 12, 10, 12), new THREE.MeshToonMaterial({ color: 0xaaddee, roughness: 0.3, metalness: 0.4 }));
@@ -6868,14 +6849,13 @@ function buildFactionBases() {
     const trunkMat = new THREE.MeshToonMaterial({ color: 0x5a3a20, roughness: 0.9 });
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(12, 18, 120, 16), trunkMat);
     trunk.position.set(earthCenter.x, 60, earthCenter.z);
-    trunk.castShadow = true;
     addObj(trunk);
     // 樹冠（3層の球）
     const canopyMat = new THREE.MeshToonMaterial({ color: 0x2a6a28, roughness: 0.8 });
     [[0, 130, 0, 50], [-25, 115, 15, 35], [20, 120, -20, 40]].forEach(([ox, oy, oz, r]) => {
       const canopy = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), canopyMat);
       canopy.position.set(earthCenter.x + ox, oy, earthCenter.z + oz);
-      canopy.castShadow = true;
+      // castShadow削除（パフォーマンス最適化）
       addObj(canopy);
     });
     // 木の根（地表に広がる太い根）
@@ -7220,11 +7200,44 @@ function createCharacterMesh(characterType, dressColor, dressAccent) {
   }
 
 
-  // Ensure all children cast shadows
-  mesh.traverse(child => { if (child.isMesh) child.castShadow = true; });
+  // castShadowオフ（パフォーマンス最適化）
+  mesh.traverse(child => { if (child.isMesh) { child.castShadow = false; child.receiveShadow = false; } });
 
-  // Bad North風アウトライン
-  addOutline(mesh, 0.06);
+  // アウトラインはプレイヤーキングのみ（BOTは省略してドローコール削減）
+  // addOutline は createTower 側で playerId === 0 の時のみ呼ぶ
+
+  return mesh;
+}
+
+// BOT用の超軽量キャラメッシュ（3メッシュのみ: 体+頭+王冠）
+function createSimpleCharacterMesh(characterType, dressColor, dressAccent) {
+  const mesh = new THREE.Group();
+  const bodyMat = toonMat(dressColor);
+  const accentM = toonMetalMat(dressAccent);
+  const skinM = toonMat(0xf5d0b0);
+
+  // 体（円柱1つ）
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(3, 5, 20, 6), bodyMat);
+  body.position.y = 10;
+  body.castShadow = false;
+  mesh.add(body);
+
+  // 頭（球1つ）
+  const head = new THREE.Mesh(new THREE.SphereGeometry(3.5, 6, 6), skinM);
+  head.position.y = 24;
+  head.castShadow = false;
+  mesh.add(head);
+
+  // 王冠（円柱1つ）
+  const crown = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3, 2.5, 6), accentM);
+  crown.position.y = 28;
+  crown.castShadow = false;
+  mesh.add(crown);
+
+  // ドワーフは低く太く
+  if (characterType === 'dwarfFemale' || characterType === 'dwarfMale') {
+    mesh.scale.set(1.15, 0.72, 1.1);
+  }
 
   return mesh;
 }
@@ -7244,11 +7257,16 @@ function createTower(x, z, playerId, faction) {
   const dressColor = color;
   const dressAccent = 0xffd700;
 
-  // FBXはプレイヤーのキングのみ使用（BOTはプリミティブ＝軽量）
+  // FBXはプレイヤーのキングのみ使用、BOTは超軽量3メッシュ版
   const useFBX = (playerId === 0) && fbxCharactersReady && fbxCharacterModels[charType];
   const mesh = useFBX
     ? cloneFBXForKing(charType)
-    : createCharacterMesh(charType, dressColor, dressAccent);
+    : (playerId === 0)
+      ? createCharacterMesh(charType, dressColor, dressAccent)
+      : createSimpleCharacterMesh(charType, dressColor, dressAccent);
+
+  // プレイヤーキングのみアウトライン追加（BOTは省略でドローコール大幅削減）
+  if (playerId === 0 && !useFBX) addOutline(mesh, 0.06);
 
   mesh.position.set(x, 0, z);
   mesh.castShadow = false;
@@ -7942,8 +7960,7 @@ function createUnitMesh(cardId, def, baseColor) {
 
   // ユニットのcastShadowオフ（パフォーマンス最適化）
   group.traverse(child => { if (child.isMesh) { child.castShadow = false; child.receiveShadow = false; } });
-  // Bad North風アウトライン
-  addOutline(group, 0.05);
+  // アウトライン削除（ドローコール削減：ユニットは小さいため視認性への影響最小）
   return group;
 }
 
@@ -7996,7 +8013,7 @@ function spawnEntity(cardId, x, z, side) {
     const baseH = (def.size[1] || def.size[0]) / 2;
     const posY = isFBX ? 0 : (def.fly ? 80 * unitScale : baseH * unitScale);
     mesh.position.set(x + ox, posY, z + oz);
-    mesh.castShadow = true;
+    mesh.castShadow = false;
     scene.add(mesh);
 
     // HP bar for entity
