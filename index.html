@@ -1386,6 +1386,83 @@ canvas { display: block; }
   display: flex; align-items: center; justify-content: center; gap: 4px;
   margin-bottom: 4px;
 }
+/* Structure HP */
+/* Boss HP bar */
+.hp-bar-container.boss-hp {
+  width: 160px;
+  border: 2px solid #ff3d00;
+  border-radius: 6px;
+  background: rgba(30,0,0,0.85);
+  padding: 4px 6px;
+  z-index: 800;
+}
+.boss-title {
+  font-size: 12px; font-weight: bold; color: #ffd700;
+  text-align: center; text-shadow: 0 0 8px rgba(255,100,0,0.8);
+  margin-bottom: 3px; letter-spacing: 1px;
+  animation: bossTitleGlow 2s ease-in-out infinite;
+}
+@keyframes bossTitleGlow {
+  0%, 100% { text-shadow: 0 0 8px rgba(255,100,0,0.8); }
+  50% { text-shadow: 0 0 16px rgba(255,200,0,1), 0 0 30px rgba(255,100,0,0.6); }
+}
+.boss-bar-bg {
+  height: 8px !important; border-radius: 4px; background: rgba(0,0,0,0.8) !important;
+  border: 1px solid #ff5722 !important;
+}
+.boss-bar-fill {
+  height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, #ff5722, #ff9800) !important;
+  box-shadow: 0 0 8px rgba(255,100,0,0.6);
+}
+.boss-hp-text {
+  font-size: 10px; color: #ffab91; text-align: center; margin-top: 2px;
+}
+.hp-bar-container.structure-hp {
+  width: 80px;
+}
+.structure-hp .hp-bar-label {
+  font-size: 10px; font-weight: bold; color: #ffd700;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9); margin-bottom: 2px;
+}
+.structure-hp .hp-bar-bg {
+  height: 6px; border-radius: 3px; background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(255,215,0,0.4);
+}
+/* Structure Building Panel */
+#structure-panel {
+  position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.85); border: 2px solid rgba(255,215,0,0.5);
+  border-radius: 12px; padding: 8px 12px; z-index: 600;
+  display: flex; flex-direction: column; gap: 6px; max-width: 90vw;
+}
+#structure-panel-header {
+  display: flex; justify-content: space-between; align-items: center;
+  color: #ffd700; font-size: 14px; font-weight: bold; padding: 0 4px;
+}
+#structure-gdp-display { color: #ffeb3b; font-size: 13px; }
+#structure-cards { display: flex; gap: 6px; overflow-x: auto; }
+.structure-card {
+  flex: 0 0 auto; width: 80px; background: rgba(40,40,40,0.9);
+  border: 2px solid rgba(255,255,255,0.2); border-radius: 8px;
+  padding: 6px; text-align: center; cursor: pointer; transition: all 0.2s;
+  color: #fff; font-size: 11px;
+}
+.structure-card:hover { border-color: #ffd700; transform: translateY(-3px); }
+.structure-card.disabled { opacity: 0.4; cursor: not-allowed; }
+.structure-card.max-reached { border-color: #666; opacity: 0.3; }
+.structure-card .sc-icon { font-size: 24px; display: block; margin-bottom: 2px; }
+.structure-card .sc-name { font-weight: bold; margin-bottom: 2px; }
+.structure-card .sc-cost { color: #ffd700; font-size: 10px; }
+.structure-card .sc-desc { color: #aaa; font-size: 9px; line-height: 1.2; }
+.structure-card .sc-count { color: #888; font-size: 9px; }
+#structure-toggle-btn {
+  position: fixed; bottom: 90px; right: 16px;
+  background: rgba(0,0,0,0.8); border: 2px solid #ffd700; color: #ffd700;
+  padding: 8px 14px; border-radius: 10px; font-size: 14px; cursor: pointer;
+  z-index: 590; font-weight: bold;
+}
+#structure-toggle-btn:hover { background: rgba(255,215,0,0.2); }
 .player-hp .queen-lv-badge {
   background: linear-gradient(135deg, #ffd700, #ff8c00);
   color: #1a0a00; font-size: 11px; font-weight: bold;
@@ -3044,6 +3121,16 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
   </div>
   <div id="card-hand"></div>
 </div>
+
+<!-- Structure Building Panel -->
+<div id="structure-panel" style="display:none;">
+  <div id="structure-panel-header">
+    <span>🏗️ 施設建設</span>
+    <span id="structure-gdp-display">GDP: 0</span>
+  </div>
+  <div id="structure-cards"></div>
+</div>
+<button id="structure-toggle-btn" onclick="toggleStructurePanel()" style="display:none;">🏗️ 建設</button>
 
 <!-- Card hover tooltip -->
 <div id="card-tooltip"></div>
@@ -4751,6 +4838,22 @@ const MATCH_TIME = 300;
 const OVERTIME = 120;
 const ELIXIR_RATE = 1 / 2.8;
 const ELIXIR_RATE_DOUBLE = 1 / 1.4;
+
+// ============================================================
+// 共通定数（リファクタリング用）
+// ============================================================
+const BOSS_HP_MULT = 2.0;          // ボスHP倍率
+const BOSS_DMG_MULT = 2.0;         // ボス攻撃力倍率
+const BOSS_SCALE = 1.8;            // ボスメッシュスケール
+const BOSS_KILL_GDP_REWARD = 300;   // ボス撃破GDP報酬
+const BOSS_KILL_XP_SELF = 50;      // ボス撃破時XP（自分）
+const BOSS_KILL_XP_ALLY = 25;      // ボス撃破時XP（味方）
+const DIVER_BUFF_RADIUS = 60;      // ダイバーバフ範囲
+const DIVER_GIFT_MAX = 200;        // ダイバー資源ギフト上限
+const DIVER_GIFT_DEFAULT = 100;    // ダイバー資源ギフトデフォルト
+const TERRITORY_CHECK_INTERVAL = 5; // 領土チェック間隔（秒）
+const GOLD_CHEST_GDP = 200;        // ゴールドチェストGDP報酬
+const ENHANCE_HP_MULT = 1.25;      // 強化チェストHP倍率
 const AUTO_SPAWN_INTERVAL = 20;
 const AUTO_SPAWN_VARIANCE = 5;
 
@@ -4853,6 +4956,44 @@ const CARD_DEFS = {
     shape: 'cylinder', size: [5, 12, 5], count: 1
   }
 };
+
+// ============================================================
+// STRUCTURE_DEFS — 永続施設定義
+// ============================================================
+const STRUCTURE_DEFS = {
+  farm: {
+    name: '農場', icon: '🌾', cost: 150,
+    hp: 800, effect: 'elixirBoost', effectValue: 0.15,
+    description: 'エリクサー回復速度+15%',
+    color: 0x8bc34a, size: { w: 18, h: 8, d: 18 }, maxPerFaction: 3
+  },
+  watchtower: {
+    name: '見張り塔', icon: '🗼', cost: 200,
+    hp: 600, effect: 'visionRange', effectValue: 50,
+    dmg: 40, range: 80, attackSpeed: 1.5,
+    description: '範囲内の敵を自動攻撃',
+    color: 0x795548, size: { w: 8, h: 24, d: 8 }, maxPerFaction: 4
+  },
+  wall: {
+    name: '城壁', icon: '🧱', cost: 100,
+    hp: 1500, effect: 'barrier', effectValue: 0,
+    description: '敵の侵入を阻む壁',
+    color: 0x9e9e9e, size: { w: 30, h: 12, d: 6 }, maxPerFaction: 6
+  },
+  smithy: {
+    name: '鍛冶場', icon: '⚒️', cost: 250,
+    hp: 700, effect: 'attackBoost', effectValue: 0.2,
+    description: '味方ユニット攻撃力+20%',
+    color: 0xf44336, size: { w: 14, h: 10, d: 14 }, maxPerFaction: 2
+  },
+  altar: {
+    name: '祭壇', icon: '🔮', cost: 300,
+    hp: 500, effect: 'gdpBoost', effectValue: 0.3,
+    description: 'GDP収入+30%',
+    color: 0x9c27b0, size: { w: 12, h: 16, d: 12 }, maxPerFaction: 1
+  }
+};
+const STRUCTURE_IDS = Object.keys(STRUCTURE_DEFS);
 
 // ============================================================
 // GAME STATE
@@ -5017,6 +5158,9 @@ let groundPlane;
 
 // Territory
 let territoryShift = 0;
+
+// 永続施設
+let structures = []; // { type, faction, x, z, hp, maxHp, mesh, hpContainer, destroyed, attackTimer }
 
 // Auto-spawn system
 let factionSpawnTimers = initFactionMap(5);
@@ -5333,6 +5477,37 @@ function updateQueenAuraAnimation(dt) {
     // Rotate ring
     if (child.geometry?.type === 'TorusGeometry') {
       child.rotation.z += dt * 0.3;
+    }
+  });
+}
+
+// ボスオーラアニメーション更新
+function updateBossAuras(dt) {
+  entities.forEach(e => {
+    if (!e.isRaidBoss || e.hp <= 0 || !e.mesh) return;
+    e.mesh.children.forEach(child => {
+      // オーラリング回転
+      if (child.userData.isBossAura) {
+        child.rotation.z += dt * 1.5;
+        child.material.opacity = 0.3 + Math.sin(Date.now() * 0.003) * 0.15;
+      }
+      // パーティクル回転
+      if (child.userData.isBossParticles) {
+        child.rotation.y += dt * 0.8;
+        const posAttr = child.geometry.attributes.position;
+        for (let i = 0; i < posAttr.count; i++) {
+          const y = posAttr.getY(i);
+          posAttr.setY(i, y + Math.sin(Date.now() * 0.005 + i) * 0.05);
+        }
+        posAttr.needsUpdate = true;
+      }
+    });
+    // ボスHPバーのテキスト更新
+    if (e.hpContainer && e.hpContainer.classList.contains('boss-hp')) {
+      const hpText = e.hpContainer.querySelector('.boss-hp-text');
+      if (hpText) hpText.textContent = `${Math.ceil(e.hp)} / ${e.maxHp}`;
+      const fill = e.hpContainer.querySelector('.boss-bar-fill');
+      if (fill) fill.style.width = (e.hp / e.maxHp * 100) + '%';
     }
   });
 }
@@ -6065,6 +6240,12 @@ function serializeBattleState() {
   // chests配列（座標のみ）
   data.chests = chests.map(c => ({ x: c.x, z: c.z }));
 
+  // structures配列
+  data.structures = structures.map(s => ({
+    type: s.type, faction: s.faction, x: s.x, z: s.z,
+    hp: s.hp, maxHp: s.maxHp, destroyed: s.destroyed
+  }));
+
   // lastFactionEliminated: Set→Array
   data.lastFactionEliminated = [...lastFactionEliminated];
 
@@ -6094,6 +6275,8 @@ function restoreBattleState(data) {
     spellEffects = [];
     towers.forEach(t => { if (t.mesh && t.mesh.parent) scene.remove(t.mesh); if (t.hpContainer) t.hpContainer.remove(); });
     towers = [];
+    structures.forEach(s => { if (s.mesh) scene.remove(s.mesh); if (s.hpContainer) s.hpContainer.remove(); });
+    structures = [];
     chests.forEach(c => scene.remove(c.mesh));
     chests = [];
     document.getElementById('hp-bars-container').innerHTML = '';
@@ -6301,6 +6484,27 @@ function restoreBattleState(data) {
       spawnChestAt(cd.x, cd.z);
     });
 
+    // 9.5. structures再生成
+    if (data.structures) {
+      structures.forEach(s => { if (s.mesh) scene.remove(s.mesh); if (s.hpContainer) s.hpContainer.remove(); });
+      structures = [];
+      data.structures.forEach(sd => {
+        if (sd.destroyed) return;
+        const mesh = createStructureMesh(sd.type, sd.faction);
+        mesh.position.set(sd.x, 0, sd.z);
+        scene.add(mesh);
+        const hpContainer = document.createElement('div');
+        hpContainer.className = 'hp-bar-container structure-hp';
+        hpContainer.innerHTML = `<div class="hp-bar-label">${STRUCTURE_DEFS[sd.type].icon} ${STRUCTURE_DEFS[sd.type].name}</div>
+          <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${(sd.hp/sd.maxHp)*100}%;background:${FACTIONS[sd.faction].colorHex}"></div></div>`;
+        document.getElementById('hp-bars-container')?.appendChild(hpContainer);
+        structures.push({
+          type: sd.type, faction: sd.faction, x: sd.x, z: sd.z,
+          hp: sd.hp, maxHp: sd.maxHp, mesh, hpContainer, destroyed: false, attackTimer: 0
+        });
+      });
+    }
+
     // 10. lastFactionEliminated: 配列→Set
     lastFactionEliminated = new Set(data.lastFactionEliminated || []);
 
@@ -6310,6 +6514,7 @@ function restoreBattleState(data) {
     { const _pg = document.getElementById('postgame-screen'); _pg.style.display = 'none'; _pg.classList.remove('visible', 'win', 'lose'); }
     document.getElementById('hud').style.display = 'block';
     document.getElementById('battle-dock').style.display = 'flex';
+    document.getElementById('structure-toggle-btn').style.display = '';
     document.getElementById('commentary-box').style.display = 'block';
     document.getElementById('bottom-status-bar').style.display = 'block';
     document.getElementById('player-stats-panel').style.display = 'block';
@@ -7395,6 +7600,546 @@ function createSimpleCharacterMesh(characterType, dressColor, dressAccent) {
   return mesh;
 }
 
+// ============================================================
+// STRUCTURE SYSTEM — 永続施設
+// ============================================================
+function createStructureMesh(type, faction) {
+  const def = STRUCTURE_DEFS[type];
+  const factionData = FACTIONS[faction];
+  const group = new THREE.Group();
+  const mainColor = def.color;
+  const accentColor = factionData.color;
+
+  switch (type) {
+    case 'farm': {
+      const base = new THREE.Mesh(
+        new THREE.BoxGeometry(def.size.w, 2, def.size.d),
+        new THREE.MeshToonMaterial({ color: 0x6d4c41 })
+      );
+      base.position.y = 1;
+      group.add(base);
+      const field = new THREE.Mesh(
+        new THREE.BoxGeometry(def.size.w - 4, 1, def.size.d - 4),
+        new THREE.MeshToonMaterial({ color: 0x4caf50 })
+      );
+      field.position.y = 2.5;
+      group.add(field);
+      for (let row = -2; row <= 2; row++) {
+        for (let col = -2; col <= 2; col++) {
+          const crop = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.5, 0.5, 3, 6),
+            new THREE.MeshToonMaterial({ color: 0xcddc39 })
+          );
+          crop.position.set(col * 3, 4.5, row * 3);
+          group.add(crop);
+        }
+      }
+      const pole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.3, 0.3, 10, 6),
+        new THREE.MeshToonMaterial({ color: 0x795548 })
+      );
+      pole.position.set(def.size.w / 2 - 1, 7, 0);
+      group.add(pole);
+      const flag = new THREE.Mesh(
+        new THREE.PlaneGeometry(5, 3),
+        new THREE.MeshBasicMaterial({ color: accentColor, side: THREE.DoubleSide })
+      );
+      flag.position.set(def.size.w / 2 + 1.5, 11, 0);
+      group.add(flag);
+      break;
+    }
+    case 'watchtower': {
+      const pillar = new THREE.Mesh(
+        new THREE.BoxGeometry(def.size.w, def.size.h, def.size.d),
+        new THREE.MeshToonMaterial({ color: mainColor })
+      );
+      pillar.position.y = def.size.h / 2;
+      group.add(pillar);
+      const platform = new THREE.Mesh(
+        new THREE.BoxGeometry(def.size.w + 4, 2, def.size.d + 4),
+        new THREE.MeshToonMaterial({ color: 0x5d4037 })
+      );
+      platform.position.y = def.size.h;
+      group.add(platform);
+      const roof = new THREE.Mesh(
+        new THREE.ConeGeometry(8, 6, 4),
+        new THREE.MeshToonMaterial({ color: accentColor })
+      );
+      roof.position.y = def.size.h + 5;
+      roof.rotation.y = Math.PI / 4;
+      group.add(roof);
+      const light = new THREE.Mesh(
+        new THREE.SphereGeometry(1.5, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0xffeb3b })
+      );
+      light.position.y = def.size.h + 1;
+      group.add(light);
+      break;
+    }
+    case 'wall': {
+      const wallBody = new THREE.Mesh(
+        new THREE.BoxGeometry(def.size.w, def.size.h, def.size.d),
+        new THREE.MeshToonMaterial({ color: mainColor })
+      );
+      wallBody.position.y = def.size.h / 2;
+      group.add(wallBody);
+      for (let i = -3; i <= 3; i++) {
+        const merlon = new THREE.Mesh(
+          new THREE.BoxGeometry(3, 3, def.size.d + 1),
+          new THREE.MeshToonMaterial({ color: 0x757575 })
+        );
+        merlon.position.set(i * 4, def.size.h + 1.5, 0);
+        group.add(merlon);
+      }
+      const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(def.size.w + 0.2, 1.5, def.size.d + 0.2),
+        new THREE.MeshToonMaterial({ color: accentColor })
+      );
+      stripe.position.y = def.size.h * 0.7;
+      group.add(stripe);
+      break;
+    }
+    case 'smithy': {
+      const building = new THREE.Mesh(
+        new THREE.BoxGeometry(def.size.w, def.size.h, def.size.d),
+        new THREE.MeshToonMaterial({ color: 0x616161 })
+      );
+      building.position.y = def.size.h / 2;
+      group.add(building);
+      const roofGeo = new THREE.BoxGeometry(def.size.w + 2, 2, def.size.d + 2);
+      const roofMesh = new THREE.Mesh(roofGeo, new THREE.MeshToonMaterial({ color: mainColor }));
+      roofMesh.position.y = def.size.h + 1;
+      group.add(roofMesh);
+      const chimney = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.5, 2, 6, 8),
+        new THREE.MeshToonMaterial({ color: 0x424242 })
+      );
+      chimney.position.set(def.size.w / 2 - 3, def.size.h + 4, 0);
+      group.add(chimney);
+      const anvil = new THREE.Mesh(
+        new THREE.BoxGeometry(3, 2, 2),
+        new THREE.MeshToonMaterial({ color: 0x37474f })
+      );
+      anvil.position.set(-def.size.w / 2 - 2, 1, 0);
+      group.add(anvil);
+      const sign = new THREE.Mesh(
+        new THREE.PlaneGeometry(4, 3),
+        new THREE.MeshBasicMaterial({ color: accentColor, side: THREE.DoubleSide })
+      );
+      sign.position.set(0, def.size.h + 3, def.size.d / 2 + 0.5);
+      group.add(sign);
+      break;
+    }
+    case 'altar': {
+      const platform = new THREE.Mesh(
+        new THREE.CylinderGeometry(def.size.w / 2, def.size.w / 2 + 2, 3, 16),
+        new THREE.MeshToonMaterial({ color: 0x37474f })
+      );
+      platform.position.y = 1.5;
+      group.add(platform);
+      for (let a = 0; a < 4; a++) {
+        const angle = (a / 4) * Math.PI * 2;
+        const px = Math.cos(angle) * (def.size.w / 2 - 1);
+        const pz = Math.sin(angle) * (def.size.w / 2 - 1);
+        const pil = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.8, 0.8, def.size.h, 8),
+          new THREE.MeshToonMaterial({ color: mainColor })
+        );
+        pil.position.set(px, def.size.h / 2 + 3, pz);
+        group.add(pil);
+      }
+      const orb = new THREE.Mesh(
+        new THREE.SphereGeometry(2.5, 16, 16),
+        new THREE.MeshBasicMaterial({ color: accentColor, transparent: true, opacity: 0.8 })
+      );
+      orb.position.y = def.size.h + 2;
+      orb.userData.isOrb = true;
+      group.add(orb);
+      const glow = new THREE.Mesh(
+        new THREE.SphereGeometry(4, 16, 16),
+        new THREE.MeshBasicMaterial({ color: accentColor, transparent: true, opacity: 0.2 })
+      );
+      glow.position.y = def.size.h + 2;
+      glow.userData.isGlow = true;
+      group.add(glow);
+      break;
+    }
+  }
+
+  group.castShadow = false;
+  return group;
+}
+
+function buildStructure(type, x, z, faction) {
+  const def = STRUCTURE_DEFS[type];
+  if (!def) return null;
+
+  // GDP check
+  if ((factionGDP[faction] || 0) < def.cost) return null;
+
+  // Max count check
+  const existing = structures.filter(s => s.type === type && s.faction === faction && !s.destroyed);
+  if (existing.length >= def.maxPerFaction) return null;
+
+  // Consume GDP
+  addGDP(faction, -def.cost);
+
+  // Create mesh
+  const mesh = createStructureMesh(type, faction);
+  mesh.position.set(x, 0, z);
+  scene.add(mesh);
+
+  // HP bar (DOM)
+  const hpContainer = document.createElement('div');
+  hpContainer.className = 'hp-bar-container structure-hp';
+  const colorHex = FACTIONS[faction].colorHex;
+  hpContainer.innerHTML = `
+    <div class="hp-bar-label">${def.icon} ${def.name}</div>
+    <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:100%;background:${colorHex}"></div></div>`;
+  document.getElementById('hp-bars-container')?.appendChild(hpContainer);
+
+  const structure = {
+    type, faction, x, z,
+    hp: def.hp, maxHp: def.hp,
+    mesh, hpContainer,
+    destroyed: false,
+    attackTimer: 0
+  };
+  structures.push(structure);
+
+  // Visual feedback
+  addCommentary(`${FACTIONS[faction].icon} ${FACTIONS[faction].name}が${def.name}を建設！`, faction);
+  createBuildEffect(x, z, FACTIONS[faction].color);
+
+  return structure;
+}
+
+function createBuildEffect(x, z, color) {
+  const count = 20;
+  const geo = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * 20;
+    positions[i * 3 + 1] = Math.random() * 15;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({ color, size: 3, transparent: true, opacity: 0.8 });
+  const points = new THREE.Points(geo, mat);
+  points.position.set(x, 0, z);
+  scene.add(points);
+
+  let elapsed = 0;
+  const anim = () => {
+    elapsed += 0.016;
+    mat.opacity = Math.max(0, 0.8 - elapsed * 0.6);
+    points.position.y += 0.3;
+    if (elapsed < 1.5) requestAnimationFrame(anim);
+    else { scene.remove(points); geo.dispose(); mat.dispose(); }
+  };
+  requestAnimationFrame(anim);
+}
+
+function getStructureBoosts(faction) {
+  const boosts = { elixirBoost: 0, attackBoost: 0, gdpBoost: 0 };
+  structures.forEach(s => {
+    if (s.faction === faction && !s.destroyed) {
+      const def = STRUCTURE_DEFS[s.type];
+      if (def.effect === 'elixirBoost') boosts.elixirBoost += def.effectValue;
+      if (def.effect === 'attackBoost') boosts.attackBoost += def.effectValue;
+      if (def.effect === 'gdpBoost') boosts.gdpBoost += def.effectValue;
+    }
+  });
+  return boosts;
+}
+
+function updateStructures(dt) {
+  structures.forEach(s => {
+    if (s.destroyed) return;
+
+    // HP bar position update
+    if (s.hpContainer && s.mesh) {
+      const pos3 = new THREE.Vector3(s.x, STRUCTURE_DEFS[s.type].size.h + 5, s.z);
+      pos3.project(camera);
+      const x2 = (pos3.x * 0.5 + 0.5) * window.innerWidth;
+      const y2 = (-pos3.y * 0.5 + 0.5) * window.innerHeight;
+      s.hpContainer.style.left = x2 + 'px';
+      s.hpContainer.style.top = y2 + 'px';
+      s.hpContainer.style.display = pos3.z < 1 ? '' : 'none';
+      const fill = s.hpContainer.querySelector('.hp-bar-fill');
+      if (fill) fill.style.width = (s.hp / s.maxHp * 100) + '%';
+    }
+
+    // Watchtower auto-attack
+    if (s.type === 'watchtower') {
+      const def = STRUCTURE_DEFS.watchtower;
+      s.attackTimer = (s.attackTimer || 0) + dt;
+      if (s.attackTimer >= def.attackSpeed) {
+        let nearest = null, minDist = def.range;
+        entities.forEach(e => {
+          if (players[e.side]?.faction === s.faction) return;
+          const dx = e.mesh.position.x - s.x;
+          const dz = e.mesh.position.z - s.z;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist < minDist) { minDist = dist; nearest = e; }
+        });
+        if (nearest) {
+          s.attackTimer = 0;
+          const boosts = getStructureBoosts(s.faction);
+          const dmg = def.dmg * (1 + boosts.attackBoost);
+          nearest.hp -= dmg;
+          nearest.lastHitBy = -1;
+          createStructureProjectile(s.x, STRUCTURE_DEFS.watchtower.size.h, s.z, nearest);
+        }
+      }
+    }
+
+    // Altar orb floating animation
+    if (s.type === 'altar' && s.mesh) {
+      s.mesh.children.forEach(child => {
+        if (child.userData.isOrb) {
+          child.position.y = STRUCTURE_DEFS.altar.size.h + 2 + Math.sin(Date.now() * 0.002) * 1.5;
+        }
+        if (child.userData.isGlow) {
+          child.position.y = STRUCTURE_DEFS.altar.size.h + 2 + Math.sin(Date.now() * 0.002) * 1.5;
+          child.material.opacity = 0.15 + Math.sin(Date.now() * 0.003) * 0.1;
+        }
+      });
+    }
+  });
+}
+
+function createStructureProjectile(sx, sy, sz, target) {
+  const geo = new THREE.SphereGeometry(1, 8, 8);
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffeb3b });
+  const proj = new THREE.Mesh(geo, mat);
+  proj.position.set(sx, sy, sz);
+  scene.add(proj);
+
+  let elapsed = 0;
+  const startPos = new THREE.Vector3(sx, sy, sz);
+  const anim = () => {
+    elapsed += 0.03;
+    if (!target.mesh || elapsed >= 1) {
+      scene.remove(proj); geo.dispose(); mat.dispose();
+      return;
+    }
+    proj.position.lerpVectors(startPos, target.mesh.position, elapsed);
+    requestAnimationFrame(anim);
+  };
+  requestAnimationFrame(anim);
+}
+
+function damageStructure(structure, amount) {
+  if (structure.destroyed) return;
+  structure.hp -= amount;
+  if (structure.hp <= 0) {
+    structure.hp = 0;
+    structure.destroyed = true;
+    if (structure.mesh) {
+      scene.remove(structure.mesh);
+      structure.mesh = null;
+    }
+    if (structure.hpContainer) {
+      structure.hpContainer.remove();
+      structure.hpContainer = null;
+    }
+    createBuildEffect(structure.x, structure.z, 0xff5722);
+    const def = STRUCTURE_DEFS[structure.type];
+    addCommentary(`💥 ${FACTIONS[structure.faction].icon} ${def.name}が破壊された！`, structure.faction);
+  }
+}
+
+// ダイバー専用: バフ投下（エリア効果）
+function applyDiverBuff(x, z, faction, buffType) {
+  const radius = DIVER_BUFF_RADIUS;
+  const fac = FACTIONS[faction];
+
+  if (buffType === 'rage') {
+    // レイジバフ: 範囲内の味方ユニットを一時強化
+    entities.forEach(e => {
+      if (players[e.side]?.faction !== faction) return;
+      const dx = e.mesh.position.x - x;
+      const dz = e.mesh.position.z - z;
+      if (Math.sqrt(dx * dx + dz * dz) < radius) {
+        e.raged = Math.max(e.raged, 5);
+        e.rageBoost = 1.4;
+      }
+    });
+    addCommentary(`💪 ダイバーが${fac.icon}${fac.name}にレイジバフ投下！`, faction);
+  } else if (buffType === 'heal') {
+    // ヒールバフ: 範囲内の味方ユニットを回復
+    entities.forEach(e => {
+      if (players[e.side]?.faction !== faction) return;
+      const dx = e.mesh.position.x - x;
+      const dz = e.mesh.position.z - z;
+      if (Math.sqrt(dx * dx + dz * dz) < radius) {
+        e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.25);
+      }
+    });
+    addCommentary(`💚 ダイバーが${fac.icon}${fac.name}にヒールバフ投下！`, faction);
+  } else if (buffType === 'shield') {
+    // シールドバフ: 範囲内の味方ユニットのHPを一時増加
+    entities.forEach(e => {
+      if (players[e.side]?.faction !== faction) return;
+      const dx = e.mesh.position.x - x;
+      const dz = e.mesh.position.z - z;
+      if (Math.sqrt(dx * dx + dz * dz) < radius) {
+        const shield = Math.floor(e.maxHp * 0.3);
+        e.hp += shield;
+        e.maxHp += shield;
+      }
+    });
+    addCommentary(`🛡️ ダイバーが${fac.icon}${fac.name}にシールドバフ投下！`, faction);
+  }
+
+  // エフェクト表示
+  const effGeo = new THREE.RingGeometry(0, radius, 32);
+  const effMat = new THREE.MeshBasicMaterial({
+    color: buffType === 'rage' ? 0xff4444 : buffType === 'heal' ? 0x44ff44 : 0x4444ff,
+    transparent: true, opacity: 0.4, side: THREE.DoubleSide
+  });
+  const effMesh = new THREE.Mesh(effGeo, effMat);
+  effMesh.position.set(x, 1, z);
+  effMesh.rotation.x = -Math.PI / 2;
+  scene.add(effMesh);
+  let effTimer = 0;
+  const animBuff = () => {
+    effTimer += 0.016;
+    effMat.opacity = Math.max(0, 0.4 - effTimer * 0.3);
+    effMesh.scale.set(1 + effTimer * 0.5, 1 + effTimer * 0.5, 1);
+    if (effTimer < 1.5) requestAnimationFrame(animBuff);
+    else { scene.remove(effMesh); effGeo.dispose(); effMat.dispose(); }
+  };
+  requestAnimationFrame(animBuff);
+}
+
+// ダイバーアクション: ローカルでも使えるように（ダイバーモード時）
+function executeDiverAction(actionType) {
+  if (!humanPlayer) return;
+  const faction = humanPlayer.faction;
+
+  if (actionType === 'repair') {
+    // 最もHPが低い施設を修理
+    const damaged = structures.filter(s => !s.destroyed && s.faction === faction && s.hp < s.maxHp)
+      .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+    if (damaged.length > 0) {
+      const t = damaged[0];
+      const healAmount = t.maxHp * 0.3;
+      t.hp = Math.min(t.maxHp, t.hp + healAmount);
+      createBuildEffect(t.x, t.z, 0x4caf50);
+      addCommentary(`🔧 ${STRUCTURE_DEFS[t.type].name}を修理！(+${Math.floor(healAmount)}HP)`, faction);
+    } else {
+      addCommentary(`修理が必要な施設がありません`, faction);
+    }
+  } else if (actionType === 'buff') {
+    // プレイヤーのキングタワー周辺にレイジバフ
+    const kt = humanPlayer.kingTower;
+    if (kt && !kt.destroyed) {
+      applyDiverBuff(kt.mesh.position.x, kt.mesh.position.z, faction, 'rage');
+    }
+  } else if (actionType === 'gift') {
+    // GDP +100 を自国に贈る
+    addGDP(faction, 100);
+    addCommentary(`🎁 GDP+100 を贈った！`, faction);
+    createBuildEffect(PLAYER_POSITIONS[0].x, PLAYER_POSITIONS[0].z, 0xffd700);
+  }
+}
+
+// Structure panel state
+let structurePanelOpen = false;
+let structurePlacementMode = null;
+
+window.toggleStructurePanel = function() {
+  structurePanelOpen = !structurePanelOpen;
+  const panel = document.getElementById('structure-panel');
+  if (panel) {
+    panel.style.display = structurePanelOpen ? '' : 'none';
+    if (structurePanelOpen) renderStructurePanel();
+  }
+};
+
+function renderStructurePanel() {
+  const container = document.getElementById('structure-cards');
+  if (!container || !humanPlayer) return;
+  const faction = humanPlayer.faction;
+  const gdp = Math.floor(factionGDP[faction] || 0);
+
+  const gdpDisp = document.getElementById('structure-gdp-display');
+  if (gdpDisp) gdpDisp.textContent = 'GDP: ' + gdp.toLocaleString();
+
+  let html = '';
+  STRUCTURE_IDS.forEach(id => {
+    const def = STRUCTURE_DEFS[id];
+    const existing = structures.filter(s => s.type === id && s.faction === faction && !s.destroyed).length;
+    const maxReached = existing >= def.maxPerFaction;
+    const canAfford = gdp >= def.cost;
+    const disabled = maxReached || !canAfford ? 'disabled' : '';
+    const maxClass = maxReached ? 'max-reached' : '';
+
+    html += `<div class="structure-card ${disabled} ${maxClass}" data-structure="${id}">
+      <span class="sc-icon">${def.icon}</span>
+      <div class="sc-name">${def.name}</div>
+      <div class="sc-cost">💰 ${def.cost} GDP</div>
+      <div class="sc-desc">${def.description}</div>
+      <div class="sc-count">${existing}/${def.maxPerFaction}</div>
+    </div>`;
+  });
+  container.innerHTML = html;
+
+  container.querySelectorAll('.structure-card:not(.disabled)').forEach(el => {
+    el.addEventListener('click', () => {
+      const sid = el.dataset.structure;
+      startStructurePlacement(sid);
+    });
+  });
+}
+
+function startStructurePlacement(structureType) {
+  structurePlacementMode = structureType;
+  structurePanelOpen = false;
+  const panel = document.getElementById('structure-panel');
+  if (panel) panel.style.display = 'none';
+
+  const def = STRUCTURE_DEFS[structureType];
+  const guide = document.getElementById('placement-guide');
+  if (guide) {
+    guide.style.display = 'block';
+    guide.classList.add('visible');
+    guide.innerHTML = `<span class="pg-key">${def.icon} ${def.name}</span>を設置 <span class="pg-sep">|</span> <span class="pg-key">左クリック</span>決定 <span class="pg-sep">|</span> <span class="pg-key">ESC</span>キャンセル`;
+  }
+
+  if (window._structureGhost) { scene.remove(window._structureGhost); }
+  window._structureGhost = createStructureMesh(structureType, humanPlayer.faction);
+  window._structureGhost.traverse(child => {
+    if (child.material) {
+      child.material = child.material.clone();
+      child.material.transparent = true;
+      child.material.opacity = 0.5;
+    }
+  });
+  scene.add(window._structureGhost);
+}
+
+function cancelStructurePlacement() {
+  structurePlacementMode = null;
+  if (window._structureGhost) {
+    scene.remove(window._structureGhost);
+    window._structureGhost = null;
+  }
+  const guide = document.getElementById('placement-guide');
+  if (guide) { guide.style.display = 'none'; guide.classList.remove('visible'); }
+}
+
+function confirmStructurePlacement(x, z) {
+  if (!structurePlacementMode || !humanPlayer) return;
+  const result = buildStructure(structurePlacementMode, x, z, humanPlayer.faction);
+  if (result) {
+    cancelStructurePlacement();
+    renderStructurePanel();
+  }
+}
+
 function createTower(x, z, playerId, faction) {
   const radius = 10;
   const height = 25;
@@ -7623,6 +8368,78 @@ function updateGDPDisplay() {
     row.classList.toggle('mine', fid === myFac);
     row.classList.toggle('near-win', fid === top);
   });
+}
+
+// ============================================================
+// TERRITORY EXPANSION — GDP閾値で領土自動拡張
+// ============================================================
+const TERRITORY_THRESHOLDS = [500, 1200, 2500, 5000]; // GDP閾値
+let lastTerritoryLevel = 0;
+let territoryExpandTimer = 0;
+
+function checkTerritoryExpansion(dt) {
+  if (!humanPlayer) return;
+  territoryExpandTimer += dt;
+  if (territoryExpandTimer < TERRITORY_CHECK_INTERVAL) return;
+  territoryExpandTimer = 0;
+
+  const myGdp = factionGDP[humanPlayer.faction] || 0;
+  let newLevel = 0;
+  for (let i = 0; i < TERRITORY_THRESHOLDS.length; i++) {
+    if (myGdp >= TERRITORY_THRESHOLDS[i]) newLevel = i + 1;
+  }
+
+  if (newLevel > lastTerritoryLevel) {
+    lastTerritoryLevel = newLevel;
+    territoryShift = newLevel * 15;
+
+    // 視覚フィードバック
+    const fac = FACTIONS[humanPlayer.faction];
+    addCommentary(`🏳️ ${fac.icon} ${fac.name}の領土がレベル${newLevel}に拡張！`, humanPlayer.faction);
+    speakKabira(`${fac.name}の領土が拡張した！`, 'normal');
+
+    // 拡張演出: 国旗を立てる
+    const basePos = PLAYER_POSITIONS[0];
+    for (let fi = 0; fi < 3; fi++) {
+      const angle = (fi / 3) * Math.PI * 2 + Math.random() * 0.5;
+      const dist = 60 + newLevel * 25 + Math.random() * 30;
+      const fx = basePos.x + Math.cos(angle) * dist;
+      const fz = basePos.z + Math.sin(angle) * dist;
+      createTerritoryFlag(fx, fz, fac.color);
+    }
+
+    // 道路の追加
+    const roadLen = 40 + newLevel * 20;
+    const roadGeo = new THREE.BoxGeometry(roadLen, 0.3, 4);
+    const roadMat = new THREE.MeshToonMaterial({ color: 0x8d6e63 });
+    const road = new THREE.Mesh(roadGeo, roadMat);
+    road.position.set(
+      basePos.x + (Math.random() - 0.5) * 50,
+      0.2,
+      basePos.z + (Math.random() - 0.5) * 50
+    );
+    road.rotation.y = Math.random() * Math.PI;
+    scene.add(road);
+    arenaObjects.push(road);
+  }
+}
+
+function createTerritoryFlag(x, z, color) {
+  const pole = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3, 0.3, 15, 6),
+    new THREE.MeshToonMaterial({ color: 0x795548 })
+  );
+  pole.position.set(x, 7.5, z);
+  scene.add(pole);
+  arenaObjects.push(pole);
+
+  const flag = new THREE.Mesh(
+    new THREE.PlaneGeometry(6, 4),
+    new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.9 })
+  );
+  flag.position.set(x + 3, 13, z);
+  scene.add(flag);
+  arenaObjects.push(flag);
 }
 
 // ============================================================
@@ -8537,13 +9354,46 @@ function updateEntities(dt) {
 
     // Dead check
     if (e.hp <= 0) {
-      // Raid unit death commentary
+      // Raid boss death: 報酬 & 演出
       if (e.raidName) {
+        const killerFac = e.lastHitBy >= 0 && players[e.lastHitBy] ? players[e.lastHitBy].faction : null;
         if (e.lastHitBy === 0) {
-          addCommentary(`🏆 あなたが${e.raidName}を討伐！`, players[0]?.faction || 'system');
-          addQueenXP(25);
+          addCommentary(`🏆 あなたが${e.raidName}を討伐！ GDP+${BOSS_KILL_GDP_REWARD}＆カード獲得！`, players[0]?.faction || 'system');
+          addQueenXP(BOSS_KILL_XP_SELF);
         } else {
-          addCommentary(`💀 ${e.raidName}が討伐された！`, 'system');
+          addCommentary(`💀 ${e.raidName}が討伐された！ 討伐報酬発生！`, 'system');
+        }
+        // ボス撃破報酬: GDP+300 to killer's faction
+        if (killerFac) {
+          addGDP(killerFac, BOSS_KILL_GDP_REWARD);
+          speakKabira(`${e.raidName}討伐！GDPが${BOSS_KILL_GDP_REWARD}増加！`, 'high');
+        }
+        // ボス撃破報酬: ランダムカードを手札に追加
+        if (e.lastHitBy === 0 && humanPlayer) {
+          const allCards = Object.keys(CARD_DEFS);
+          const bonusCard = allCards[Math.floor(Math.random() * allCards.length)];
+          if (handCards.length < 8) {
+            handCards.push(bonusCard);
+            addCommentary(`🎁 ${CARD_DEFS[bonusCard].icon} ${CARD_DEFS[bonusCard].name}を獲得！`, humanPlayer.faction);
+            renderHand();
+          }
+        }
+        // ボス撃破エフェクト（大きな爆発パーティクル）
+        if (e.mesh) {
+          for (let bj = 0; bj < 15; bj++) {
+            const bGeo = new THREE.SphereGeometry(1.5, 6, 6);
+            const bMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+            const bp = new THREE.Mesh(bGeo, bMat);
+            bp.position.copy(e.mesh.position);
+            scene.add(bp);
+            spellEffects.push({
+              mesh: bp, timer: 1.0 + Math.random() * 0.5,
+              vy: 2 + Math.random() * 4,
+              vx: (Math.random() - 0.5) * 4,
+              vz: (Math.random() - 0.5) * 4,
+              particle: true
+            });
+          }
         }
       }
       // Credit unit kill
@@ -8745,6 +9595,26 @@ function updateEntities(dt) {
           e.mesh.position.x += (dx / len) * e.speed * speedMult * dt;
           e.mesh.position.z += (dz / len) * e.speed * speedMult * dt;
           e.mesh.lookAt(nearestTower.x, e.mesh.position.y, nearestTower.z);
+        }
+      }
+    }
+
+    // Structure collision: attack walls and nearby enemy structures
+    if (!e.isBuilding) {
+      for (let si = 0; si < structures.length; si++) {
+        const s = structures[si];
+        if (s.destroyed || s.faction === (players[e.side]?.faction)) continue;
+        const sdx = e.mesh.position.x - s.x;
+        const sdz = e.mesh.position.z - s.z;
+        const sDist = Math.sqrt(sdx * sdx + sdz * sdz);
+        if (s.type === 'wall' && sDist < 25) {
+          e.attackTimer -= dt * speedMult;
+          if (e.attackTimer <= 0) {
+            e.attackTimer = e.attackSpeed;
+            damageStructure(s, e.dmg);
+            showDamageNumber(s.x, s.z, Math.round(e.dmg));
+          }
+          break;
         }
       }
     }
@@ -9318,17 +10188,61 @@ function finalizeRaidSpawn() {
   // Find the just-spawned entity (last one added)
   const entity = entities[entities.length - 1];
   if (entity) {
-    entity.hp = Math.floor(entity.hp * 1.5);
-    entity.maxHp = Math.floor(entity.maxHp * 1.5);
-    entity.dmg = Math.floor(entity.dmg * 1.5);
-    entity.dmgBase = Math.floor(entity.dmgBase * 1.5);
-    entity.dmgMax = Math.floor(entity.dmgMax * 1.5);
+    // ボス強化
+    entity.hp = Math.floor(entity.hp * BOSS_HP_MULT);
+    entity.maxHp = Math.floor(entity.maxHp * BOSS_HP_MULT);
+    entity.dmg = Math.floor(entity.dmg * BOSS_DMG_MULT);
+    entity.dmgBase = Math.floor(entity.dmgBase * BOSS_DMG_MULT);
+    entity.dmgMax = Math.floor(entity.dmgMax * BOSS_DMG_MULT);
     entity.raidName = raid.name;
-    entity.mesh.scale.multiplyScalar(1.3);
+    entity.isRaidBoss = true;
+    entity.mesh.scale.multiplyScalar(BOSS_SCALE);
     const factionColor = FACTIONS[fid].color;
-    const auraLight = new THREE.PointLight(factionColor, 2, 120);
+
+    // ボスオーラ: 点光源
+    const auraLight = new THREE.PointLight(factionColor, 3, 150);
     auraLight.position.set(0, 10, 0);
     entity.mesh.add(auraLight);
+
+    // ボスオーラ: パーティクルリング
+    const auraGeo = new THREE.RingGeometry(12, 16, 32);
+    const auraMat = new THREE.MeshBasicMaterial({
+      color: factionColor, transparent: true, opacity: 0.4, side: THREE.DoubleSide
+    });
+    const auraRing = new THREE.Mesh(auraGeo, auraMat);
+    auraRing.rotation.x = -Math.PI / 2;
+    auraRing.position.y = 1;
+    auraRing.userData.isBossAura = true;
+    entity.mesh.add(auraRing);
+
+    // ボスオーラ: 浮遊パーティクル
+    const particleCount = 30;
+    const pGeo = new THREE.BufferGeometry();
+    const pPositions = new Float32Array(particleCount * 3);
+    for (let pi = 0; pi < particleCount; pi++) {
+      const angle = (pi / particleCount) * Math.PI * 2;
+      const r = 10 + Math.random() * 6;
+      pPositions[pi * 3] = Math.cos(angle) * r;
+      pPositions[pi * 3 + 1] = 3 + Math.random() * 15;
+      pPositions[pi * 3 + 2] = Math.sin(angle) * r;
+    }
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+    const pMat = new THREE.PointsMaterial({
+      color: factionColor, size: 2.5, transparent: true, opacity: 0.7
+    });
+    const bossParticles = new THREE.Points(pGeo, pMat);
+    bossParticles.userData.isBossParticles = true;
+    entity.mesh.add(bossParticles);
+
+    // ボス専用HPバー（二つ名＋赤枠）
+    if (entity.hpContainer) {
+      entity.hpContainer.classList.add('boss-hp');
+      entity.hpContainer.innerHTML = `
+        <div class="boss-title">👑 ${raid.name}</div>
+        <div class="hp-bar-bg boss-bar-bg"><div class="hp-bar-fill boss-bar-fill" style="width:100%;background:linear-gradient(90deg, #ff5722, #ff9800)"></div></div>
+        <div class="hp-text boss-hp-text">${entity.hp} / ${entity.maxHp}</div>
+      `;
+    }
   }
 
   // Dramatic announcement
@@ -9986,6 +10900,15 @@ function cancelPlacement() {
 }
 
 function updateGhostPosition() {
+  // Structure ghost update
+  if (window._structureGhost && structurePlacementMode) {
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObject(groundPlane);
+    if (hits.length > 0) {
+      window._structureGhost.position.set(hits[0].point.x, 0, hits[0].point.z);
+    }
+  }
+
   const label = document.getElementById('ghost-label');
   if (!ghostMesh || !playerKingTower || !placementMode) {
     if (label) label.classList.remove('visible');
@@ -10029,41 +10952,70 @@ function updateGhostPosition() {
 // ============================================================
 // CHEST SYSTEM
 // ============================================================
+// チェスト種類定義
+const CHEST_TYPES = {
+  normal:    { name: '木のチェスト',   icon: '📦', bodyColor: 0xffc107, lidColor: 0xffb300, ringColor: 0xffd700, weight: 50 },
+  gold:      { name: 'ゴールドチェスト', icon: '💰', bodyColor: 0xffd700, lidColor: 0xffab00, ringColor: 0xffe082, weight: 20 },
+  blueprint: { name: '設計図チェスト', icon: '📐', bodyColor: 0x42a5f5, lidColor: 0x1e88e5, ringColor: 0x90caf9, weight: 15 },
+  enhance:   { name: '強化の書チェスト', icon: '📜', bodyColor: 0xab47bc, lidColor: 0x8e24aa, ringColor: 0xce93d8, weight: 15 }
+};
+
+function getRandomChestType() {
+  const totalWeight = Object.values(CHEST_TYPES).reduce((s, t) => s + t.weight, 0);
+  let r = Math.random() * totalWeight;
+  for (const [id, def] of Object.entries(CHEST_TYPES)) {
+    r -= def.weight;
+    if (r <= 0) return id;
+  }
+  return 'normal';
+}
+
 function spawnChest() {
   if (chests.length >= CHEST_MAX) return;
 
-  // Spawn across the whole field
   const x = (Math.random() - 0.5) * (ARENA_W_BASE * 0.8);
   const z = (Math.random() - 0.5) * (ARENA_L * 0.8);
+
+  const chestType = getRandomChestType();
+  const ct = CHEST_TYPES[chestType];
 
   const group = new THREE.Group();
 
   // Chest body
   const bodyGeo = new THREE.BoxGeometry(12, 10, 10);
-  const bodyMat = new THREE.MeshToonMaterial({ color: 0xffc107, emissive: 0xff8f00, emissiveIntensity: 0.3 });
+  const bodyMat = new THREE.MeshToonMaterial({ color: ct.bodyColor, emissive: ct.bodyColor, emissiveIntensity: 0.3 });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
   body.position.y = 5;
   group.add(body);
 
   // Chest lid
   const lidGeo = new THREE.BoxGeometry(13, 4, 11);
-  const lidMat = new THREE.MeshToonMaterial({ color: 0xffb300 });
+  const lidMat = new THREE.MeshToonMaterial({ color: ct.lidColor });
   const lid = new THREE.Mesh(lidGeo, lidMat);
   lid.position.y = 12;
   group.add(lid);
 
   // Glow ring
   const ringGeo = new THREE.RingGeometry(14, 16, 16);
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
+  const ringMat = new THREE.MeshBasicMaterial({ color: ct.ringColor, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
   const ring = new THREE.Mesh(ringGeo, ringMat);
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 1;
   group.add(ring);
 
+  // ゴールド/設計図/強化チェストには特別マーカー
+  if (chestType !== 'normal') {
+    const markerGeo = new THREE.SphereGeometry(2, 8, 8);
+    const markerMat = new THREE.MeshBasicMaterial({ color: ct.ringColor, transparent: true, opacity: 0.7 });
+    const marker = new THREE.Mesh(markerGeo, markerMat);
+    marker.position.y = 16;
+    group.add(marker);
+  }
+
   group.position.set(x, 0, z);
   scene.add(group);
 
-  chests.push({ mesh: group, x, z });
+  chests.push({ mesh: group, x, z, type: chestType });
 }
 
 function updateChests(dt) {
@@ -10114,10 +11066,14 @@ function pickupChest(chest, index) {
   scene.remove(chest.mesh);
   chests.splice(index, 1);
 
-  // Pickup particles
+  const chestType = chest.type || 'normal';
+  const ct = CHEST_TYPES[chestType];
+
+  // Pickup particles (色をチェストタイプに合わせる)
+  const pColor = ct.ringColor;
   for (let i = 0; i < 10; i++) {
     const pGeo = new THREE.SphereGeometry(2, 4, 4);
-    const pMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+    const pMat = new THREE.MeshBasicMaterial({ color: pColor });
     const p = new THREE.Mesh(pGeo, pMat);
     p.position.set(chest.x, 10, chest.z);
     scene.add(p);
@@ -10130,18 +11086,110 @@ function pickupChest(chest, index) {
     });
   }
 
-  // Get random card
+  const faction = humanPlayer ? humanPlayer.faction : 'fire';
+
+  if (chestType === 'gold') {
+    // ゴールドチェスト: GDP+200
+    addGDP(faction, GOLD_CHEST_GDP);
+    const notify = document.createElement('div');
+    notify.className = 'card-pickup-notify';
+    notify.style.color = '#ffd700';
+    notify.textContent = `${ct.icon} GDP +${GOLD_CHEST_GDP}!`;
+    document.body.appendChild(notify);
+    setTimeout(() => notify.remove(), 1500);
+    addCommentary(`💰 ゴールドチェスト獲得！GDP+200！`, faction);
+    return;
+  }
+
+  if (chestType === 'blueprint') {
+    // 設計図チェスト: ランダム施設を建設可能エリアに自動配置
+    const availableStructures = STRUCTURE_IDS.filter(id => {
+      const def = STRUCTURE_DEFS[id];
+      const count = structures.filter(s => s.type === id && s.faction === faction && !s.destroyed).length;
+      return count < def.maxPerFaction;
+    });
+    if (availableStructures.length > 0) {
+      const sType = availableStructures[Math.floor(Math.random() * availableStructures.length)];
+      const sDef = STRUCTURE_DEFS[sType];
+      const basePos = PLAYER_POSITIONS[0];
+      const sx = basePos.x + (Math.random() - 0.5) * 80;
+      const sz = basePos.z + (Math.random() - 0.5) * 80;
+      // 無料で施設を建設（GDP消費なし）
+      const mesh = createStructureMesh(sType, faction);
+      mesh.position.set(sx, 0, sz);
+      scene.add(mesh);
+      const hpContainer = document.createElement('div');
+      hpContainer.className = 'hp-bar-container structure-hp';
+      hpContainer.innerHTML = `<div class="hp-bar-label">${sDef.icon} ${sDef.name}</div>
+        <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:100%;background:${FACTIONS[faction].colorHex}"></div></div>`;
+      document.getElementById('hp-bars')?.appendChild(hpContainer);
+      structures.push({
+        type: sType, faction, x: sx, z: sz,
+        hp: sDef.hp, maxHp: sDef.hp, mesh, hpContainer, destroyed: false, attackTimer: 0
+      });
+      createBuildEffect(sx, sz, FACTIONS[faction].color);
+      const notify = document.createElement('div');
+      notify.className = 'card-pickup-notify';
+      notify.style.color = '#42a5f5';
+      notify.textContent = `${ct.icon} ${sDef.icon} ${sDef.name}を獲得！`;
+      document.body.appendChild(notify);
+      setTimeout(() => notify.remove(), 1500);
+      addCommentary(`📐 設計図チェスト！${sDef.name}が建設された！`, faction);
+    } else {
+      // 全施設上限: 代わりにGDP+150
+      addGDP(faction, 150);
+      const notify = document.createElement('div');
+      notify.className = 'card-pickup-notify';
+      notify.textContent = `${ct.icon} 施設上限！GDP+150に変換`;
+      document.body.appendChild(notify);
+      setTimeout(() => notify.remove(), 1500);
+    }
+    return;
+  }
+
+  if (chestType === 'enhance') {
+    // 強化の書チェスト: 既存施設のHP＆効果をレベルアップ
+    const myStructures = structures.filter(s => s.faction === faction && !s.destroyed);
+    if (myStructures.length > 0) {
+      const target = myStructures[Math.floor(Math.random() * myStructures.length)];
+      const sDef = STRUCTURE_DEFS[target.type];
+      target.maxHp = Math.floor(target.maxHp * ENHANCE_HP_MULT);
+      target.hp = Math.min(target.maxHp, target.hp + Math.floor(target.maxHp * 0.5));
+      createBuildEffect(target.x, target.z, 0xab47bc);
+      const notify = document.createElement('div');
+      notify.className = 'card-pickup-notify';
+      notify.style.color = '#ce93d8';
+      notify.textContent = `${ct.icon} ${sDef.icon} ${sDef.name}を強化！`;
+      document.body.appendChild(notify);
+      setTimeout(() => notify.remove(), 1500);
+      addCommentary(`📜 強化の書！${sDef.name}がパワーアップ！(HP+25%)`, faction);
+    } else {
+      // 施設なし: 代わりにカード配布
+      const cardId = getRandomCard();
+      const def = CARD_DEFS[cardId];
+      if (handCards.length < HAND_MAX) {
+        handCards.push(cardId);
+        renderHand();
+      }
+      const notify = document.createElement('div');
+      notify.className = 'card-pickup-notify';
+      notify.textContent = `${def.icon} ${def.name} GET!`;
+      document.body.appendChild(notify);
+      setTimeout(() => notify.remove(), 1500);
+    }
+    return;
+  }
+
+  // 通常チェスト: カード獲得（従来通り）
   const cardId = getRandomCard();
   const def = CARD_DEFS[cardId];
 
-  // Show notification
   const notify = document.createElement('div');
   notify.className = 'card-pickup-notify';
   notify.textContent = `${def.icon} ${def.name} GET!`;
   document.body.appendChild(notify);
   setTimeout(() => notify.remove(), 1500);
 
-  // Add to hand or show deck edit
   if (handCards.length < HAND_MAX) {
     handCards.push(cardId);
     renderHand();
@@ -11743,6 +12791,39 @@ function handleSpectatorCommand(data, conn) {
     addCommentary(`🌐🎁 観戦者が ${def.icon} ${def.name} を援軍として投入！`, faction);
     console.log('[NET] Spectator spawn:', cardId, 'at', x, z);
   }
+
+  // ダイバー専用: 施設修理コマンド
+  if (data._netMeta.type === 'diverRepair') {
+    const { x, z, faction } = data;
+    const target = structures.find(s => !s.destroyed && s.faction === faction &&
+      Math.sqrt((s.x - x) ** 2 + (s.z - z) ** 2) < 30);
+    if (target) {
+      const healAmount = target.maxHp * 0.3;
+      target.hp = Math.min(target.maxHp, target.hp + healAmount);
+      createBuildEffect(target.x, target.z, 0x4caf50);
+      addCommentary(`🔧 ダイバーが${STRUCTURE_DEFS[target.type].name}を修理！(+${Math.floor(healAmount)}HP)`, faction);
+    }
+  }
+
+  // ダイバー専用: バフ投下コマンド
+  if (data._netMeta.type === 'diverBuff') {
+    const { x, z, faction, buffType } = data;
+    applyDiverBuff(x, z, faction, buffType || 'rage');
+  }
+
+  // ダイバー専用: 資源ギフトコマンド
+  if (data._netMeta.type === 'diverGift') {
+    const { faction, amount } = data;
+    const giftAmount = Math.min(amount || DIVER_GIFT_DEFAULT, DIVER_GIFT_MAX);
+    addGDP(faction, giftAmount);
+    const fac = FACTIONS[faction];
+    addCommentary(`🎁 ダイバーが${fac.icon}${fac.name}にGDP+${giftAmount}を贈った！`, faction);
+    createBuildEffect(
+      PLAYER_POSITIONS[0].x,
+      PLAYER_POSITIONS[0].z,
+      0xffd700
+    );
+  }
 }
 
 function updateNetViewerCount() {
@@ -12409,6 +13490,11 @@ window.startBattle = function() {
   spellEffects = [];
   towers.forEach(t => { if (t.mesh.parent) scene.remove(t.mesh); t.hpContainer.remove(); });
   towers = [];
+  structures.forEach(s => { if (s.mesh) scene.remove(s.mesh); if (s.hpContainer) s.hpContainer.remove(); });
+  structures = [];
+  structurePanelOpen = false;
+  structurePlacementMode = null;
+  if (window._structureGhost) { scene.remove(window._structureGhost); window._structureGhost = null; }
   document.getElementById('hp-bars-container').innerHTML = '';
 
   // Reset state
@@ -12456,6 +13542,7 @@ window.startBattle = function() {
   document.getElementById('commentary-box').style.display = 'block';
   document.getElementById('commentary-box').innerHTML = '';
   document.getElementById('bottom-status-bar').style.display = 'block';
+  document.getElementById('structure-toggle-btn').style.display = '';
 
   // Reset stats
   myUnits = [];
@@ -12599,6 +13686,15 @@ function setupInput() {
 
   renderer.domElement.addEventListener('click', (e) => {
     if (gameState !== 'PLAYING' && gameState !== 'OVERTIME' && gameState !== 'TUTORIAL') return;
+    // 施設配置モード
+    if (structurePlacementMode) {
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObject(groundPlane);
+      if (hits.length > 0) {
+        confirmStructurePlacement(hits[0].point.x, hits[0].point.z);
+      }
+      return;
+    }
     // 視聴者のギフト配置優先
     if (giftPlacementMode) {
       confirmGiftPlacement();
@@ -12636,7 +13732,7 @@ function setupInput() {
         else playCard(idx);
       }
     }
-    if (e.key === 'Escape') { cancelPlacement(); cancelGiftPlacement(); }
+    if (e.key === 'Escape') { cancelPlacement(); cancelGiftPlacement(); cancelStructurePlacement(); }
     if (e.key.toLowerCase() === 'e' && placementMode) confirmPlacement();
     if (e.key.toLowerCase() === 'e' && giftPlacementMode) confirmGiftPlacement();
     // P キー: ポーズ（現時点のリザルトを表示）
@@ -13348,7 +14444,8 @@ function updateGame(dt) {
   FACTION_IDS.forEach(fid => {
     const aliveTowers = towers.filter(t => !t.destroyed && players[t.playerId]?.faction === fid).length;
     const aliveUnits = entities.filter(e => players[e.side]?.faction === fid).length;
-    addGDP(fid, (aliveTowers * 1 + aliveUnits * 0.2) * dt);
+    const fBoosts = getStructureBoosts(fid);
+    addGDP(fid, (aliveTowers * 1 + aliveUnits * 0.2) * (1 + fBoosts.gdpBoost) * dt);
   });
 
   // BOT キング復活処理 & プレイヤーリスポーン
@@ -13373,7 +14470,8 @@ function updateGame(dt) {
   }
 
   // Elixir
-  const rate = ELIXIR_RATE;
+  const myBoosts = humanPlayer ? getStructureBoosts(humanPlayer.faction) : { elixirBoost: 0 };
+  const rate = ELIXIR_RATE * (1 + myBoosts.elixirBoost);
   elixir = Math.min(ELIXIR_MAX, elixir + rate * dt);
   // 協力プレイヤー（リモート）のエリクサー回復
   players.forEach(p => {
@@ -13405,10 +14503,14 @@ function updateGame(dt) {
   updateKingMovement(dt);
   updateGhostPosition();
   updateChests(dt);
+  updateStructures(dt);
   if (frameCount % 3 === 0) { updateHUD(); updateMinimap(); }
+  if (structurePanelOpen && frameCount % 10 === 0) renderStructurePanel();
   updateCommentary(dt);
   if (frameCount % 3 === 0) updatePlayerStats(dt);
   updateQueenAuraAnimation(dt);
+  updateBossAuras(dt);
+  checkTerritoryExpansion(dt);
   if (frameCount % 3 === 0) updateActionStatus();
 
   // Re-render hand (for elixir cost checking)

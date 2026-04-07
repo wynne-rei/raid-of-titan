@@ -1,40 +1,33 @@
-# PvP → 協力プレイ（PvE）化 + 雷の国削除
+# フィールド発展＋防衛システム実装
 
-## 概要
-- 4国FFA → **3国PvE協力**（火・氷・土）
-- プレイヤーの国: 最大4人プレイヤー + 無制限ダイバー
-- 敵2国: AI制御
+## Phase 1: 永続施設システム ★★★
+- [x] STRUCTURE_DEFS定義（農場・見張り塔・城壁・鍛冶場・祭壇）
+- [x] buildStructure() — GDP消費でフィールドに永続施設を建設
+- [x] 施設のプロシージャルメッシュ生成
+- [x] 施設効果の適用（エリクサー速度UP、攻撃力UP等）
+- [x] 施設HPと敵による破壊
+- [x] 施設建設UIカード（手札とは別の建設パネル）
 
-## Step 1: 雷の国を削除（3国に戻す） ✅
-- [x] JS定数: FACTIONS, FACTION_IDS, FACTION_KING_TINT, FACTION_PALETTES, CARD_FACTIONS, AUTO_SPAWN_CARDS
-- [x] HTML: 国選択の雷カード、GDPバー、タイトルボタン、ローカル観戦パネル
-- [x] CSS: lightning関連スタイル全削除
-- [x] 3D: 雷の国拠点オブジェクト削除
-- [x] テレイン象限分割を3国用に修正
+## Phase 2: ボス強化 ★★★
+- [x] ボスの巨大化（1.8倍スケール）
+- [x] ボスオーラエフェクト（パーティクル＋リング＋光源）
+- [x] ボスHPバー特別演出（赤枠＋二つ名表示＋グロー）
+- [x] ボス撃破報酬（GDP+300＆カード配布）
 
-## Step 2: プレイヤー構成変更 ✅
-- [x] NUM_PLAYERS=3, PLAYER_NAMES, PLAYER_CHARACTER_MAP, PLAYER_POSITIONS
+## Phase 3: 領土拡張 ★★☆
+- [x] GDP閾値で自動拡張（500/1200/2500/5000）
+- [x] 拡張時の視覚フィードバック（国旗・道路追加）
 
-## Step 3: buildTowers() 3国用リライト ✅
-- [x] Player0=人間, Player1,2=AI敵
+## Phase 4: ダイバー専用アクション ★★☆
+- [x] 施設修理コマンド（diverRepair）
+- [x] バフ投下コマンド（diverBuff: rage/heal/shield）
+- [x] 資源ギフトコマンド（diverGift）
 
-## Step 4: 協力プレイヤー動的追加 ✅
-- [x] addCoopPlayer() — キングタワー生成、デッキ初期化
-- [x] removeCoopPlayer() — 切断時タワー削除
+## Phase 5: 新チェスト種類 ★☆☆
+- [x] ゴールドチェスト（GDP+200）
+- [x] 設計図チェスト（施設建設カード — 無料で施設自動配置）
+- [x] 強化の書チェスト（施設HP+25%レベルアップ）
 
-## Step 5: 「プレイヤーとして戦う」導線変更 ✅
-- [x] 「新しく始める（ホスト）」or「ルームコードで参加」選択ダイアログ
-- [x] openPlayerModeDialog(), startAsHost(), showCoopJoinInput()
-
-## Step 6: ネットワーク協力プレイヤー対応 ✅
-- [x] ホスト側: join/move/coopSpawnコマンド処理
-- [x] 参加者側: initCoopNetworking(), キャラ選択→join送信
-- [x] 切断時のタワー自動削除
-
-## Step 7: テレイン・拠点調整 ✅
-- [x] 雷拠点削除済み、3国用配置確認OK
-
-## Step 8: エリクサー・デッキ ✅
-- [x] 個別エリクサー回復（isRemoteプレイヤー対応）
-- [x] 協力プレイヤー用デッキ初期化（自国カードからランダム配布）
-- [x] serializeBattleState/restoreBattleStateにisHuman/isRemote追加
+## Phase 6: リファクタリング
+- [x] マジックナンバーを定数化（BOSS_*, DIVER_*, TERRITORY_*, CHEST定数）
+- [x] window.toggleStructurePanel修正（module scopeバグ修正）
