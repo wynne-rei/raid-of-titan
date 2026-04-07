@@ -912,19 +912,19 @@ canvas { display: block; }
 
 /* Player Stats Panel — Right Side */
 #player-stats-panel {
-  position: fixed; top: 50%; right: 0; transform: translateY(-50%);
-  z-index: 55; transition: right 0.3s;
+  position: fixed; top: 50%; left: 0; transform: translateY(-50%);
+  z-index: 55; transition: left 0.3s;
 }
 #player-stats-panel #ps-toggle {
-  position: absolute; left: -44px; top: 50%; transform: translateY(-50%);
+  position: absolute; right: -44px; top: 50%; transform: translateY(-50%);
   width: 44px; height: 56px;
   background: linear-gradient(180deg, rgba(30,26,18,0.95), rgba(15,12,6,0.95));
-  border: 1px solid rgba(200,168,80,0.4); border-right: none;
-  border-radius: 6px 0 0 6px;
+  border: 1px solid rgba(200,168,80,0.4); border-left: none;
+  border-radius: 0 6px 6px 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   cursor: pointer;
   font-size: 20px; color: #e8c870; pointer-events: auto;
-  box-shadow: -4px 0 14px rgba(0,0,0,0.5), inset 1px 0 0 rgba(255,255,255,0.06);
+  box-shadow: 4px 0 14px rgba(0,0,0,0.5), inset -1px 0 0 rgba(255,255,255,0.06);
   transition: all 0.25s;
   gap: 2px;
 }
@@ -934,22 +934,22 @@ canvas { display: block; }
 #player-stats-panel #ps-toggle:hover {
   background: linear-gradient(180deg, rgba(50,42,24,0.95), rgba(25,20,10,0.95));
   color: #ffd700;
-  box-shadow: -4px 0 20px rgba(200,168,80,0.35), inset 1px 0 0 rgba(255,255,255,0.1);
+  box-shadow: 4px 0 20px rgba(200,168,80,0.35), inset -1px 0 0 rgba(255,255,255,0.1);
 }
 #player-stats-panel.open #ps-toggle { color: #ffd700; }
 #player-stats-panel.open #ps-toggle::after { color: #e8c870; }
 #player-stats-panel #ps-content {
   width: 280px; max-height: 70vh; overflow-y: auto;
   background: linear-gradient(180deg, rgba(15,12,6,0.95), rgba(8,6,3,0.95));
-  border: 1px solid rgba(200,168,80,0.35); border-right: none;
-  border-radius: 8px 0 0 8px; padding: 14px; display: none;
+  border: 1px solid rgba(200,168,80,0.35); border-left: none;
+  border-radius: 0 8px 8px 0; padding: 14px; display: none;
   scrollbar-width: thin; scrollbar-color: #3a3020 transparent;
-  box-shadow: -8px 0 24px rgba(0,0,0,0.6);
+  box-shadow: 8px 0 24px rgba(0,0,0,0.6);
   backdrop-filter: blur(6px);
 }
 #player-stats-panel.open #ps-content { display: block; animation: psSlideIn 0.3s ease-out; }
 @keyframes psSlideIn {
-  from { opacity: 0; transform: translateX(20px); }
+  from { opacity: 0; transform: translateX(-20px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 #ps-personal { margin-bottom: 6px; }
@@ -11329,10 +11329,10 @@ function updateGhostPosition() {
 // ============================================================
 // チェスト種類定義
 const CHEST_TYPES = {
-  normal:    { name: '木のチェスト',   icon: '📦', bodyColor: 0xffc107, lidColor: 0xffb300, ringColor: 0xffd700, weight: 50 },
-  gold:      { name: 'ゴールドチェスト', icon: '💰', bodyColor: 0xffd700, lidColor: 0xffab00, ringColor: 0xffe082, weight: 20 },
-  blueprint: { name: '設計図チェスト', icon: '📐', bodyColor: 0x42a5f5, lidColor: 0x1e88e5, ringColor: 0x90caf9, weight: 15 },
-  enhance:   { name: '強化の書チェスト', icon: '📜', bodyColor: 0xab47bc, lidColor: 0x8e24aa, ringColor: 0xce93d8, weight: 15 }
+  normal:    { name: '木のチェスト',   icon: '📦', bodyColor: 0x8B5E3C, lidColor: 0x6B3F1F, ringColor: 0xD2A06B, trimColor: 0x5C3A1E, lockColor: 0x888888, weight: 50 },
+  gold:      { name: 'ゴールドチェスト', icon: '💰', bodyColor: 0xFFD700, lidColor: 0xDAA520, ringColor: 0xFFEA70, trimColor: 0xB8860B, lockColor: 0xFFD700, weight: 20 },
+  blueprint: { name: '設計図チェスト', icon: '📐', bodyColor: 0x1E90FF, lidColor: 0x0066CC, ringColor: 0x66BBFF, trimColor: 0x003399, lockColor: 0x44AAFF, weight: 15 },
+  enhance:   { name: '強化の書チェスト', icon: '📜', bodyColor: 0x9B30FF, lidColor: 0x7B1FA2, ringColor: 0xCC77FF, trimColor: 0x5C0099, lockColor: 0xBB66FF, weight: 15 }
 };
 
 function getRandomChestType() {
@@ -11356,34 +11356,36 @@ function spawnChest() {
 
   const group = new THREE.Group();
   const chest = new THREE.Group();
+  const trim = ct.trimColor;
+  const lock = ct.lockColor;
 
   // ── 本体（下半分）──
   chest.add(at(mcBox(8, 5, 6, ct.bodyColor), 0, 2.5, 0));
   // 角の補強金具
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    chest.add(at(mcBox(0.8, 5.2, 0.8, 0x8B7500), sx * 3.8, 2.5, sz * 2.8));
+    chest.add(at(mcBox(0.8, 5.2, 0.8, trim), sx * 3.8, 2.5, sz * 2.8));
   }
   // 底面の金属帯
-  chest.add(at(mcBox(8.2, 0.6, 6.2, 0x6B5900), 0, 0.3, 0));
+  chest.add(at(mcBox(8.2, 0.6, 6.2, trim), 0, 0.3, 0));
   // 正面の金属帯×2
-  chest.add(at(mcBox(8.2, 0.5, 0.4, 0x8B7500), 0, 1.5, 3.1));
-  chest.add(at(mcBox(8.2, 0.5, 0.4, 0x8B7500), 0, 3.5, 3.1));
+  chest.add(at(mcBox(8.2, 0.5, 0.4, trim), 0, 1.5, 3.1));
+  chest.add(at(mcBox(8.2, 0.5, 0.4, trim), 0, 3.5, 3.1));
 
   // ── フタ（上半分・アーチ型）──
   chest.add(at(mcBox(8.2, 2.5, 6.2, ct.lidColor), 0, 6.3, 0));
   chest.add(at(mcBox(7.8, 1, 5.8, ct.lidColor), 0, 7.8, 0));
   // フタ金属帯
-  chest.add(at(mcBox(8.4, 0.4, 0.4, 0x8B7500), 0, 5.2, 3.15));
+  chest.add(at(mcBox(8.4, 0.4, 0.4, trim), 0, 5.2, 3.15));
   // ヒンジ（背面）
   for (const ox of [-2.5, 0, 2.5]) {
-    chest.add(at(mcBox(0.8, 0.6, 0.6, 0x666633), ox, 5.2, -3.1));
+    chest.add(at(mcBox(0.8, 0.6, 0.6, trim), ox, 5.2, -3.1));
   }
 
   // ── 錠前（正面中央）──
-  chest.add(at(mcBoxE(2, 2.2, 0.5, 0xddaa00, 0xffcc00, 0.5), 0, 4.5, 3.3));
+  chest.add(at(mcBoxE(2, 2.2, 0.5, lock, lock, 0.5), 0, 4.5, 3.3));
   chest.add(at(mcBox(0.6, 0.8, 0.3, 0x222222), 0, 4.2, 3.5));
   // 錠前の装飾リング
-  chest.add(at(mcBox(1.4, 0.3, 0.3, 0xccaa00), 0, 5.2, 3.35));
+  chest.add(at(mcBox(1.4, 0.3, 0.3, lock), 0, 5.2, 3.35));
 
   // ── 宝石（チェストタイプ別）──
   if (chestType !== 'normal') {
