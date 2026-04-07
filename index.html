@@ -9802,6 +9802,10 @@ function playCard(index) {
   const def = CARD_DEFS[cardId];
   if (elixir < def.cost) return;
 
+  // ツールチップを消す
+  const _tt = document.getElementById('card-tooltip');
+  if (_tt) _tt.classList.remove('visible');
+
   // Remove old ghost
   if (ghostMesh) { scene.remove(ghostMesh); ghostMesh = null; }
 
@@ -10247,9 +10251,16 @@ function renderHand() {
     tooltip.style.top = (rect.top - 250) + 'px';
   });
   container.addEventListener('mouseout', (e) => {
-    if (e.target.closest('.hand-card')) {
+    // カードから離れた or コンテナ外に出た → ツールチップ非表示
+    const fromCard = e.target.closest('.hand-card');
+    const toCard = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('.hand-card');
+    if (fromCard && fromCard !== toCard) {
       tooltip.classList.remove('visible');
     }
+  });
+  // コンテナ外に出た場合のフォールバック
+  container.addEventListener('mouseleave', () => {
+    tooltip.classList.remove('visible');
   });
 }
 
