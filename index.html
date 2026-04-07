@@ -6213,25 +6213,34 @@ function resolveTargetRef(ref) {
 
 // 座標指定でチェストを生成
 function spawnChestAt(x, z) {
+  const ct = CHEST_TYPES['normal'];
   const group = new THREE.Group();
-  // Chest body (dark wood)
-  group.add(at(mcBox(5, 4, 4, 0xffc107), 0, 2, 0));
-  // Chest lid
-  group.add(at(mcBox(5.4, 2, 4.4, 0xffb300), 0, 5, 0));
-  // Lock plate
-  group.add(at(mcBox(1.2, 1.5, 0.3, 0xccaa00), 0, 3.5, 2.15));
-  // Lock keyhole
-  group.add(at(mcBox(0.4, 0.6, 0.2, 0x333333), 0, 3.3, 2.3));
-  // Metal bands
-  group.add(at(mcBox(5.2, 0.4, 0.3, 0x888866), 0, 1.5, 2.05));
-  group.add(at(mcBox(5.2, 0.4, 0.3, 0x888866), 0, 3.5, 2.05));
-  // Glow ring
-  const ringGeo = new THREE.RingGeometry(5, 6, 16);
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
+  const chest = new THREE.Group();
+  chest.add(at(mcBox(8, 5, 6, ct.bodyColor), 0, 2.5, 0));
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    chest.add(at(mcBox(0.8, 5.2, 0.8, 0x8B7500), sx * 3.8, 2.5, sz * 2.8));
+  }
+  chest.add(at(mcBox(8.2, 0.6, 6.2, 0x6B5900), 0, 0.3, 0));
+  chest.add(at(mcBox(8.2, 0.5, 0.4, 0x8B7500), 0, 1.5, 3.1));
+  chest.add(at(mcBox(8.2, 0.5, 0.4, 0x8B7500), 0, 3.5, 3.1));
+  chest.add(at(mcBox(8.2, 2.5, 6.2, ct.lidColor), 0, 6.3, 0));
+  chest.add(at(mcBox(7.8, 1, 5.8, ct.lidColor), 0, 7.8, 0));
+  chest.add(at(mcBoxE(2, 2.2, 0.5, 0xddaa00, 0xffcc00, 0.5), 0, 4.5, 3.3));
+  chest.add(at(mcBox(0.6, 0.8, 0.3, 0x222222), 0, 4.2, 3.5));
+  chest.scale.set(1.5, 1.5, 1.5);
+  group.add(chest);
+  const ringGeo = new THREE.RingGeometry(8, 10, 24);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
   const ring = new THREE.Mesh(ringGeo, ringMat);
   ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.5;
+  ring.position.y = 0.3;
   group.add(ring);
+  for (let i = 0; i < 4; i++) {
+    const sparkle = mcBoxE(0.4, 0.4, 0.4, 0xffd700, 0xffd700, 1.5);
+    sparkle.position.set((Math.random() - 0.5) * 10, 8 + Math.random() * 6, (Math.random() - 0.5) * 10);
+    sparkle.name = 'chestSparkle';
+    group.add(sparkle);
+  }
   group.position.set(x, 0, z);
   scene.add(group);
   chests.push({ mesh: group, x, z });
@@ -11069,37 +11078,71 @@ function spawnChest() {
   const ct = CHEST_TYPES[chestType];
 
   const group = new THREE.Group();
+  const chest = new THREE.Group();
 
-  // Chest body (dark wood)
-  const body = at(mcBox(5, 4, 4, ct.bodyColor), 0, 2, 0);
-  group.add(body);
+  // ── 本体（下半分）──
+  chest.add(at(mcBox(8, 5, 6, ct.bodyColor), 0, 2.5, 0));
+  // 角の補強金具
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    chest.add(at(mcBox(0.8, 5.2, 0.8, 0x8B7500), sx * 3.8, 2.5, sz * 2.8));
+  }
+  // 底面の金属帯
+  chest.add(at(mcBox(8.2, 0.6, 6.2, 0x6B5900), 0, 0.3, 0));
+  // 正面の金属帯×2
+  chest.add(at(mcBox(8.2, 0.5, 0.4, 0x8B7500), 0, 1.5, 3.1));
+  chest.add(at(mcBox(8.2, 0.5, 0.4, 0x8B7500), 0, 3.5, 3.1));
 
-  // Chest lid (slightly lighter, slightly wider)
-  const lid = at(mcBox(5.4, 2, 4.4, ct.lidColor), 0, 5, 0);
-  group.add(lid);
+  // ── フタ（上半分・アーチ型）──
+  chest.add(at(mcBox(8.2, 2.5, 6.2, ct.lidColor), 0, 6.3, 0));
+  chest.add(at(mcBox(7.8, 1, 5.8, ct.lidColor), 0, 7.8, 0));
+  // フタ金属帯
+  chest.add(at(mcBox(8.4, 0.4, 0.4, 0x8B7500), 0, 5.2, 3.15));
+  // ヒンジ（背面）
+  for (const ox of [-2.5, 0, 2.5]) {
+    chest.add(at(mcBox(0.8, 0.6, 0.6, 0x666633), ox, 5.2, -3.1));
+  }
 
-  // Lock plate (metal)
-  group.add(at(mcBox(1.2, 1.5, 0.3, 0xccaa00), 0, 3.5, 2.15));
+  // ── 錠前（正面中央）──
+  chest.add(at(mcBoxE(2, 2.2, 0.5, 0xddaa00, 0xffcc00, 0.5), 0, 4.5, 3.3));
+  chest.add(at(mcBox(0.6, 0.8, 0.3, 0x222222), 0, 4.2, 3.5));
+  // 錠前の装飾リング
+  chest.add(at(mcBox(1.4, 0.3, 0.3, 0xccaa00), 0, 5.2, 3.35));
 
-  // Lock keyhole
-  group.add(at(mcBox(0.4, 0.6, 0.2, 0x333333), 0, 3.3, 2.3));
+  // ── 宝石（チェストタイプ別）──
+  if (chestType !== 'normal') {
+    // フタの上に宝石
+    chest.add(at(mcBoxE(1.5, 1.5, 1.5, ct.ringColor, ct.ringColor, 1.2), 0, 9, 0));
+    // 側面に小宝石
+    for (const sx of [-1, 1]) {
+      chest.add(at(mcBoxE(0.6, 0.6, 0.4, ct.ringColor, ct.ringColor, 0.8), sx * 3, 4.5, 3.25));
+    }
+  }
 
-  // Metal bands on body
-  group.add(at(mcBox(5.2, 0.4, 0.3, 0x888866), 0, 1.5, 2.05));
-  group.add(at(mcBox(5.2, 0.4, 0.3, 0x888866), 0, 3.5, 2.05));
+  chest.scale.set(1.5, 1.5, 1.5);
+  group.add(chest);
 
-  // Glow ring on ground
-  const ringGeo = new THREE.RingGeometry(5, 6, 16);
-  const ringMat = new THREE.MeshBasicMaterial({ color: ct.ringColor, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
+  // ── 地面のグローリング ──
+  const ringGeo = new THREE.RingGeometry(8, 10, 24);
+  const ringMat = new THREE.MeshBasicMaterial({ color: ct.ringColor, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
   const ring = new THREE.Mesh(ringGeo, ringMat);
   ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.5;
+  ring.position.y = 0.3;
   group.add(ring);
 
-  // Special marker for gold/blueprint/enhance chests
-  if (chestType !== 'normal') {
-    const markerOrb = at(mcBoxE(1.2, 1.2, 1.2, ct.ringColor, ct.ringColor, 1.0), 0, 7, 0);
-    group.add(markerOrb);
+  // 内側グロー
+  const innerRingGeo = new THREE.RingGeometry(0, 8, 24);
+  const innerRingMat = new THREE.MeshBasicMaterial({ color: ct.ringColor, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
+  const innerRing = new THREE.Mesh(innerRingGeo, innerRingMat);
+  innerRing.rotation.x = -Math.PI / 2;
+  innerRing.position.y = 0.2;
+  group.add(innerRing);
+
+  // ── 浮遊キラキラパーティクル ──
+  for (let i = 0; i < 4; i++) {
+    const sparkle = mcBoxE(0.4, 0.4, 0.4, ct.ringColor, ct.ringColor, 1.5);
+    sparkle.position.set((Math.random() - 0.5) * 10, 8 + Math.random() * 6, (Math.random() - 0.5) * 10);
+    sparkle.name = 'chestSparkle';
+    group.add(sparkle);
   }
 
   group.position.set(x, 0, z);
@@ -11122,9 +11165,20 @@ function updateChests(dt) {
   }
 
   // Animate chests
+  const now = Date.now() * 0.001;
   chests.forEach(c => {
-    c.mesh.rotation.y += dt * 1.5;
-    c.mesh.children[2].material.opacity = 0.3 + Math.sin(Date.now() * 0.004) * 0.2;
+    // ゆっくり回転
+    c.mesh.rotation.y += dt * 0.8;
+    // 上下に浮遊
+    const chestBody = c.mesh.children[0];
+    if (chestBody) chestBody.position.y = Math.sin(now * 2) * 1.5;
+    // キラキラパーティクルが回る
+    c.mesh.traverse(child => {
+      if (child.name === 'chestSparkle') {
+        child.position.y += Math.sin(now * 3 + child.position.x) * 0.03;
+        child.material.opacity = 0.5 + Math.sin(now * 5 + child.position.z * 10) * 0.5;
+      }
+    });
   });
 
   // Pickup check
@@ -11142,13 +11196,13 @@ function updateChests(dt) {
 }
 
 function getRandomCard() {
-  // Only buildings can be placed by players
-  const available = BUILDING_CARDS.filter(id => {
+  // 全カード（施設除く）からランダムで1枚
+  const pool = Object.keys(CARD_DEFS).filter(id => {
     const def = CARD_DEFS[id];
-    return def && def.unlockLevel <= playerLevel;
+    return def && def.type !== 'structure';
   });
-  if (available.length === 0) return BUILDING_CARDS[0];
-  return available[Math.floor(Math.random() * available.length)];
+  if (pool.length === 0) return 'knight';
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 function pickupChest(chest, index) {
@@ -14190,33 +14244,49 @@ function advanceTutorialToStep3() {
 }
 
 function spawnTutorialChest() {
-  // Spawn a chest ~30 units in front of the player (positive z direction based on camera)
+  // Spawn a chest ~30 units in front of the player
   const kx = playerKingTower ? playerKingTower.mesh.position.x : 0;
   const kz = playerKingTower ? playerKingTower.mesh.position.z : 0;
-  // Spawn in front (toward positive z)
   const cx = kx + (Math.random() - 0.5) * 10;
   const cz = kz + 30;
 
+  const ct = CHEST_TYPES['normal'];
   const group = new THREE.Group();
+  const chest = new THREE.Group();
 
-  // Chest body (dark wood)
-  group.add(at(mcBox(5, 4, 4, 0xffc107), 0, 2, 0));
-  // Chest lid
-  group.add(at(mcBox(5.4, 2, 4.4, 0xffb300), 0, 5, 0));
-  // Lock plate
-  group.add(at(mcBox(1.2, 1.5, 0.3, 0xccaa00), 0, 3.5, 2.15));
-  // Lock keyhole
-  group.add(at(mcBox(0.4, 0.6, 0.2, 0x333333), 0, 3.3, 2.3));
-  // Metal bands
-  group.add(at(mcBox(5.2, 0.4, 0.3, 0x888866), 0, 1.5, 2.05));
-  group.add(at(mcBox(5.2, 0.4, 0.3, 0x888866), 0, 3.5, 2.05));
-  // Glow ring
-  const ringGeo = new THREE.RingGeometry(5, 6, 16);
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
+  // 本体
+  chest.add(at(mcBox(8, 5, 6, 0xffc107), 0, 2.5, 0));
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    chest.add(at(mcBox(0.8, 5.2, 0.8, 0x8B7500), sx * 3.8, 2.5, sz * 2.8));
+  }
+  chest.add(at(mcBox(8.2, 0.6, 6.2, 0x6B5900), 0, 0.3, 0));
+  chest.add(at(mcBox(8.2, 0.5, 0.4, 0x8B7500), 0, 1.5, 3.1));
+  chest.add(at(mcBox(8.2, 0.5, 0.4, 0x8B7500), 0, 3.5, 3.1));
+  // フタ
+  chest.add(at(mcBox(8.2, 2.5, 6.2, 0xffb300), 0, 6.3, 0));
+  chest.add(at(mcBox(7.8, 1, 5.8, 0xffb300), 0, 7.8, 0));
+  chest.add(at(mcBox(8.4, 0.4, 0.4, 0x8B7500), 0, 5.2, 3.15));
+  // 錠前
+  chest.add(at(mcBoxE(2, 2.2, 0.5, 0xddaa00, 0xffcc00, 0.5), 0, 4.5, 3.3));
+  chest.add(at(mcBox(0.6, 0.8, 0.3, 0x222222), 0, 4.2, 3.5));
+
+  chest.scale.set(1.5, 1.5, 1.5);
+  group.add(chest);
+
+  // グローリング
+  const ringGeo = new THREE.RingGeometry(8, 10, 24);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
   const ring = new THREE.Mesh(ringGeo, ringMat);
   ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.5;
+  ring.position.y = 0.3;
   group.add(ring);
+
+  for (let i = 0; i < 4; i++) {
+    const sparkle = mcBoxE(0.4, 0.4, 0.4, 0xffd700, 0xffd700, 1.5);
+    sparkle.position.set((Math.random() - 0.5) * 10, 8 + Math.random() * 6, (Math.random() - 0.5) * 10);
+    sparkle.name = 'chestSparkle';
+    group.add(sparkle);
+  }
 
   group.position.set(cx, 0, cz);
   scene.add(group);
