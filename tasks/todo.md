@@ -1,79 +1,33 @@
-# 4人対戦化 + 雷の国追加 + 全FBXモデル実装
+# PvP → 協力プレイ（PvE）化 + 雷の国削除
 
 ## 概要
-- 64人対戦 → **4人対戦**（1プレイヤー + 3 BOT）
-- 3国（火・氷・土）→ **4国（火・氷・土・雷）**
-- 各プレイヤーに固有FBXキャラクター割り当て
-- ユニットは全てヘッドレス巨人FBX
+- 4国FFA → **3国PvE協力**（火・氷・土）
+- プレイヤーの国: 最大4人プレイヤー + 無制限ダイバー
+- 敵2国: AI制御
 
-## キャラ割り当て
-| プレイヤー | 国 | FBXモデル |
-|-----------|-----|----------|
-| Player 1（自分） | 選択制 | 選択したキャラ |
-| Player 2（BOT） | 残り3国から | Scandinavian Man (knight) |
-| Player 3（BOT） | 残り3国から | Medieval Soldier 1 (dwarfFemale) |
-| Player 4（BOT） | 残り3国から | Medieval Soldier 2 (dwarfMale) |
+## Step 1: 雷の国を削除（3国に戻す）
+- [ ] JS定数: FACTIONS, FACTION_IDS, FACTION_KING_TINT, FACTION_PALETTES, CARD_FACTIONS, AUTO_SPAWN_CARDS
+- [ ] HTML: 国選択の雷カード、GDPバー、タイトルボタン
+- [ ] CSS: --clr-lightning等
 
-※ プレイヤーのキャラ選択UIは維持（4種から選択）
+## Step 2: プレイヤー構成変更
+- [ ] NUM_PLAYERS=3, PLAYER_NAMES, PLAYER_CHARACTER_MAP, PLAYER_POSITIONS
 
-## パフォーマンス見積もり
-```
-4キング × 45 DC = 180 DC
-ユニット40体 × 1 DC = 40 DC
-アリーナ固定 = 60 DC
-合計 = 280 DC ← 300上限以内でOK
-```
+## Step 3: buildTowers() 3国用リライト
+- [ ] Player0=人間, Player1,2=AI敵
 
----
+## Step 4: 協力プレイヤー動的追加
+- [ ] addCoopPlayer() / removeCoopPlayer()
 
-## Phase 1: 基盤（国・プレイヤー数） ✅ 完了
-- [x] FACTIONSに雷の国を追加（名前・アイコン・カラー定義）
-- [x] FACTION_IDSを4国に拡張
-- [x] NUM_PLAYERSを64→4に変更
-- [x] PLAYER_POSITIONSを4箇所に再配置（四方配置）
-- [x] hardcoded {fire,ice,earth} オブジェクトを全て4国対応に修正
-  - factionGDP, kingReviveCooldown, factionSpawnTimers, factionLevels, factionXP → initFactionMap()
-  - getTotalGDP() → FACTION_IDS.reduce()
-  - updateGDPDisplay() → Math.max(...FACTION_IDS.map())
-  - startBattle() の初期化 → initFactionMap()
-  - チュートリアル敵国選択 → FACTION_IDS.find()
-- [x] FACTION_KING_TINT に lightning 追加
-- [x] FACTION_PALETTES に lightning 追加
-- [x] CARD_FACTIONS / AUTO_SPAWN_CARDS に lightning 追加
-- [x] initFactionMap の TDZ問題修正（FACTION_IDS定義後に初期化）
+## Step 5: 「プレイヤーとして戦う」導線変更
+- [ ] 「新しく始める」or「ルームコードで参加」選択ダイアログ
 
-## Phase 2: FBXモデル復元 ✅ 完了
-- [x] CHARACTER_FBX_CONFIGに4キャラ全て復元（queen, knight, dwarfFemale, dwarfMale）
-- [x] TEXTURE_MATERIAL_KEYWORDSの不足キーワード復元（dress, hair, boots, eyes, jacket, coat等）
-- [x] PLAYER_CHARACTER_MAP定義（各プレイヤー→キャラモデル対応）
-- [x] createTower()で全4プレイヤーにFBXを使用するよう変更
-- [x] KING_MODEL_KEY廃止 → PLAYER_CHARACTER_MAP に置き換え
+## Step 6: ネットワーク協力プレイヤー対応
+- [ ] ホスト側: join/move/spawn/chestコマンド処理
+- [ ] 参加者側: initCoopNetworking(), HUD, カメラ
 
-## Phase 3: マップ・ビジュアル ✅ 完了
-- [x] テレインを4象限ゾーンに変更（十字分割: X=0, Z=0が国境）
-- [x] 国境線を十字に変更（Z-strip → 4象限）
-- [x] buildFactionBases()に雷の国拠点を追加（金属尖塔+コイル+台座）
-- [x] 氷の国拠点を東（x > 0）に移動
+## Step 7: テレイン・拠点調整
+- [ ] 雷拠点削除、3国用調整
 
-## Phase 4: UI ✅ 完了
-- [x] 国選択画面に雷の国カード追加（fs-card）
-- [x] GDP表示バーに4国目追加（vp-row）
-- [x] タイトル画面の国ボタンに雷追加（faction-btn, lobby-faction-btn）
-- [x] 全CSS色定義に lightning 追加
-- [x] fs-cards を flex-wrap: wrap に変更（4枚対応）
-
-## Phase 5: ゲームロジック ✅ 完了
-- [x] buildTowers()を4人用にリライト（1人1国、remainingFactions方式）
-- [x] AUTO_SPAWN_CARDSに雷の国用デッキ追加
-- [x] チュートリアルの敵国選択ロジック修正
-- [x] CARD_FACTIONSに雷追加
-
-## Phase 6: 検証
-- [x] エラーなしで起動確認
-- [x] 4国GDPバー表示確認
-- [x] FBXモデル表示確認
-- [ ] 4人対戦の本戦動作確認（チュートリアルスキップ後）
-- [ ] 全4キャラのFBXが正しく表示されるか確認
-- [ ] アニメーション（Idle/Walk）が機能するか確認
-- [ ] パフォーマンス計測（300 DC以内か）
-- [ ] 国選択→キャラ選択→バトル開始のフロー確認
+## Step 8: エリクサー・デッキ
+- [ ] 個別エリクサー、協力プレイヤー用デッキ初期化
