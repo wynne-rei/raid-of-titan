@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<title>Minecraft-Style Unit Demo - ALL</title>
+<style>
+  body { margin: 0; background: #1a1a2e; overflow: hidden; }
+  #info { position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+    color: #f4e6b8; font-family: sans-serif; font-size: 16px; text-align: center;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8); z-index: 10; }
+  #info small { display: block; color: #888; font-size: 12px; margin-top: 2px; }
+</style>
+</head><body>
+<div id="info">全ユニット マイクラ風デザイン一覧<small>ドラッグで回転 / スクロールでズーム</small></div>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a2e);
+scene.fog = new THREE.Fog(0x1a1a2e, 150, 350);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 500);
+camera.position.set(0, 40, 90);
+window.camera = camera;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 6, 0);
+controls.enableDamping = true;
+window.controls = controls;
+
+scene.add(new THREE.AmbientLight(0x8899bb, 0.6));
+const sun = new THREE.DirectionalLight(0xfff0dd, 1.2);
+sun.position.set(30, 50, 30);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -80; sun.shadow.camera.right = 80;
+sun.shadow.camera.top = 80; sun.shadow.camera.bottom = -80;
+scene.add(sun);
+scene.add(new THREE.DirectionalLight(0x4488ff, 0.3).translateX(-10).translateY(5).translateZ(-20));
+
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(200, 200),
+  new THREE.MeshStandardMaterial({ color: 0x2d5a27, roughness: 0.9 })
+);
+ground.rotation.x = -Math.PI/2;
+ground.receiveShadow = true;
+scene.add(ground);
+scene.add(new THREE.GridHelper(200, 100, 0x1a4a14, 0x1a4a14).translateY(0.01));
+
+function mcMat(color) {
+  return new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.05, flatShading: true });
+}
+function mcMatEmit(color, emissive, intensity = 0.8) {
+  return new THREE.MeshStandardMaterial({ color, emissive, emissiveIntensity: intensity, roughness: 0.3, flatShading: true });
+}
+function mcBox(w, h, d, color) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mcMat(color));
+  m.castShadow = true; m.receiveShadow = true; return m;
+}
+function mcBoxE(w, h, d, color, emissive, intensity) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mcMatEmit(color, emissive, intensity));
+  m.castShadow = true; return m;
+}
+function at(mesh, x, y, z) { mesh.position.set(x, y, z); return mesh; }
+
+function createKnight(accent = 0xcc3333) {
+  const g = new THREE.Group();
+  g.add(at(mcBox(4, 4, 4, 0xd4a574), 0, 14, 0));
+  g.add(at(mcBox(0.8, 0.6, 0.3, 0x222222), -0.9, 14.3, 2.05));
+  g.add(at(mcBox(0.8, 0.6, 0.3, 0x222222), 0.9, 14.3, 2.05));
+  g.add(at(mcBox(4.4, 2.5, 4.4, 0x888888), 0, 15.2, 0));
+  g.add(at(mcBox(4.5, 0.8, 0.5, 0x666666), 0, 14.0, 2.1));
+  g.add(at(mcBox(4, 5, 2.5, accent), 0, 9.5, 0));
+  g.add(at(mcBox(4.2, 4, 1, 0x777777), 0, 9.8, 1.0));
+  const aL = at(mcBox(2, 5, 2, accent), -3, 9.5, 0); aL.name='armL'; g.add(aL);
+  const aR = at(mcBox(2, 5, 2, accent), 3, 9.5, 0); aR.name='armR'; g.add(aR);
+  g.add(at(mcBox(0.6, 6, 0.3, 0xcccccc), 3, 4.5, 0));
+  g.add(at(mcBox(1.5, 0.5, 0.5, 0x8B4513), 3, 7.2, 0));
+  g.add(at(mcBox(0.5, 3.5, 3, 0x555555), -4, 8, 0));
+  g.add(at(mcBox(0.2, 2.5, 2, accent), -4.4, 8, 0));
+  const lL = at(mcBox(1.8, 5, 2, 0x444444), -1, 4, 0); lL.name='legL'; g.add(lL);
+  const lR = at(mcBox(1.8, 5, 2, 0x444444), 1, 4, 0); lR.name='legR'; g.add(lR);
+  return g;
+}
+
+function createArcher(accent = 0x228833) {
+  const g = new THREE.Group();
+  g.add(at(mcBox(3.5, 3.5, 3.5, 0xd4a574), 0, 13.5, 0));
+  g.add(at(mcBox(0.6, 0.5, 0.3, 0x222222), -0.7, 13.8, 1.85));
+  g.add(at(mcBox(0.6, 0.5, 0.3, 0x222222), 0.7, 13.8, 1.85));
+  g.add(at(mcBox(4, 2.5, 4, accent), 0, 14.8, 0));
+  g.add(at(mcBox(3.5, 1.5, 1, accent), 0, 12.5, -1.8));
+  g.add(at(mcBox(3.5, 5, 2, accent), 0, 9, 0));
+  g.add(at(mcBox(3.7, 0.6, 2.2, 0x8B4513), 0, 7, 0));
+  const aL = at(mcBox(1.8, 4.5, 1.8, accent), -2.7, 9, 0); aL.name='armL'; g.add(aL);
+  const aR = at(mcBox(1.8, 4.5, 1.8, 0xd4a574), 2.7, 9, 0); aR.name='armR'; g.add(aR);
+  const bow = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.2, 4, 12, Math.PI), mcMat(0x8B4513));
+  bow.position.set(-3.5, 9, 1); bow.rotation.y = Math.PI/2; bow.castShadow = true; g.add(bow);
+  g.add(at(mcBox(0.05, 5, 0.05, 0xddddaa), -3.5, 9, 1));
+  const q = at(mcBox(1.2, 3.5, 1.2, 0x8B4513), 1.5, 10, -1.5); q.rotation.x = 0.15; g.add(q);
+  for (let i = 0; i < 3; i++) g.add(at(mcBox(0.15, 1.5, 0.15, 0xaaaa55), 1.3+i*0.4, 12, -1.5));
+  const lL = at(mcBox(1.6, 5, 1.8, 0x555544), -0.9, 4, 0); lL.name='legL'; g.add(lL);
+  const lR = at(mcBox(1.6, 5, 1.8, 0x555544), 0.9, 4, 0); lR.name='legR'; g.add(lR);
+  return g;
+}
+
+function createGiant(accent = 0xcc8844) {
+  const g = new THREE.Group();
+  g.add(at(mcBox(7, 7, 5, accent), 0, 12, 0));
+  g.add(at(mcBox(4.5, 4, 4.5, 0xc49464), 0, 18.5, 0));
+  g.add(at(mcBox(0.8, 0.6, 0.3, 0x222222), -1, 18.8, 2.3));
+  g.add(at(mcBox(0.8, 0.6, 0.3, 0x222222), 1, 18.8, 2.3));
+  g.add(at(mcBox(1.2, 0.3, 0.3, 0x222222), -1, 19.4, 2.35));
+  g.add(at(mcBox(1.2, 0.3, 0.3, 0x222222), 1, 19.4, 2.35));
+  g.add(at(mcBox(7.3, 1, 5.3, 0x8B4513), 0, 8.5, 0));
+  g.add(at(mcBox(1.5, 1.3, 0.5, 0xccaa00), 0, 8.5, 2.7));
+  const aL = at(mcBox(3, 7, 3, 0xc49464), -5, 11, 0); aL.name='armL'; g.add(aL);
+  const aR = at(mcBox(3, 7, 3, 0xc49464), 5, 11, 0); aR.name='armR'; g.add(aR);
+  g.add(at(mcBox(3.2, 2.5, 3.2, 0xc49464), -5, 6.5, 0));
+  g.add(at(mcBox(3.2, 2.5, 3.2, 0xc49464), 5, 6.5, 0));
+  g.add(at(mcBox(5, 3, 4, 0x885522), 0, 6.5, 0));
+  const lL = at(mcBox(2.8, 5, 2.8, 0x885522), -2, 3, 0); lL.name='legL'; g.add(lL);
+  const lR = at(mcBox(2.8, 5, 2.8, 0x885522), 2, 3, 0); lR.name='legR'; g.add(lR);
+  g.scale.set(1.3, 1.3, 1.3);
+  return g;
+}
+
+function createMusketeer(accent = 0x4466aa) {
+  const g = new THREE.Group();
+  g.add(at(mcBox(3.5, 3.5, 3.5, 0xd4a574), 0, 14, 0));
+  g.add(at(mcBox(0.5, 0.5, 0.3, 0x2244aa), -0.7, 14.2, 1.85));
+  g.add(at(mcBox(0.5, 0.5, 0.3, 0x2244aa), 0.7, 14.2, 1.85));
+  g.add(at(mcBox(3.8, 1.5, 4, 0xddaa44), 0, 15.5, -0.2));
+  g.add(at(mcBox(4.5, 0.5, 4.5, accent), 0, 16.2, 0));
+  g.add(at(mcBox(3, 2, 3, accent), 0, 17.2, 0));
+  g.add(at(mcBox(0.3, 2.5, 0.8, 0xffffff), 1.5, 18, -0.5));
+  g.add(at(mcBox(3.5, 5, 2.5, accent), 0, 9.5, 0));
+  g.add(at(mcBox(4.5, 3, 3, accent), 0, 5.5, 0));
+  const aL = at(mcBox(1.5, 4.5, 1.5, accent), -2.5, 10, 0); aL.name='armL'; g.add(aL);
+  const aR = at(mcBox(1.5, 4.5, 1.5, accent), 2.5, 10, 0); aR.name='armR'; g.add(aR);
+  g.add(at(mcBox(0.6, 0.6, 8, 0x8B4513), 2.5, 8.5, 3));
+  g.add(at(mcBox(0.5, 0.5, 2, 0x666666), 2.5, 8.5, 7.5));
+  const lL = at(mcBox(1.5, 4, 1.5, 0x555555), -1, 3, 0); lL.name='legL'; g.add(lL);
+  const lR = at(mcBox(1.5, 4, 1.5, 0x555555), 1, 3, 0); lR.name='legR'; g.add(lR);
+  return g;
+}
+
+function createGoblin(accent = 0x55aa22) {
+  const g = new THREE.Group();
+  g.add(at(mcBox(3, 3, 3, accent), 0, 10, 0));
+  g.add(at(mcBox(1.0, 1.2, 0.3, 0xffff88), -0.8, 10.3, 1.6));
+  g.add(at(mcBox(1.0, 1.2, 0.3, 0xffff88), 0.8, 10.3, 1.6));
+  g.add(at(mcBox(0.4, 0.6, 0.2, 0x111111), -0.8, 10.3, 1.75));
+  g.add(at(mcBox(0.4, 0.6, 0.2, 0x111111), 0.8, 10.3, 1.75));
+  const eL = at(mcBox(0.5, 1.5, 0.5, accent), -2, 10.5, 0); eL.rotation.z = 0.5; g.add(eL);
+  const eR = at(mcBox(0.5, 1.5, 0.5, accent), 2, 10.5, 0); eR.rotation.z = -0.5; g.add(eR);
+  g.add(at(mcBox(1.8, 0.3, 0.3, 0x333300), 0, 9.2, 1.6));
+  g.add(at(mcBox(2.5, 3, 2, 0x885522), 0, 6.5, 0));
+  const aL = at(mcBox(1.2, 3, 1.2, accent), -1.9, 6.5, 0); aL.name='armL'; g.add(aL);
+  const aR = at(mcBox(1.2, 3, 1.2, accent), 1.9, 6.5, 0); aR.name='armR'; g.add(aR);
+  g.add(at(mcBox(0.3, 2.5, 0.2, 0xaaaaaa), 2.2, 3.5, 0));
+  g.add(at(mcBox(0.6, 0.5, 0.3, 0x8B4513), 2.2, 5, 0));
+  const lL = at(mcBox(1.2, 3, 1.2, 0x664411), -0.7, 3, 0); lL.name='legL'; g.add(lL);
+  const lR = at(mcBox(1.2, 3, 1.2, 0x664411), 0.7, 3, 0); lR.name='legR'; g.add(lR);
+  g.scale.set(0.8, 0.8, 0.8);
+  return g;
+}
+
+function createMiniPekka(accent = 0x334488) {
+  const g = new THREE.Group();
+  g.add(at(mcBox(4.5, 4, 4.5, 0x3a3a4a), 0, 15, 0));
+  g.add(at(mcBoxE(3.5, 1.2, 0.5, 0x44aaff, 0x44aaff, 1.0), 0, 15.2, 2.3));
+  g.add(at(mcBox(0.6, 2, 0.6, 0x3a3a4a), -1.3, 17.5, 0));
+  g.add(at(mcBox(0.6, 2, 0.6, 0x3a3a4a), 1.3, 17.5, 0));
+  g.add(at(mcBox(5, 5.5, 3, accent), 0, 10, 0));
+  g.add(at(mcBox(2, 1.5, 2, 0x3a3a4a), -3.5, 12.5, 0));
+  g.add(at(mcBox(2, 1.5, 2, 0x3a3a4a), 3.5, 12.5, 0));
+  const aL = at(mcBox(2, 5, 2, 0x3a3a4a), -3.5, 9, 0); aL.name='armL'; g.add(aL);
+  const aR = at(mcBox(2, 5, 2, 0x3a3a4a), 3.5, 9, 0); aR.name='armR'; g.add(aR);
+  g.add(at(mcBox(0.8, 9, 0.4, 0xcccccc), 4, 4, 0));
+  g.add(at(mcBox(2.5, 0.6, 0.6, 0xccaa00), 4, 8.5, 0));
+  g.add(new THREE.PointLight(0x44aaff, 0.8, 12).translateX(0).translateY(15.2).translateZ(3));
+  const lL = at(mcBox(2, 5, 2, 0x2a2a3a), -1.3, 4, 0); lL.name='legL'; g.add(lL);
+  const lR = at(mcBox(2, 5, 2, 0x2a2a3a), 1.3, 4, 0); lR.name='legR'; g.add(lR);
+  return g;
+}
+
+function createBabyDragon(accent = 0x44aa55) {
+  const g = new THREE.Group();
+  g.add(at(mcBox(4, 3.5, 5, accent), 0, 10, 0));
+  g.add(at(mcBox(3, 2, 0.5, 0x88cc88), 0, 9.8, 2.7));
+  g.add(at(mcBox(3.5, 3.5, 3.5, accent), 0, 12.5, 2));
+  g.add(at(mcBox(1.2, 1.2, 0.3, 0xffffff), -0.8, 13, 3.8));
+  g.add(at(mcBox(1.2, 1.2, 0.3, 0xffffff), 0.8, 13, 3.8));
+  g.add(at(mcBox(0.6, 0.7, 0.2, 0x111111), -0.8, 13, 4));
+  g.add(at(mcBox(0.6, 0.7, 0.2, 0x111111), 0.8, 13, 4));
+  const hL = at(mcBox(0.5, 1.5, 0.5, 0xddcc88), -1.2, 14.5, 1.5); hL.rotation.z=0.3; g.add(hL);
+  const hR = at(mcBox(0.5, 1.5, 0.5, 0xddcc88), 1.2, 14.5, 1.5); hR.rotation.z=-0.3; g.add(hR);
+  const wL = at(mcBox(5, 0.3, 3, 0x339944), -4.5, 11, -0.5); wL.rotation.z=0.2; wL.name='wingL'; g.add(wL);
+  const wR = at(mcBox(5, 0.3, 3, 0x339944), 4.5, 11, -0.5); wR.rotation.z=-0.2; wR.name='wingR'; g.add(wR);
+  g.add(at(mcBox(1.5, 1.5, 2, accent), 0, 9.5, -3));
+  g.add(at(mcBox(1, 1, 2, accent), 0, 9.5, -4.5));
+  g.add(at(mcBoxE(1.5, 0.4, 1.5, 0xff6600, 0xff4400, 0.5), 0, 9.5, -5.5));
+  g.add(at(mcBox(1.2, 1.5, 1.2, accent), -1.2, 7.8, 1));
+  g.add(at(mcBox(1.2, 1.5, 1.2, accent), 1.2, 7.8, 1));
+  return g;
+}
+
+function createSkeleton() {
+  const g = new THREE.Group(); const b = 0xe8e0d0;
+  g.add(at(mcBox(3, 3, 3, b), 0, 12.5, 0));
+  g.add(at(mcBox(0.8, 0.8, 0.5, 0x111111), -0.7, 12.8, 1.55));
+  g.add(at(mcBox(0.8, 0.8, 0.5, 0x111111), 0.7, 12.8, 1.55));
+  g.add(at(mcBoxE(0.4, 0.4, 0.2, 0xff2200, 0xff2200, 1.0), -0.7, 12.8, 1.7));
+  g.add(at(mcBoxE(0.4, 0.4, 0.2, 0xff2200, 0xff2200, 1.0), 0.7, 12.8, 1.7));
+  g.add(at(mcBox(2.5, 0.8, 2, b), 0, 11, 0.3));
+  g.add(at(mcBox(3, 0.5, 1.5, b), 0, 9.5, 0));
+  g.add(at(mcBox(2.5, 0.5, 1.5, b), 0, 8.5, 0));
+  g.add(at(mcBox(2, 0.5, 1.5, b), 0, 7.5, 0));
+  g.add(at(mcBox(0.6, 5, 0.6, b), 0, 8, 0));
+  const aL = at(mcBox(1, 4.5, 1, b), -2.2, 9, 0); aL.name='armL'; g.add(aL);
+  const aR = at(mcBox(1, 4.5, 1, b), 2.2, 9, 0); aR.name='armR'; g.add(aR);
+  g.add(at(mcBox(0.5, 5, 0.3, 0x887766), 2.5, 4.5, 0));
+  g.add(at(mcBox(2, 0.8, 1.2, b), 0, 5.5, 0));
+  const lL = at(mcBox(1, 4.5, 1, b), -0.8, 3.5, 0); lL.name='legL'; g.add(lL);
+  const lR = at(mcBox(1, 4.5, 1, b), 0.8, 3.5, 0); lR.name='legR'; g.add(lR);
+  return g;
+}
+
+function createHogRider(accent = 0xdd6622) {
+  const g = new THREE.Group();
+  g.add(at(mcBox(4, 3.5, 6, 0xcc8866), 0, 5, 0));
+  g.add(at(mcBox(3, 3, 3, 0xcc8866), 0, 6, 4));
+  g.add(at(mcBox(2, 1.5, 1, 0xeaa988), 0, 5.5, 5.7));
+  g.add(at(mcBox(0.4, 0.4, 0.2, 0x553322), -0.5, 5.5, 6.2));
+  g.add(at(mcBox(0.4, 0.4, 0.2, 0x553322), 0.5, 5.5, 6.2));
+  g.add(at(mcBox(0.5, 0.5, 0.3, 0x111111), -1, 6.8, 5.5));
+  g.add(at(mcBox(0.5, 0.5, 0.3, 0x111111), 1, 6.8, 5.5));
+  const eL = at(mcBox(0.8, 1.5, 0.3, 0xcc8866), -1.5, 7.8, 3.5); eL.rotation.z=0.4; g.add(eL);
+  const eR = at(mcBox(0.8, 1.5, 0.3, 0xcc8866), 1.5, 7.8, 3.5); eR.rotation.z=-0.4; g.add(eR);
+  for (const [x,z] of [[-1.5,2],[1.5,2],[-1.5,-2],[1.5,-2]]) g.add(at(mcBox(1, 3, 1, 0xcc8866), x, 2, z));
+  g.add(at(mcBox(3, 3.5, 2, accent), 0, 9, 0));
+  g.add(at(mcBox(3, 3, 3, 0x8B5E3C), 0, 12, 0));
+  g.add(at(mcBox(0.8, 2, 3, 0x222222), 0, 14, 0));
+  g.add(at(mcBoxE(0.6, 0.5, 0.3, 0xffff00, 0xffff00, 0.5), -0.7, 12.2, 1.55));
+  g.add(at(mcBoxE(0.6, 0.5, 0.3, 0xffff00, 0xffff00, 0.5), 0.7, 12.2, 1.55));
+  g.add(at(mcBox(1.3, 3, 1.3, accent), -2.2, 9, 0));
+  g.add(at(mcBox(1.3, 3, 1.3, accent), 2.2, 9, 0));
+  g.add(at(mcBox(0.5, 5, 0.5, 0x8B4513), 2.8, 11, 0));
+  g.add(at(mcBox(2, 1.8, 1.8, 0x888888), 2.8, 14, 0));
+  return g;
+}
+
+function createValkyrie(accent = 0xcc5533) {
+  const g = new THREE.Group();
+  g.add(at(mcBox(3.8, 3.8, 3.8, 0xd4a574), 0, 14.5, 0));
+  g.add(at(mcBox(0.6, 0.5, 0.3, 0x3366aa), -0.8, 14.7, 2));
+  g.add(at(mcBox(0.6, 0.5, 0.3, 0x3366aa), 0.8, 14.7, 2));
+  g.add(at(mcBox(4.2, 2.5, 4.2, 0x888888), 0, 15.8, 0));
+  const hnL = at(mcBox(0.6, 2.5, 0.6, 0xeeeecc), -2.3, 17, 0); hnL.rotation.z=0.4; g.add(hnL);
+  const hnR = at(mcBox(0.6, 2.5, 0.6, 0xeeeecc), 2.3, 17, 0); hnR.rotation.z=-0.4; g.add(hnR);
+  g.add(at(mcBox(0.6, 4, 0.6, 0xff8833), -2, 12, -1));
+  g.add(at(mcBox(0.6, 4, 0.6, 0xff8833), 2, 12, -1));
+  g.add(at(mcBox(5, 5, 3, accent), 0, 9.5, 0));
+  g.add(at(mcBox(2, 1.5, 2, 0x777777), -3.5, 12.2, 0));
+  g.add(at(mcBox(2, 1.5, 2, 0x777777), 3.5, 12.2, 0));
+  const aL = at(mcBox(2, 4.5, 2, accent), -3.5, 9, 0); aL.name='armL'; g.add(aL);
+  const aR = at(mcBox(2, 4.5, 2, accent), 3.5, 9, 0); aR.name='armR'; g.add(aR);
+  g.add(at(mcBox(0.5, 7, 0.5, 0x8B4513), 4, 6, 0));
+  g.add(at(mcBox(2.5, 3, 0.4, 0x999999), 5, 10, 0));
+  g.add(at(mcBox(5.5, 3, 3.5, accent), 0, 5.5, 0));
+  const lL = at(mcBox(2, 4, 2, 0x555555), -1.2, 3, 0); lL.name='legL'; g.add(lL);
+  const lR = at(mcBox(2, 4, 2, 0x555555), 1.2, 3, 0); lR.name='legR'; g.add(lR);
+  return g;
+}
+
+function createWizard(accent = 0x7733aa) {
+  const g = new THREE.Group();
+  g.add(at(mcBox(3.5, 3.5, 3.5, 0xd4a574), 0, 14, 0));
+  g.add(at(mcBox(0.6, 0.5, 0.3, 0x222222), -0.7, 14.3, 1.85));
+  g.add(at(mcBox(0.6, 0.5, 0.3, 0x222222), 0.7, 14.3, 1.85));
+  g.add(at(mcBox(4, 1.5, 4, accent), 0, 16.2, 0));
+  g.add(at(mcBox(3, 1.5, 3, accent), 0, 17.5, 0));
+  g.add(at(mcBox(2, 1.5, 2, accent), 0, 18.8, 0));
+  g.add(at(mcBox(1, 1.5, 1, accent), 0, 20, 0));
+  g.add(at(mcBox(2.5, 3, 0.5, 0xeeeeee), 0, 12, 1.8));
+  g.add(at(mcBox(4, 6, 2.5, accent), 0, 8.5, 0));
+  const aL = at(mcBox(1.8, 5, 1.8, accent), -3, 9, 0); aL.name='armL'; g.add(aL);
+  const aR = at(mcBox(1.8, 5, 1.8, accent), 3, 9, 0); aR.name='armR'; g.add(aR);
+  g.add(at(mcBox(0.5, 10, 0.5, 0x8B4513), 3.5, 8, 0));
+  const orb = at(mcBoxE(1.5, 1.5, 1.5, 0x44ccff, 0x44ccff, 0.8), 3.5, 13.5, 0); orb.name='orb'; g.add(orb);
+  const oL = new THREE.PointLight(0x44ccff, 1, 15); oL.position.set(3.5, 13.5, 0); g.add(oL);
+  g.add(at(mcBox(4.5, 3, 3, accent), 0, 4, 0));
+  const lL = at(mcBox(1.6, 2, 1.8, 0x333333), -0.9, 2, 0); lL.name='legL'; g.add(lL);
+  const lR = at(mcBox(1.6, 2, 1.8, 0x333333), 0.9, 2, 0); lR.name='legR'; g.add(lR);
+  return g;
+}
+
+function createCannon() {
+  const g = new THREE.Group();
+  g.add(at(mcBox(6, 2, 5, 0x8B4513), 0, 1, 0));
+  g.add(at(mcBox(5, 0.5, 4, 0x6B3513), 0, 2.3, 0));
+  const barrel = at(mcBox(2, 2, 7, 0x666666), 0, 3.5, 2); barrel.rotation.x = -0.15; g.add(barrel);
+  g.add(at(mcBox(2.3, 2.3, 0.5, 0x555555), 0, 3.8, 5.5));
+  const wG = new THREE.BoxGeometry(0.5, 3, 3);
+  const wL = new THREE.Mesh(wG, mcMat(0x5a3010)); wL.position.set(-3.2, 2, 0); wL.castShadow=true; g.add(wL);
+  const wR = new THREE.Mesh(wG, mcMat(0x5a3010)); wR.position.set(3.2, 2, 0); wR.castShadow=true; g.add(wR);
+  g.add(at(mcBox(7, 0.5, 0.5, 0x444444), 0, 2, 0));
+  return g;
+}
+
+function createInfernoTower() {
+  const g = new THREE.Group();
+  g.add(at(mcBox(5, 2, 5, 0x555555), 0, 1, 0));
+  g.add(at(mcBox(4, 8, 4, 0x3a3a3a), 0, 6, 0));
+  g.add(at(mcBox(1.5, 2, 0.5, 0x111111), 0, 7, 2.1));
+  g.add(at(mcBox(4.5, 1, 4.5, 0x444444), 0, 10.5, 0));
+  const fl = at(mcBoxE(2, 2, 2, 0xff4400, 0xff4400, 1.2), 0, 12.5, 0); fl.name='flame'; g.add(fl);
+  g.add(new THREE.PointLight(0xff4400, 2, 20).translateY(12.5));
+  for (let i = 0; i < 4; i++) {
+    const a = (i/4)*Math.PI*2;
+    const f = at(mcBoxE(0.6, 0.6, 0.6, 0xff8800, 0xff6600, 0.8), Math.cos(a)*1.5, 13+Math.sin(a*2)*0.5, Math.sin(a)*1.5);
+    f.name='flamePart'; g.add(f);
+  }
+  return g;
+}
+
+function createFarm() {
+  const g = new THREE.Group();
+  g.add(at(mcBox(8, 1, 8, 0x6B4226), 0, 0.5, 0));
+  g.add(at(mcBox(6, 0.5, 6, 0x3a7a20), 0, 1.3, 0));
+  for (const x of [-3.5, 3.5]) for (const z of [-3.5, 0, 3.5]) g.add(at(mcBox(0.3, 2, 0.3, 0x8B6914), x, 2, z));
+  for (const x of [-3.5, 3.5]) g.add(at(mcBox(0.2, 0.3, 7, 0x8B6914), x, 2.5, 0));
+  g.add(at(mcBox(2.5, 2.5, 2.5, 0x8B4513), -2, 2.5, -2));
+  g.add(at(mcBox(3, 0.5, 3, 0xcc4444), -2, 4, -2));
+  for (let x = 0; x < 3; x++) for (let z = 0; z < 3; z++)
+    g.add(at(mcBox(0.8, 1.2, 0.8, 0x55aa22), x*1.5, 2.2, z*1.5));
+  return g;
+}
+
+function createWatchtower() {
+  const g = new THREE.Group();
+  for (const [x,z] of [[-2,-2],[2,-2],[-2,2],[2,2]]) g.add(at(mcBox(1, 12, 1, 0x8B4513), x, 6, z));
+  g.add(at(mcBox(6, 0.5, 6, 0x8B4513), 0, 9, 0));
+  g.add(at(mcBox(7, 0.5, 7, 0xcc4444), 0, 13, 0));
+  g.add(at(mcBox(5, 0.5, 5, 0xcc4444), 0, 13.7, 0));
+  g.add(at(mcBox(3, 0.5, 3, 0xcc4444), 0, 14.4, 0));
+  for (const [x,z] of [[-2.8,-2.8],[2.8,-2.8],[-2.8,2.8],[2.8,2.8]]) g.add(at(mcBox(0.4, 2, 0.4, 0x6B3513), x, 10.5, z));
+  g.add(at(mcBox(0.3, 1.5, 0.3, 0x8B4513), 0, 11.5, 2.8));
+  g.add(at(mcBoxE(0.5, 0.5, 0.5, 0xff8800, 0xff6600, 1.0), 0, 12.5, 2.8));
+  g.add(new THREE.PointLight(0xff8800, 0.8, 15).translateY(12.5).translateZ(2.8));
+  return g;
+}
+
+function createWall() {
+  const g = new THREE.Group();
+  g.add(at(mcBox(10, 6, 2, 0x888888), 0, 3, 0));
+  for (let i = -2; i <= 2; i++) g.add(at(mcBox(1.5, 2, 2.2, 0x999999), i*2.2, 7, 0));
+  g.add(at(mcBox(3, 2, 0.3, 0x777777), -2, 2, 1.05));
+  g.add(at(mcBox(3, 2, 0.3, 0x777777), 2, 4, 1.05));
+  return g;
+}
+
+function createSmithy() {
+  const g = new THREE.Group();
+  g.add(at(mcBox(6, 5, 5, 0x8B4513), 0, 2.5, 0));
+  g.add(at(mcBox(7, 1, 6, 0x555555), 0, 5.5, 0));
+  g.add(at(mcBox(1.5, 4, 1.5, 0x666666), 2, 8, -1));
+  g.add(at(mcBoxE(1.5, 1.5, 0.5, 0xff4400, 0xff2200, 1.0), 0, 1.5, 2.6));
+  g.add(new THREE.PointLight(0xff4400, 1, 10).translateY(1.5).translateZ(3));
+  g.add(at(mcBox(1.5, 1, 0.8, 0x444444), -2, 1, 3));
+  g.add(at(mcBox(2, 0.4, 1.2, 0x444444), -2, 1.7, 3));
+  g.add(at(mcBox(0.3, 2, 0.3, 0x8B4513), -1, 2, 3.5));
+  g.add(at(mcBox(0.8, 0.8, 0.8, 0x555555), -1, 3.2, 3.5));
+  return g;
+}
+
+function createAltar() {
+  const g = new THREE.Group();
+  g.add(at(mcBox(6, 1, 6, 0x666677), 0, 0.5, 0));
+  g.add(at(mcBox(4.5, 1, 4.5, 0x777788), 0, 1.5, 0));
+  g.add(at(mcBox(3, 1, 3, 0x8888aa), 0, 2.5, 0));
+  g.add(at(mcBox(1, 4, 1, 0x9999bb), 0, 5, 0));
+  const orb = at(mcBoxE(2, 2, 2, 0x9922ff, 0x9922ff, 1.0), 0, 8, 0); orb.name='altarOrb'; g.add(orb);
+  g.add(new THREE.PointLight(0x9922ff, 1.5, 20).translateY(8));
+  for (const [x,z] of [[-2,-2],[2,-2],[-2,2],[2,2]]) {
+    g.add(at(mcBox(0.4, 1.5, 0.4, 0xeeeecc), x, 2, z));
+    g.add(at(mcBoxE(0.3, 0.5, 0.3, 0xffaa00, 0xff8800, 1.0), x, 3, z));
+  }
+  return g;
+}
+
+// ===== LAYOUT =====
+const allUnits = [];
+const data = [
+  { fn: createKnight, args:[0xcc3333], x:-40, z:8, label:'ナイト\n近接剣士' },
+  { fn: createArcher, args:[0x228833], x:-26, z:8, label:'アーチャー\n弓兵' },
+  { fn: createGiant, args:[0xcc8844], x:-12, z:8, label:'ジャイアント\n大型タンク' },
+  { fn: createMusketeer, args:[0x4466aa], x:4, z:8, label:'マスケット銃士\n遠距離高火力' },
+  { fn: createGoblin, args:[0x55aa22], x:18, z:8, label:'ゴブリン\n素早い3匹組' },
+  { fn: createMiniPekka, args:[0x334488], x:32, z:8, label:'ミニP.E.K.K.A\n重装甲アタッカー' },
+
+  { fn: createBabyDragon, args:[0x44aa55], x:-33, z:-14, label:'ベビードラゴン\n飛行スプラッシュ' },
+  { fn: createSkeleton, args:[], x:-19, z:-14, label:'スケルトン\n8体の群れ' },
+  { fn: createHogRider, args:[0xdd6622], x:-5, z:-14, label:'ホグライダー\n超高速騎兵' },
+  { fn: createValkyrie, args:[0xcc5533], x:9, z:-14, label:'バルキリー\n回転斬り' },
+  { fn: createWizard, args:[0x7733aa], x:23, z:-14, label:'ウィザード\n魔法使い' },
+
+  { fn: createCannon, args:[], x:-40, z:-36, label:'大砲\n⚔️ 攻撃施設' },
+  { fn: createInfernoTower, args:[], x:-26, z:-36, label:'インフェルノタワー\n⚔️ 攻撃施設' },
+  { fn: createFarm, args:[], x:-12, z:-36, label:'農場\n🛡️ 防御施設' },
+  { fn: createWatchtower, args:[], x:4, z:-36, label:'見張り塔\n⚔️ 攻撃施設' },
+  { fn: createWall, args:[], x:18, z:-36, label:'城壁\n🛡️ 防御施設' },
+  { fn: createSmithy, args:[], x:32, z:-36, label:'鍛冶場\n⚔️ 攻撃施設' },
+  { fn: createAltar, args:[], x:46, z:-36, label:'祭壇\n🛡️ 防御施設' },
+];
+
+data.forEach(d => {
+  const u = d.fn(...d.args);
+  u.position.set(d.x, 0, d.z);
+  scene.add(u);
+  allUnits.push(u);
+
+  const c = document.createElement('canvas');
+  c.width = 300; c.height = 80;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.roundRect(0, 0, 300, 80, 10);
+  ctx.fill();
+  const lines = d.label.split('\n');
+  ctx.fillStyle = '#f4e6b8';
+  ctx.font = 'bold 26px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(lines[0], 150, 30);
+  if (lines[1]) {
+    ctx.fillStyle = lines[1].includes('⚔') ? '#ff6666' : lines[1].includes('🛡') ? '#6688ff' : '#aaa';
+    ctx.font = '18px sans-serif';
+    ctx.fillText(lines[1], 150, 60);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+  spr.scale.set(14, 4, 1);
+  spr.position.set(d.x, 24, d.z);
+  scene.add(spr);
+});
+
+// Section labels
+function addSectionLabel(text, x, z, y = 30) {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#f4e6b8';
+  ctx.font = 'bold 36px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, 256, 44);
+  const tex = new THREE.CanvasTexture(c);
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+  spr.scale.set(28, 3.5, 1);
+  spr.position.set(x, y, z);
+  scene.add(spr);
+}
+addSectionLabel('─── 兵士ユニット（前列） ───', -4, 8, 30);
+addSectionLabel('─── 兵士ユニット（後列） ───', -5, -14, 30);
+addSectionLabel('─── 建物 ＆ 施設 ───', 3, -36, 30);
+
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  allUnits.forEach(u => {
+    u.children.forEach(c => {
+      const sw = Math.sin(t * 4) * 0.6;
+      if (c.name === 'armL') c.rotation.x = sw;
+      if (c.name === 'armR') c.rotation.x = -sw;
+      if (c.name === 'legL') c.rotation.x = -sw;
+      if (c.name === 'legR') c.rotation.x = sw;
+      if (c.name === 'wingL') c.rotation.z = 0.2 + Math.sin(t*6)*0.4;
+      if (c.name === 'wingR') c.rotation.z = -0.2 - Math.sin(t*6)*0.4;
+      if (c.name === 'orb' || c.name === 'altarOrb') c.material.emissiveIntensity = 0.5 + Math.sin(t*3)*0.4;
+      if (c.name === 'flame') { c.material.emissiveIntensity = 0.8 + Math.sin(t*5)*0.4; c.rotation.y = t*2; }
+    });
+  });
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body></html>
