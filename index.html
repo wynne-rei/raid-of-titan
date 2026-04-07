@@ -5393,17 +5393,10 @@ let raidWarning = null;
 const RAID_WARNING_DURATION = 10; // 予兆から実スポーンまでの秒数
 const RAID_INTERVAL_MIN = 30;
 const RAID_INTERVAL_MAX = 45;
-const RAID_NAMES = [
-  { name: '炎刃のミニP.E.K.K.A', card: 'miniPekka' },
-  { name: '疾風のマスケット銃士', card: 'musketeer' },
-  { name: '暴君バルキリー', card: 'valkyrie' },
-  { name: '氷姫ウィザード', card: 'wizard' },
-  { name: '轟雷のナイト', card: 'knight' },
-  { name: '影狩りのアーチャー', card: 'archer' },
-  { name: '血風のバルキリー', card: 'valkyrie' },
-  { name: '蒼穹のベビードラゴン', card: 'babyDragon' },
-  { name: '破壊王ジャイアント', card: 'giant' },
-  { name: '魔弾のマスケット銃士', card: 'musketeer' },
+const RAID_BOSSES = [
+  { id: 'golem',       name: '滅城のゴーレム',   icon: '🗿', ability: 'destroyStructures', abilityCount: 3, color: 0x665544 },
+  { id: 'witch',       name: '魅了の魔女',       icon: '🧙‍♀️', ability: 'convertTroops',    color: 0x9933cc },
+  { id: 'frostDragon', name: '氷結の龍',         icon: '🐲', ability: 'freezeAll',         color: 0x44ccff },
 ];
 
 // Player unit tracking
@@ -6265,7 +6258,7 @@ function serializeBattleState() {
   // 襲来予兆状態（beaconはmesh参照なので除外、復元時に再生成）
   data.raidWarning = raidWarning ? {
     factionId: raidWarning.factionId,
-    raid: raidWarning.raid,
+    boss: raidWarning.boss,
     spawnerId: raidWarning.spawnerId,
     countdown: raidWarning.countdown
   } : null;
@@ -6660,7 +6653,7 @@ function restoreBattleState(data) {
         const _beacon = createRaidBeacon(_sp.kingTower.x, _sp.kingTower.z, FACTIONS[_rw.factionId].color);
         raidWarning = {
           factionId: _rw.factionId,
-          raid: _rw.raid,
+          boss: _rw.boss,
           spawnerId: _rw.spawnerId,
           countdown: _rw.countdown,
           beacon: _beacon
@@ -8086,6 +8079,92 @@ function createMcAltar() {
     g.add(at(mcBoxE(0.3, 0.5, 0.3, 0xffaa00, 0xff8800, 1.0), x, 3, z));
   }
   g.scale.set(3, 3, 3);
+  return g;
+}
+
+// ── Raid Boss Meshes ──
+function createMcGolem() {
+  const g = new THREE.Group();
+  // 巨大な石の体
+  g.add(at(mcBox(10, 12, 8, 0x555544), 0, 6, 0));
+  // 頭（小さめ）
+  g.add(at(mcBox(6, 5, 5, 0x666655), 0, 14.5, 0));
+  // 光る目
+  g.add(at(mcBoxE(1.5, 1, 1, 0xff4400, 0xff2200, 1.5), -1.5, 15, 2.6));
+  g.add(at(mcBoxE(1.5, 1, 1, 0xff4400, 0xff2200, 1.5), 1.5, 15, 2.6));
+  // 巨大な腕
+  const aL = at(mcBox(4, 14, 4, 0x665544), -8, 8, 0); aL.name='armL'; g.add(aL);
+  const aR = at(mcBox(4, 14, 4, 0x665544), 8, 8, 0); aR.name='armR'; g.add(aR);
+  // 拳
+  g.add(at(mcBox(5, 5, 5, 0x554433), -8, 1, 0));
+  g.add(at(mcBox(5, 5, 5, 0x554433), 8, 1, 0));
+  // 脚
+  const lL = at(mcBox(4, 6, 4, 0x554433), -3, -3, 0); lL.name='legL'; g.add(lL);
+  const lR = at(mcBox(4, 6, 4, 0x554433), 3, -3, 0); lR.name='legR'; g.add(lR);
+  // 胸のコア（光る）
+  g.add(at(mcBoxE(3, 3, 2, 0xff6600, 0xff4400, 1.2), 0, 8, 4.5));
+  // 苔・ヒビ
+  g.add(at(mcBox(2, 1, 1, 0x446633), 3, 10, 4.1));
+  g.add(at(mcBox(1, 2, 1, 0x446633), -4, 4, 4.1));
+  return g;
+}
+
+function createMcWitch() {
+  const g = new THREE.Group();
+  // ローブ（下半身）
+  g.add(at(mcBox(6, 8, 5, 0x330066), 0, 4, 0));
+  g.add(at(mcBox(7, 2, 6, 0x220044), 0, 1, 0));
+  // 上半身
+  g.add(at(mcBox(5, 5, 4, 0x440088), 0, 10.5, 0));
+  // 頭
+  g.add(at(mcBox(4, 4, 4, 0xddbbaa), 0, 15, 0));
+  // 光る瞳
+  g.add(at(mcBoxE(0.8, 0.8, 0.5, 0xcc00ff, 0xff00ff, 2.0), -1, 15.5, 2.1));
+  g.add(at(mcBoxE(0.8, 0.8, 0.5, 0xcc00ff, 0xff00ff, 2.0), 1, 15.5, 2.1));
+  // 三角帽子
+  g.add(at(mcBox(5, 2, 5, 0x220044), 0, 17.5, 0));
+  g.add(at(mcBox(3.5, 3, 3.5, 0x220044), 0, 19.5, 0));
+  g.add(at(mcBox(2, 3, 2, 0x330055), 0, 22, 0));
+  g.add(at(mcBoxE(1.5, 1.5, 1.5, 0xff00ff, 0xff00ff, 1.0), 0, 24, 0));
+  // 腕
+  const aL = at(mcBox(2, 7, 2, 0x440088), -4.5, 9, 0); aL.name='armL'; g.add(aL);
+  const aR = at(mcBox(2, 7, 2, 0x440088), 4.5, 9, 0); aR.name='armR'; g.add(aR);
+  // 杖（右手）
+  g.add(at(mcBox(0.5, 16, 0.5, 0x553311), 5.5, 10, 0));
+  g.add(at(mcBoxE(2, 2, 2, 0xaa00ff, 0xff00ff, 1.5), 5.5, 18.5, 0));
+  return g;
+}
+
+function createMcFrostDragon() {
+  const g = new THREE.Group();
+  // 体（太い）
+  g.add(at(mcBox(6, 6, 12, 0x88ccee), 0, 4, 0));
+  // 首
+  g.add(at(mcBox(3, 3, 5, 0x77bbdd), 0, 7, -7));
+  // 頭
+  g.add(at(mcBox(5, 4, 6, 0x88ccee), 0, 9, -11));
+  g.add(at(mcBox(4, 2, 3, 0x99ddff), 0, 8, -14.5));
+  // 光る瞳
+  g.add(at(mcBoxE(0.8, 0.8, 0.5, 0x00ccff, 0x00eeff, 2.0), -1.5, 10, -13.5));
+  g.add(at(mcBoxE(0.8, 0.8, 0.5, 0x00ccff, 0x00eeff, 2.0), 1.5, 10, -13.5));
+  // 角
+  g.add(at(mcBox(0.6, 3, 0.6, 0xaaeeff), -1.5, 12.5, -10));
+  g.add(at(mcBox(0.6, 3, 0.6, 0xaaeeff), 1.5, 12.5, -10));
+  // 翼
+  const wL = at(mcBox(12, 1, 8, 0x66aacc), -9, 6, 0); wL.name='wingL'; g.add(wL);
+  const wR = at(mcBox(12, 1, 8, 0x66aacc), 9, 6, 0); wR.name='wingR'; g.add(wR);
+  // 翼先端
+  g.add(at(mcBox(6, 0.5, 5, 0x5599bb), -15, 7, 0));
+  g.add(at(mcBox(6, 0.5, 5, 0x5599bb), 15, 7, 0));
+  // 尻尾
+  g.add(at(mcBox(2, 2, 6, 0x77bbdd), 0, 3, 8));
+  g.add(at(mcBox(1.5, 1.5, 4, 0x66aacc), 0, 3, 13));
+  g.add(at(mcBoxE(2, 1, 2, 0x00ccff, 0x00eeff, 1.0), 0, 3, 16));
+  // 脚（短い）
+  g.add(at(mcBox(2, 3, 2, 0x77bbdd), -2.5, 0, 2));
+  g.add(at(mcBox(2, 3, 2, 0x77bbdd), 2.5, 0, 2));
+  // 胸の氷結晶
+  g.add(at(mcBoxE(2, 2, 1, 0x44eeff, 0x00ccff, 1.5), 0, 5, -6));
   return g;
 }
 
@@ -9544,6 +9623,88 @@ function updateEntities(dt) {
       continue;
     }
 
+    // ===== Golem boss: structure-targeting AI =====
+    if (e.isRaidBoss && e.bossType === 'golem') {
+      // Find nearest enemy structure (not own faction)
+      let nearestStruct = null, nearestSDist = Infinity;
+      const golemFaction = players[e.side]?.faction;
+      for (const s of structures) {
+        if (s.destroyed || s.faction === golemFaction) continue;
+        const sd = Math.sqrt((s.x - e.mesh.position.x) ** 2 + (s.z - e.mesh.position.z) ** 2);
+        if (sd < nearestSDist) { nearestSDist = sd; nearestStruct = s; }
+      }
+      // Also target king towers as structures
+      if (!nearestStruct) {
+        let nearestTwr = null, nearestTD = Infinity;
+        for (const t of towers) {
+          if (t.destroyed || isAlly(t.side, e.side)) continue;
+          const td = Math.sqrt((t.x - e.mesh.position.x) ** 2 + (t.z - e.mesh.position.z) ** 2);
+          if (td < nearestTD) { nearestTD = td; nearestTwr = t; }
+        }
+        if (nearestTwr) {
+          // Walk toward tower
+          const dx = nearestTwr.x - e.mesh.position.x;
+          const dz = nearestTwr.z - e.mesh.position.z;
+          const len = Math.sqrt(dx * dx + dz * dz);
+          if (len > e.range) {
+            e.mesh.position.x += (dx / len) * e.speed * speedMult * dt;
+            e.mesh.position.z += (dz / len) * e.speed * speedMult * dt;
+            e.mesh.lookAt(nearestTwr.x, e.mesh.position.y, nearestTwr.z);
+          } else {
+            e.attackTimer -= dt * speedMult;
+            if (e.attackTimer <= 0) {
+              e.attackTimer = e.attackSpeed;
+              nearestTwr.hp -= e.dmg;
+              nearestTwr.lastHitBy = e.side;
+              showDamageNumber(nearestTwr.x, nearestTwr.z, Math.round(e.dmg));
+              if (nearestTwr.hp <= 0) {
+                e.bossStructuresDestroyed++;
+                if (e.bossStructuresDestroyed >= 3) {
+                  addCommentary(`🗿 ${e.raidName}が3つの建造物を破壊して去った！`, 'system');
+                  despawnBoss(e);
+                }
+              }
+            }
+            e.mesh.lookAt(nearestTwr.x, e.mesh.position.y, nearestTwr.z);
+          }
+        }
+      } else {
+        // Walk toward structure
+        const dx = nearestStruct.x - e.mesh.position.x;
+        const dz = nearestStruct.z - e.mesh.position.z;
+        const len = Math.sqrt(dx * dx + dz * dz);
+        const attackRange = 20;
+        if (len > attackRange) {
+          e.mesh.position.x += (dx / len) * e.speed * speedMult * dt;
+          e.mesh.position.z += (dz / len) * e.speed * speedMult * dt;
+          e.mesh.lookAt(nearestStruct.x, e.mesh.position.y, nearestStruct.z);
+        } else {
+          e.attackTimer -= dt * speedMult;
+          if (e.attackTimer <= 0) {
+            e.attackTimer = e.attackSpeed;
+            damageStructure(nearestStruct, e.dmg);
+            showDamageNumber(nearestStruct.x, nearestStruct.z, Math.round(e.dmg));
+            if (nearestStruct.destroyed) {
+              e.bossStructuresDestroyed++;
+              addCommentary(`🗿 ${e.raidName}が施設を破壊！ (${e.bossStructuresDestroyed}/3)`, 'system');
+              if (e.bossStructuresDestroyed >= 3) {
+                addCommentary(`🗿 ${e.raidName}が3つの施設を破壊して去った！`, 'system');
+                despawnBoss(e);
+              }
+            }
+          }
+          e.mesh.lookAt(nearestStruct.x, e.mesh.position.y, nearestStruct.z);
+        }
+      }
+      // Terrain follow + bobbing
+      const terrainY = getTerrainHeight(e.mesh.position.x, e.mesh.position.z);
+      const baseY = e.def.size ? (e.def.size[1] || e.def.size[0]) / 2 : 4;
+      const bob = Math.sin(clock.elapsedTime * 3) * 0.05;
+      e.mesh.position.y = terrainY + baseY + bob;
+      updateHPBarPosition(e);
+      continue;
+    }
+
     // Find target
     const moveTarget = getMovementTarget(e);
 
@@ -10174,144 +10335,260 @@ function removeRaidBeacon(beacon) {
 
 // 予兆フェーズ開始：対象を抽選し、光柱と警告バナーを表示
 function startRaidWarning() {
-  // Pick a random alive faction
+  // Pick a random alive faction to be attacked
   const aliveFactions = FACTION_IDS.filter(fid => {
     return players.some(p => p.faction === fid && !p.eliminated && p.kingTower && !p.kingTower.destroyed);
   });
   if (aliveFactions.length === 0) return;
   const fid = aliveFactions[Math.floor(Math.random() * aliveFactions.length)];
 
-  // Pick a random raid name
-  const raid = RAID_NAMES[Math.floor(Math.random() * RAID_NAMES.length)];
-  const def = CARD_DEFS[raid.card];
-  if (!def) return;
+  // Pick a random boss type
+  const boss = RAID_BOSSES[Math.floor(Math.random() * RAID_BOSSES.length)];
 
-  // Pick a random alive player from that faction as spawner
+  // Pick a random alive player from that faction
   const factionPlayers = players.filter(p => p.faction === fid && !p.eliminated && p.kingTower && !p.kingTower.destroyed);
   if (factionPlayers.length === 0) return;
   const spawner = factionPlayers[Math.floor(Math.random() * factionPlayers.length)];
   const kt = spawner.kingTower;
 
-  // 光柱ビーコンを立てる
-  const beacon = createRaidBeacon(kt.x, kt.z, FACTIONS[fid].color);
+  const beacon = createRaidBeacon(kt.x, kt.z, boss.color);
 
   raidWarning = {
     factionId: fid,
-    raid: raid,
+    boss: boss,
     spawnerId: spawner.id,
     countdown: RAID_WARNING_DURATION,
     beacon: beacon
   };
 
-  // バナー表示
   const banner = document.getElementById('raid-warning-banner');
   if (banner) {
     banner.style.display = 'block';
-    banner.style.borderColor = '#' + FACTIONS[fid].color.toString(16).padStart(6, '0');
+    banner.style.borderColor = '#' + boss.color.toString(16).padStart(6, '0');
   }
 
-  // 予告アナウンス
   const factionIcon = FACTIONS[fid].icon;
   const factionName = FACTIONS[fid].name;
-  addCommentary(`⚠️ ${factionIcon} ${factionName}から${raid.name}が襲来するぞ！備えよ！`, fid);
-  speakKabira(`まもなく${factionName}から${raid.name}が襲来する！備えよ！`, 'high');
+  addCommentary(`⚠️ ${boss.icon} ${boss.name}が${factionName}に襲来するぞ！備えよ！`, fid);
+  speakKabira(`まもなく${boss.name}が${factionName}に襲来する！備えよ！`, 'high');
 }
 
 // 予兆完了 → 実スポーン
 function finalizeRaidSpawn() {
   if (!raidWarning) return;
-  const { factionId: fid, raid, spawnerId, beacon } = raidWarning;
-  const cardId = raid.card;
-  const def = CARD_DEFS[cardId];
+  const { factionId: fid, boss, spawnerId, beacon } = raidWarning;
 
-  // ビーコンを撤去
   removeRaidBeacon(beacon);
-
-  // バナーを隠す
   const banner = document.getElementById('raid-warning-banner');
   if (banner) banner.style.display = 'none';
 
-  // 対象プレイヤーがまだ生きているか確認
   const spawner = players.find(p => p.id === spawnerId && !p.eliminated && p.kingTower && !p.kingTower.destroyed);
-  if (!spawner || !def) {
-    raidWarning = null;
-    return;
-  }
+  if (!spawner) { raidWarning = null; return; }
   const kt = spawner.kingTower;
 
-  // Spawn near that player's tower
   const spawnX = kt.x + (Math.random() - 0.5) * 80;
   const spawnZ = kt.z + (Math.random() - 0.5) * 80;
-  spawnEntity(cardId, spawnX, spawnZ, spawner.id);
 
-  // Find the just-spawned entity (last one added)
-  const entity = entities[entities.length - 1];
-  if (entity) {
-    // ボス強化
-    entity.hp = Math.floor(entity.hp * BOSS_HP_MULT);
-    entity.maxHp = Math.floor(entity.maxHp * BOSS_HP_MULT);
-    entity.dmg = Math.floor(entity.dmg * BOSS_DMG_MULT);
-    entity.dmgBase = Math.floor(entity.dmgBase * BOSS_DMG_MULT);
-    entity.dmgMax = Math.floor(entity.dmgMax * BOSS_DMG_MULT);
-    entity.raidName = raid.name;
-    entity.isRaidBoss = true;
-    entity.mesh.scale.multiplyScalar(BOSS_SCALE);
-    const factionColor = FACTIONS[fid].color;
+  // ボス専用メッシュを生成
+  let bossMesh;
+  if (boss.id === 'golem') bossMesh = createMcGolem();
+  else if (boss.id === 'witch') bossMesh = createMcWitch();
+  else bossMesh = createMcFrostDragon();
 
-    // ボスオーラ: 点光源
-    const auraLight = new THREE.PointLight(factionColor, 3, 150);
-    auraLight.position.set(0, 10, 0);
-    entity.mesh.add(auraLight);
+  bossMesh.scale.set(BOSS_SCALE * 1.5, BOSS_SCALE * 1.5, BOSS_SCALE * 1.5);
+  const posY = boss.id === 'frostDragon' ? 20 : 0;
+  bossMesh.position.set(spawnX, posY, spawnZ);
+  bossMesh.traverse(c => { if (c.isMesh) { c.castShadow = false; c.receiveShadow = false; } });
+  scene.add(bossMesh);
 
-    // ボスオーラ: パーティクルリング
-    const auraGeo = new THREE.RingGeometry(12, 16, 32);
-    const auraMat = new THREE.MeshBasicMaterial({
-      color: factionColor, transparent: true, opacity: 0.4, side: THREE.DoubleSide
-    });
-    const auraRing = new THREE.Mesh(auraGeo, auraMat);
-    auraRing.rotation.x = -Math.PI / 2;
-    auraRing.position.y = 1;
-    auraRing.userData.isBossAura = true;
-    entity.mesh.add(auraRing);
+  // HPバー
+  const hpContainer = document.createElement('div');
+  hpContainer.className = 'hp-bar-container boss-hp';
+  const bossHp = boss.id === 'golem' ? 4000 : 1500;
+  hpContainer.innerHTML = `
+    <div class="boss-title">${boss.icon} ${boss.name}</div>
+    <div class="hp-bar-bg boss-bar-bg"><div class="hp-bar-fill boss-bar-fill" style="width:100%;background:linear-gradient(90deg, #ff5722, #ff9800)"></div></div>
+    <div class="hp-text boss-hp-text">${bossHp} / ${bossHp}</div>
+  `;
+  document.getElementById('hp-bars')?.appendChild(hpContainer);
 
-    // ボスオーラ: 浮遊パーティクル
-    const particleCount = 30;
-    const pGeo = new THREE.BufferGeometry();
-    const pPositions = new Float32Array(particleCount * 3);
-    for (let pi = 0; pi < particleCount; pi++) {
-      const angle = (pi / particleCount) * Math.PI * 2;
-      const r = 10 + Math.random() * 6;
-      pPositions[pi * 3] = Math.cos(angle) * r;
-      pPositions[pi * 3 + 1] = 3 + Math.random() * 15;
-      pPositions[pi * 3 + 2] = Math.sin(angle) * r;
-    }
-    pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
-    const pMat = new THREE.PointsMaterial({
-      color: factionColor, size: 2.5, transparent: true, opacity: 0.7
-    });
-    const bossParticles = new THREE.Points(pGeo, pMat);
-    bossParticles.userData.isBossParticles = true;
-    entity.mesh.add(bossParticles);
+  // エンティティとして登録（ゴーレムのみ戦闘可能、他は即効果→退場）
+  const bossEntity = {
+    mesh: bossMesh,
+    cardId: '_boss_' + boss.id,
+    def: { type: 'troop', size: [10, 15, 10], fly: boss.id === 'frostDragon' },
+    side: spawner.id,
+    hp: bossHp, maxHp: bossHp,
+    dmg: boss.id === 'golem' ? 800 : 0,
+    dmgBase: boss.id === 'golem' ? 800 : 0,
+    dmgMax: boss.id === 'golem' ? 800 : 0,
+    speed: boss.id === 'golem' ? 8 : 0,
+    range: boss.id === 'golem' ? 30 : 0,
+    attackSpeed: 2.0, attackTimer: 0,
+    targetType: 'both',
+    state: 'idle',
+    frozen: 0, raged: 0, rageBoost: 1.0,
+    lastHitBy: -1,
+    hpContainer: hpContainer,
+    raidName: boss.name,
+    isRaidBoss: true,
+    bossType: boss.id,
+    bossAbility: boss.ability,
+    bossAbilityDone: false,
+    bossStructuresDestroyed: 0,
+    bossTimer: 0,
+    fly: boss.id === 'frostDragon',
+    isBuilding: false,
+  };
+  entities.push(bossEntity);
 
-    // ボス専用HPバー（二つ名＋赤枠）
-    if (entity.hpContainer) {
-      entity.hpContainer.classList.add('boss-hp');
-      entity.hpContainer.innerHTML = `
-        <div class="boss-title">👑 ${raid.name}</div>
-        <div class="hp-bar-bg boss-bar-bg"><div class="hp-bar-fill boss-bar-fill" style="width:100%;background:linear-gradient(90deg, #ff5722, #ff9800)"></div></div>
-        <div class="hp-text boss-hp-text">${entity.hp} / ${entity.maxHp}</div>
-      `;
-    }
+  // ボスオーラ
+  const auraLight = new THREE.PointLight(boss.color, 4, 200);
+  auraLight.position.set(0, 10, 0);
+  bossMesh.add(auraLight);
+
+  const auraRing = new THREE.Mesh(
+    new THREE.RingGeometry(14, 18, 32),
+    new THREE.MeshBasicMaterial({ color: boss.color, transparent: true, opacity: 0.5, side: THREE.DoubleSide })
+  );
+  auraRing.rotation.x = -Math.PI / 2;
+  auraRing.position.y = 1;
+  auraRing.userData.isBossAura = true;
+  bossMesh.add(auraRing);
+
+  const particleCount = 30;
+  const pGeo = new THREE.BufferGeometry();
+  const pPos = new Float32Array(particleCount * 3);
+  for (let pi = 0; pi < particleCount; pi++) {
+    const a = (pi / particleCount) * Math.PI * 2;
+    const r = 10 + Math.random() * 6;
+    pPos[pi*3] = Math.cos(a)*r; pPos[pi*3+1] = 3+Math.random()*15; pPos[pi*3+2] = Math.sin(a)*r;
   }
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+  const bossParticles = new THREE.Points(pGeo, new THREE.PointsMaterial({ color: boss.color, size: 3, transparent: true, opacity: 0.7 }));
+  bossParticles.userData.isBossParticles = true;
+  bossMesh.add(bossParticles);
 
-  // Dramatic announcement
-  const factionIcon = FACTIONS[fid].icon;
+  // ── 即効果系ボス（魔女・氷龍）は登場後2秒で能力発動、その後退場 ──
+  if (boss.ability === 'convertTroops') {
+    setTimeout(() => executeBossAbility(bossEntity, fid), 2000);
+  } else if (boss.ability === 'freezeAll') {
+    setTimeout(() => executeBossAbility(bossEntity, fid), 2000);
+  }
+  // ゴーレムは updateEntities 内で施設を狙う（通常の移動＋攻撃で処理）
+
   const factionName = FACTIONS[fid].name;
-  addCommentary(`⚔️ ${factionIcon} ${factionName}から${raid.name}が襲来！`, fid);
-  speakKabira(`${factionName}から${raid.name}が襲来！`, 'high');
+  addCommentary(`⚔️ ${boss.icon} ${boss.name}が${factionName}に襲来！`, fid);
+  speakKabira(`${boss.name}が${factionName}に襲来！`, 'high');
 
   raidCount++;
   raidWarning = null;
+}
+
+// ── ボス特殊能力発動 ──
+function executeBossAbility(bossEntity, targetFactionId) {
+  if (!bossEntity || bossEntity.hp <= 0) return;
+  const boss = RAID_BOSSES.find(b => b.id === bossEntity.bossType);
+  if (!boss) return;
+
+  if (boss.ability === 'convertTroops') {
+    // 全「兵士」を自国に寝返らせる
+    let converted = 0;
+    entities.forEach(e => {
+      if (e === bossEntity || e.hp <= 0 || e.isRaidBoss) return;
+      if (e.def?.type !== 'troop') return;
+      // ボスの陣営に変更
+      e.side = bossEntity.side;
+      // 紫エフェクト
+      if (e.mesh) {
+        e.mesh.traverse(c => {
+          if (c.isMesh && c.material?.color) {
+            c.material.color.set(0xcc44ff);
+          }
+        });
+        // パーティクル
+        for (let i = 0; i < 5; i++) {
+          const p = new THREE.Mesh(new THREE.SphereGeometry(1, 4, 4), new THREE.MeshBasicMaterial({ color: 0xcc00ff }));
+          p.position.copy(e.mesh.position);
+          scene.add(p);
+          spellEffects.push({ mesh: p, timer: 0.8, vy: 2+Math.random()*3, vx: (Math.random()-0.5)*3, vz: (Math.random()-0.5)*3, particle: true });
+        }
+      }
+      converted++;
+    });
+    addCommentary(`${boss.icon} ${boss.name}が${converted}体の兵士を寝返らせた！`, 'system');
+    speakKabira(`${boss.name}が全兵士を洗脳した！`, 'high');
+  }
+
+  else if (boss.ability === 'freezeAll') {
+    // フィールド全体にフリーズ
+    const freezeDur = 5.0;
+    entities.forEach(e => {
+      if (e === bossEntity || e.hp <= 0) return;
+      e.frozen = freezeDur;
+      // 氷エフェクト
+      if (e.mesh) {
+        e.mesh.traverse(c => {
+          if (c.isMesh && c.material?.color) {
+            c.userData._origColor = c.material.color.getHex();
+            c.material.color.set(0x88ddff);
+          }
+        });
+      }
+    });
+    // 全キングタワーもフリーズ演出
+    towers.forEach(t => {
+      if (t.destroyed || !t.mesh) return;
+      t.mesh.traverse(c => {
+        if (c.isMesh && c.material?.color) {
+          c.userData._origFreezeColor = c.material.color.getHex();
+          c.material.color.set(0x88ddff);
+        }
+      });
+      setTimeout(() => {
+        if (!t.mesh) return;
+        t.mesh.traverse(c => {
+          if (c.isMesh && c.material?.color && c.userData._origFreezeColor !== undefined) {
+            c.material.color.set(c.userData._origFreezeColor);
+          }
+        });
+      }, freezeDur * 1000);
+    });
+    // 地面に氷リング
+    const iceRing = new THREE.Mesh(
+      new THREE.RingGeometry(0, 500, 64),
+      new THREE.MeshBasicMaterial({ color: 0x44ccff, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
+    );
+    iceRing.rotation.x = -Math.PI / 2;
+    iceRing.position.set(bossEntity.mesh.position.x, 0.5, bossEntity.mesh.position.z);
+    scene.add(iceRing);
+    spellEffects.push({ mesh: iceRing, timer: freezeDur, particle: false });
+
+    addCommentary(`${boss.icon} ${boss.name}がフィールド全体を凍結させた！(${freezeDur}秒)`, 'system');
+    speakKabira(`${boss.name}がフィールドを凍結！`, 'high');
+  }
+
+  // 能力発動後3秒で退場
+  bossEntity.bossAbilityDone = true;
+  setTimeout(() => despawnBoss(bossEntity), 3000);
+}
+
+// ── ボス退場エフェクト ──
+function despawnBoss(bossEntity) {
+  if (!bossEntity || !bossEntity.mesh) return;
+  // 爆発パーティクル
+  for (let i = 0; i < 20; i++) {
+    const p = new THREE.Mesh(
+      new THREE.SphereGeometry(2, 4, 4),
+      new THREE.MeshBasicMaterial({ color: 0xffd700 })
+    );
+    p.position.copy(bossEntity.mesh.position);
+    scene.add(p);
+    spellEffects.push({ mesh: p, timer: 1.2, vy: 3+Math.random()*5, vx: (Math.random()-0.5)*6, vz: (Math.random()-0.5)*6, particle: true });
+  }
+  // エンティティ削除
+  bossEntity.hp = 0;
+  addCommentary(`${bossEntity.raidName}が去った！`, 'system');
 }
 
 function updateRaidSystem(dt) {
@@ -10331,7 +10608,7 @@ function updateRaidSystem(dt) {
     if (textEl) {
       const sec = Math.max(0, Math.ceil(raidWarning.countdown));
       const fid = raidWarning.factionId;
-      textEl.innerHTML = `⚠️ <span style="color:#${FACTIONS[fid].color.toString(16).padStart(6,'0')}">${FACTIONS[fid].icon} ${FACTIONS[fid].name}</span>から<span style="color:#ffdd44">${raidWarning.raid.name}</span>が襲来する！ 備えよ… <span style="color:#ff5544; font-size:28px;">${sec}</span>`;
+      textEl.innerHTML = `⚠️ <span style="color:#${FACTIONS[fid].color.toString(16).padStart(6,'0')}">${FACTIONS[fid].icon} ${FACTIONS[fid].name}</span>から<span style="color:#ffdd44">${raidWarning.boss.name}</span>が襲来する！ 備えよ… <span style="color:#ff5544; font-size:28px;">${sec}</span>`;
     }
     if (raidWarning.countdown <= 0) {
       finalizeRaidSpawn();
@@ -11196,10 +11473,10 @@ function updateChests(dt) {
 }
 
 function getRandomCard() {
-  // 全カード（施設除く）からランダムで1枚
+  // 全カード（兵士・建物・施設すべて）からランダムで1枚
   const pool = Object.keys(CARD_DEFS).filter(id => {
     const def = CARD_DEFS[id];
-    return def && def.type !== 'structure';
+    return def != null;
   });
   if (pool.length === 0) return 'knight';
   return pool[Math.floor(Math.random() * pool.length)];
