@@ -3227,8 +3227,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
   <div id="overtime-banner">⚡ SUDDEN DEATH ⚡</div>
   <!-- ウェーブ制: 開戦ボタン & ウェーブ情報 -->
   <div id="wave-hud" style="position:absolute;top:60px;left:50%;transform:translateX(-50%);text-align:center;z-index:200;pointer-events:none;">
-    <div id="wave-info" style="display:none;"></div>
-    <button id="btn-start-wave" onclick="startFirstWave()" style="display:none;pointer-events:auto;padding:14px 40px;font-size:22px;font-weight:bold;background:linear-gradient(135deg,#ff6b35,#e53935);color:#fff;border:3px solid #ffd700;border-radius:16px;cursor:pointer;text-shadow:0 2px 4px rgba(0,0,0,0.5);box-shadow:0 4px 20px rgba(255,107,53,0.5);animation:pulse 1.5s infinite;">⚔️ 開戦！</button>
+    <div id="wave-info" style="display:none;padding:10px 24px;font-size:18px;font-weight:bold;color:#ffd700;background:rgba(0,0,0,0.7);border:2px solid rgba(255,215,0,0.4);border-radius:12px;text-shadow:0 2px 4px rgba(0,0,0,0.8);letter-spacing:1px;"></div>
   </div>
   <div id="faction-scoreboard"></div>
   <!-- 王国ステータス: 自軍情報 -->
@@ -9395,15 +9394,16 @@ function createUnitMesh(cardId, def, baseColor) {
 // ============================================================
 // WAVE DEFENSE — 開戦・ウェーブスポーン・初期軍
 // ============================================================
+const DRAGON_COUNTDOWN = 60; // ドラゴン襲来までの秒数（デバッグ用: 60秒）
+let dragonCountdownTimer = DRAGON_COUNTDOWN;
+
 function startFirstWave() {
   if (gameState !== 'BUILD') return;
-  const btn = document.getElementById('btn-start-wave');
-  if (btn) btn.style.display = 'none';
   currentWave = 1;
   gameState = 'WAVE';
   spawnWave(currentWave);
   speakKabira(`ドラゴンが攻めてくるぞ！ 王国を守れ！`);
-  addCommentary(`⚔️ ドラゴン襲来！`, humanPlayer ? humanPlayer.faction : 'fire');
+  addCommentary(`🐉 ドラゴン襲来！`, humanPlayer ? humanPlayer.faction : 'fire');
 }
 window.startFirstWave = startFirstWave;
 // オプション画面からアクセスできるように公開
@@ -11385,26 +11385,10 @@ function sendViewerComment() {
 
 // 配信者モードON（既存バトル中に被せる）
 function enableStreamerMode() {
+  // 配信モードUI廃止 — チャットパネル等を表示しない
   streamMode = 'streamer';
-  // ui-stream クラスで配信者用レイアウト有効化（観戦は enterSpectatorMode 側で ui-spec に差し替え）
   document.body.classList.add('ui-stream');
   document.body.classList.remove('ui-spec');
-  viewerCount = 800 + Math.floor(Math.random() * 2000);
-  viewerCountTarget = viewerCount;
-  streamCommentTimer = 1;
-  superChatTimer = 8;
-  toastTimer = 6;
-  viewerDistTimer = 0;
-  const panel = document.getElementById('stream-chat-panel');
-  if (panel) panel.style.display = 'flex';
-  // 配信者モードでも入力欄は出す（自分が視聴者コメント打ち込める）
-  const inputWrap = document.getElementById('stream-chat-input-wrap');
-  if (inputWrap) inputWrap.style.display = 'flex';
-  document.getElementById('stream-chat-messages').innerHTML = '';
-  addStreamChatMessage('システム', '--- ライブ配信開始 ---', 'newbie');
-  // 分布HUD表示
-  const distHud = document.getElementById('viewer-dist-hud');
-  if (distHud) distHud.style.display = 'block';
 }
 
 function disableStreamMode() {
@@ -15128,57 +15112,11 @@ window.skipTutorial = function() {
 let _asLastState = '';
 let _asLastText = '';
 function updateActionStatus() {
+  // アクションステータスバーは廃止
   const el = document.getElementById('action-status');
+  if (el) el.classList.remove('visible');
   const dim = document.getElementById('placing-dim-overlay');
-  if (!el) return;
-  if (gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL') {
-    el.classList.remove('visible');
-    if (dim) dim.classList.remove('active');
-    return;
-  }
-  if (isSpectator) { el.classList.remove('visible'); if (dim) dim.classList.remove('active'); return; }
-
-  let state, icon, text, hint;
-  if (placementMode && selectedCardIndex >= 0) {
-    const cid = handCards[selectedCardIndex];
-    const def = cid ? CARD_DEFS[cid] : null;
-    state = 'placing';
-    icon = '◎';
-    text = def ? `${def.name.toUpperCase()} 配置中` : '配置中';
-    hint = 'クリックで配置 / Escでキャンセル';
-    if (dim) dim.classList.add('active');
-  } else {
-    if (dim) dim.classList.remove('active');
-    // 使えるカードがあるか
-    const curGdp = factionGDP[humanPlayer ? humanPlayer.faction : 'fire'] || 0;
-    const affordable = (handCards || []).some(cid => {
-      const d = CARD_DEFS[cid]; return d && curGdp >= d.cost;
-    });
-    if (affordable) {
-      state = 'ready';
-      icon = '◆';
-      text = 'カードを選択';
-      hint = '1-4キー or クリックで選択';
-    } else {
-      state = 'waiting';
-      icon = '◇';
-      text = 'GDP不足';
-      hint = `GDP: ${Math.floor(curGdp)}`;
-    }
-  }
-
-  if (state !== _asLastState) {
-    el.setAttribute('data-state', state);
-    _asLastState = state;
-  }
-  const combo = state + '|' + text + '|' + hint;
-  if (combo !== _asLastText) {
-    el.querySelector('.as-icon').textContent = icon;
-    el.querySelector('.as-text').textContent = text;
-    el.querySelector('.as-hint').textContent = hint;
-    _asLastText = combo;
-  }
-  el.classList.add('visible');
+  if (dim) dim.classList.remove('active');
 }
 
 // Minimap: DOMドット差分更新
@@ -15402,7 +15340,7 @@ function updateGame(dt) {
 
   // ============ WAVE DEFENSE STATE MACHINE ============
 
-  // BUILD: 自軍育成フェーズ — 敵なし、プレイヤーが「開戦」を押すまで
+  // BUILD: 自軍育成フェーズ — カウントダウン後にドラゴン襲来
   if (gameState === 'BUILD') {
     frameCount++;
     updateEntities(dt);
@@ -15417,14 +15355,20 @@ function updateGame(dt) {
     updateChests(dt);
     updateStructures(dt);
     if (frameCount % 3 === 0) { updateHUD(); updateMinimap(); }
-    if (structurePanelOpen && frameCount % 10 === 0) renderStructurePanel();
     updateCommentary(dt);
     updateQueenAuraAnimation(dt);
-    if (frameCount % 3 === 0) updateActionStatus();
     if (frameCount % 15 === 0) renderHand();
-    // 「開戦」ボタン表示
-    const startBtn = document.getElementById('btn-start-wave');
-    if (startBtn) startBtn.style.display = 'block';
+    // ドラゴン襲来カウントダウン
+    dragonCountdownTimer -= dt;
+    const waveInfo = document.getElementById('wave-info');
+    if (waveInfo) {
+      waveInfo.style.display = 'block';
+      waveInfo.textContent = `🐉 ドラゴン襲来まで ${Math.ceil(Math.max(0, dragonCountdownTimer))}秒`;
+    }
+    if (dragonCountdownTimer <= 0) {
+      startFirstWave();
+      return;
+    }
     // ホスト: 観戦者への状態ブロードキャスト
     if (isNetHost && netConnections.length > 0) {
       netBroadcastTimer += dt;
@@ -15434,11 +15378,7 @@ function updateGame(dt) {
   }
 
   // WAVE: ドラゴン襲来中
-  if (gameState === 'WAVE' || gameState === 'BUILD' || gameState === 'WAVE' || gameState === 'INTERVAL') {
-    // 「開戦」ボタン非表示
-    const startBtn = document.getElementById('btn-start-wave');
-    if (startBtn) startBtn.style.display = 'none';
-
+  if (gameState === 'WAVE' || gameState === 'INTERVAL') {
     // ウェーブクリア判定 — 終わりなし、ここで生きる
     waveEnemies = waveEnemies.filter(e => e.hp > 0);
     if (waveEnemies.length === 0 && currentWave > 0) {
@@ -15462,7 +15402,10 @@ function updateGame(dt) {
     intervalTimer -= dt;
     // インターバル中のUI更新
     const waveInfo = document.getElementById('wave-info');
-    if (waveInfo) waveInfo.textContent = `次のウェーブまで: ${Math.ceil(intervalTimer)}秒`;
+    if (waveInfo) {
+      waveInfo.style.display = 'block';
+      waveInfo.textContent = `🐉 次のドラゴン襲来まで ${Math.ceil(intervalTimer)}秒`;
+    }
     if (intervalTimer <= 0) {
       // 次ウェーブ開始
       currentWave++;
