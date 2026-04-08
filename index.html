@@ -6836,7 +6836,7 @@ function restoreBattleState(data) {
     document.getElementById('hud').style.display = 'block';
     document.getElementById('battle-dock').style.display = 'flex';
     document.getElementById('inventory-toggle-btn').style.display = 'block';
-    document.getElementById('commentary-box').style.display = 'block';
+    // commentary-box廃止
     document.getElementById('bottom-status-bar').style.display = 'block';
     document.getElementById('player-stats-panel').style.display = 'block';
     document.getElementById('player-stats-panel').classList.remove('open');
@@ -9549,7 +9549,8 @@ function spawnWave(waveNum) {
 
   // ウェーブ情報UI更新
   const waveInfo = document.getElementById('wave-info');
-  if (waveInfo) waveInfo.textContent = `🐲 ウェーブ ${waveNum} / ${maxWaves}  —  ${toSpawn.length}体のドラゴン`;
+  // ウェーブ表示はカウントダウン系のみ（wave-infoはBUILD/INTERVALで更新）
+  if (waveInfo) waveInfo.style.display = 'none';
 }
 
 // ============================================================
@@ -14430,7 +14431,7 @@ window.startBattle = function() {
   // Show HUD
   document.getElementById('hud').style.display = 'block';
   document.getElementById('battle-dock').style.display = 'flex';
-  document.getElementById('commentary-box').style.display = 'block';
+  // commentary-box廃止
   document.getElementById('commentary-box').innerHTML = '';
   document.getElementById('bottom-status-bar').style.display = 'block';
   document.getElementById('inventory-toggle-btn').style.display = 'block';
@@ -14473,6 +14474,7 @@ window.startBattle = function() {
   waveEnemies = [];
   playerArmy = [];
   intervalTimer = 0;
+  dragonCountdownTimer = DRAGON_COUNTDOWN;
   battleSaveTimer = 30; // 自動セーブタイマーリセット
   resetQueenLevel();
   resetFactionLevels();
