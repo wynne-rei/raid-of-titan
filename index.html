@@ -1472,6 +1472,80 @@ canvas { display: block; }
   z-index: 590; font-weight: bold;
 }
 #structure-toggle-btn:hover { background: rgba(255,215,0,0.2); }
+
+/* ============================================================
+   Inventory Panel (replaces always-visible card hand)
+   ============================================================ */
+#inventory-toggle-btn {
+  position: fixed; bottom: 20px; right: 16px;
+  background: rgba(0,0,0,0.85); border: 2px solid #c080ff; color: #e0c0ff;
+  padding: 10px 18px; border-radius: 12px; font-size: 15px; cursor: pointer;
+  z-index: 590; font-weight: bold; display: none;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.6), 0 0 12px rgba(180,100,240,0.3);
+}
+#inventory-toggle-btn:hover { background: rgba(180,100,240,0.2); border-color: #e0a0ff; }
+#inventory-toggle-btn .inv-count {
+  display: inline-block; background: #c080ff; color: #1a0a2a; border-radius: 10px;
+  padding: 0 7px; font-size: 12px; margin-left: 6px; font-weight: bold;
+}
+#inventory-panel {
+  display: none; position: fixed; bottom: 70px; right: 16px;
+  width: 480px; max-width: 92vw; max-height: 60vh;
+  background: linear-gradient(180deg, rgba(16,10,28,0.96) 0%, rgba(8,4,16,0.98) 100%);
+  border: 2px solid rgba(180,120,255,0.5); border-radius: 14px;
+  z-index: 580; overflow-y: auto; padding: 12px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 30px rgba(120,60,200,0.2);
+  scrollbar-width: thin; scrollbar-color: rgba(180,120,255,0.3) transparent;
+}
+#inventory-panel.visible { display: block; }
+#inventory-panel-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 4px 8px; margin-bottom: 0; color: #e0c0ff; font-weight: bold; font-size: 14px;
+}
+/* Inventory Tabs */
+#inventory-tabs {
+  display: flex; gap: 0; margin-bottom: 10px;
+  border-bottom: 1px solid rgba(180,120,255,0.25);
+}
+.inv-tab {
+  flex: 1; padding: 8px 0; text-align: center; cursor: pointer;
+  color: #8870aa; font-weight: bold; font-size: 13px;
+  border-bottom: 2px solid transparent; transition: all 0.2s;
+  background: none; border-top: none; border-left: none; border-right: none;
+}
+.inv-tab:hover { color: #c0a0e0; }
+.inv-tab.active {
+  color: #e0c0ff; border-bottom-color: #c080ff;
+}
+.inv-tab-content { display: none; }
+.inv-tab-content.active { display: block; }
+#inventory-cards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 10px;
+}
+#inventory-structures {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+}
+#inventory-panel .hand-card {
+  width: 100%; height: 148px;
+}
+#inventory-panel .hand-card:hover {
+  transform: translateY(-4px) scale(1.03);
+}
+#inventory-panel .hand-card.selected {
+  transform: translateY(-4px) scale(1.05);
+}
+#inventory-panel .structure-card {
+  width: 100%; background: rgba(40,40,40,0.9);
+  border: 2px solid rgba(255,255,255,0.2); border-radius: 8px;
+  padding: 8px; text-align: center; cursor: pointer; transition: all 0.2s;
+  color: #fff; font-size: 11px;
+}
+#inventory-panel .structure-card:hover { border-color: #ffd700; transform: translateY(-3px); }
+#inventory-panel .structure-card.disabled { opacity: 0.4; cursor: not-allowed; }
+#inventory-panel .structure-card.max-reached { border-color: #666; opacity: 0.3; }
 .player-hp .queen-lv-badge {
   background: linear-gradient(135deg, #ffd700, #ff8c00);
   color: #1a0a00; font-size: 11px; font-weight: bold;
@@ -1730,10 +1804,10 @@ canvas { display: block; }
   width: 200px; height: 200px;
   z-index: 48;
   display: none;
-  background: linear-gradient(180deg, rgba(10,8,18,0.94) 0%, rgba(5,3,10,0.94) 100%);
-  border: 1px solid rgba(200,168,80,0.4);
-  border-radius: 8px;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06);
+  background: radial-gradient(circle, rgba(10,20,10,0.94) 0%, rgba(5,15,5,0.94) 70%, rgba(0,0,0,0.98) 100%);
+  border: 2px solid rgba(100,200,80,0.5);
+  border-radius: 50%;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.7), inset 0 0 20px rgba(0,80,0,0.3);
   backdrop-filter: blur(4px);
   overflow: hidden;
   pointer-events: none;
@@ -1748,9 +1822,10 @@ canvas { display: block; }
 #minimap::after {
   content: ''; position: absolute; inset: 18px 8px 8px;
   background-image:
-    linear-gradient(rgba(200,168,80,0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(200,168,80,0.08) 1px, transparent 1px);
+    linear-gradient(rgba(80,200,80,0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(80,200,80,0.1) 1px, transparent 1px);
   background-size: 25% 25%;
+  border-radius: 50%;
   pointer-events: none;
 }
 #minimap-canvas {
@@ -2964,6 +3039,24 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
       <button onclick="window.testVoice()" style="padding:10px; background:#c8a850; color:#000; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">実況を再生してみる</button>
       <div id="voice-status" style="font-size:11px; color:#aaa; padding:6px; background:rgba(0,0,0,0.3); border-radius:4px; word-break:break-all;">状態: 未確認</div>
     </div>
+    <div class="option-row" style="flex-direction:column; align-items:stretch; gap:8px; border-top:1px solid rgba(200,168,80,0.2); padding-top:12px; margin-top:8px;">
+      <label>🐲 ウェーブ設定</label>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <label style="font-size:12px;flex:1;">最大ウェーブ数</label>
+        <input type="number" min="1" max="50" value="10" id="opt-max-waves" style="width:60px;padding:4px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;text-align:center;"
+          onchange="window.maxWaves=parseInt(this.value)||10">
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <label style="font-size:12px;flex:1;">開始難易度</label>
+        <input type="number" min="0.5" max="5" step="0.1" value="1" id="opt-start-diff" style="width:60px;padding:4px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;text-align:center;"
+          onchange="window.waveConfig&&(window.waveConfig.startDifficulty=parseFloat(this.value)||1)">
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <label style="font-size:12px;flex:1;">難易度スケーリング</label>
+        <input type="number" min="1" max="3" step="0.05" value="1.2" id="opt-scaling" style="width:60px;padding:4px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;text-align:center;"
+          onchange="window.waveConfig&&(window.waveConfig.scaling=parseFloat(this.value)||1.2)">
+      </div>
+    </div>
     <div class="controls-help">
       <div class="modal-title" style="font-size:16px; margin-bottom:12px;">操作方法</div>
       <dl>
@@ -3132,25 +3225,21 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
     </div>
   </div>
   <div id="overtime-banner">⚡ SUDDEN DEATH ⚡</div>
+  <!-- ウェーブ制: 開戦ボタン & ウェーブ情報 -->
+  <div id="wave-hud" style="position:absolute;top:60px;left:50%;transform:translateX(-50%);text-align:center;z-index:200;pointer-events:none;">
+    <div id="wave-info" style="display:none;"></div>
+    <button id="btn-start-wave" onclick="startFirstWave()" style="display:none;pointer-events:auto;padding:14px 40px;font-size:22px;font-weight:bold;background:linear-gradient(135deg,#ff6b35,#e53935);color:#fff;border:3px solid #ffd700;border-radius:16px;cursor:pointer;text-shadow:0 2px 4px rgba(0,0,0,0.5);box-shadow:0 4px 20px rgba(255,107,53,0.5);animation:pulse 1.5s infinite;">⚔️ 開戦！</button>
+  </div>
   <div id="faction-scoreboard"></div>
-  <!-- GDP: 3国の国力（GDP）バー。常時表示、終わらない戦争の勢力図 -->
+  <!-- 王国ステータス: 自軍情報 -->
   <div id="victory-progress">
-    <div class="vp-title">NATIONAL GDP</div>
-    <div class="vp-row" data-fac="fire">
-      <span class="vp-icon">🔥</span>
+    <div class="vp-title">🏰 KINGDOM STATUS</div>
+    <div class="vp-row" data-fac="player">
+      <span class="vp-icon" id="vp-player-icon">🔥</span>
       <div class="vp-bar"><div class="vp-fill"></div></div>
       <span class="vp-pct">0%</span>
     </div>
-    <div class="vp-row" data-fac="ice">
-      <span class="vp-icon">❄️</span>
-      <div class="vp-bar"><div class="vp-fill"></div></div>
-      <span class="vp-pct">0%</span>
-    </div>
-    <div class="vp-row" data-fac="earth">
-      <span class="vp-icon">🌿</span>
-      <div class="vp-bar"><div class="vp-fill"></div></div>
-      <span class="vp-pct">0%</span>
-    </div>
+    <div id="army-count" style="color:#ffd700;font-size:13px;text-align:center;margin-top:4px;">⚔️ 自軍: 0体</div>
   </div>
 </div>
 
@@ -3163,18 +3252,27 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
       <div id="elixir-text">GDP: 1000</div>
     </div>
   </div>
-  <div id="card-hand"></div>
+  <div id="card-hand" style="display:none !important;"></div>
 </div>
 
-<!-- Structure Building Panel -->
-<div id="structure-panel" style="display:none;">
-  <div id="structure-panel-header">
-    <span>🏗️ 施設建設</span>
-    <span id="structure-gdp-display">GDP: 0</span>
+<!-- Unified Inventory Panel (軍隊 + 建設) -->
+<button id="inventory-toggle-btn" onclick="toggleInventoryPanel()">🎒 インベントリ <span class="inv-count">0</span></button>
+<div id="inventory-panel">
+  <div id="inventory-panel-header">
+    <span>🎒 インベントリ</span>
+    <span id="inventory-gdp-display">💰 GDP: 0</span>
   </div>
-  <div id="structure-cards"></div>
+  <div id="inventory-tabs">
+    <button class="inv-tab active" data-tab="army" onclick="switchInventoryTab('army')">⚔️ 軍隊</button>
+    <button class="inv-tab" data-tab="build" onclick="switchInventoryTab('build')">🏗️ 建設</button>
+  </div>
+  <div id="inv-tab-army" class="inv-tab-content active">
+    <div id="inventory-cards"></div>
+  </div>
+  <div id="inv-tab-build" class="inv-tab-content">
+    <div id="inventory-structures"></div>
+  </div>
 </div>
-<button id="structure-toggle-btn" onclick="toggleStructurePanel()" style="display:none;">🏗️ 建設</button>
 
 <!-- Card hover tooltip -->
 <div id="card-tooltip"></div>
@@ -3193,6 +3291,9 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
 <div id="bottom-status-bar">
   <div class="status-items" id="status-items"></div>
 </div>
+
+<!-- ダイバーランクパネル -->
+<div id="diver-rank-panel" style="display:none;position:fixed;bottom:120px;right:16px;background:rgba(0,0,0,0.85);border:1px solid #ffd700;border-radius:10px;padding:10px 14px;min-width:220px;z-index:500;"></div>
 
 <!-- Live Stream Mode: Chat Panel -->
 <div id="stream-chat-panel" style="display:none;">
@@ -5113,6 +5214,20 @@ const STRUCTURE_DEFS = {
     hp: 500, effect: 'gdpBoost', effectValue: 0.3,
     description: 'GDP収入+30%',
     color: 0x9c27b0, size: { w: 12, h: 16, d: 12 }, maxPerFaction: 1
+  },
+  trap: {
+    name: 'トラップ', icon: '💥', cost: 150,
+    hp: 1, effect: 'trap', effectValue: 300,
+    description: '敵が踏むと爆発！DMG300',
+    color: 0x666666, size: { w: 8, h: 2, d: 8 }, maxPerFaction: 6,
+    invisible: true, oneShot: true, trapDmg: 300, trapRange: 20
+  },
+  healingTower: {
+    name: 'ヒーリングタワー', icon: '💚', cost: 300,
+    hp: 400, effect: 'heal', effectValue: 20,
+    description: '範囲内の味方をHP20/秒回復',
+    color: 0x44ff88, size: { w: 10, h: 18, d: 10 }, maxPerFaction: 2,
+    healPerSec: 20, healRange: 50
   }
 };
 const STRUCTURE_IDS = Object.keys(STRUCTURE_DEFS);
@@ -5131,18 +5246,32 @@ window._getDebugInfo = () => {
     sceneChildren: scene?.children?.length,
     entities: typeof entities !== 'undefined' ? entities.length : 0,
     towers: typeof towers !== 'undefined' ? towers.length : 0,
-    mixers: typeof entityMixers !== 'undefined' ? entityMixers.length : 0
+    mixers: typeof entityMixers !== 'undefined' ? entityMixers.length : 0,
+    gameState: typeof gameState !== 'undefined' ? gameState : '?',
+    currentWave: typeof currentWave !== 'undefined' ? currentWave : 0,
+    waveEnemies: typeof waveEnemies !== 'undefined' ? waveEnemies.length : 0,
+    playerArmy: typeof playerArmy !== 'undefined' ? playerArmy.length : 0,
+    dragons: typeof entities !== 'undefined' ? entities.filter(e => e.isDragon).length : 0,
   };
 };
+// gameState: 'MENU' | 'BUILD' | 'WAVE' | 'INTERVAL' | 'RESULT' | 'TUTORIAL'
 let gameState = 'MENU';
 let matchTimer = 0; // 経過時間（秒、そのセッションの生存時間）
 let matchGDPSpent = 0; // 試合で使ったGDP合計
 let isOvertime = false;
 
 // ============================================================
-// ETERNAL WORLD — 終わらない三国戦争
+// WAVE DEFENSE SYSTEM — ウェーブ制タワーディフェンス
 // ============================================================
-// GDP（国力指標）: 各国のパワーを数値化。キル・タワー・生存で増え、ロスで減る
+let currentWave = 0;
+let maxWaves = 10; // オプション画面で設定可能
+let waveEnemies = []; // 現ウェーブの生存敵リスト
+let intervalTimer = 0;
+const INTERVAL_DURATION = 10; // ウェーブ間インターバル（秒）
+let waveConfig = { startDifficulty: 1, scaling: 1.2 }; // オプションで調整
+let playerArmy = []; // プレイヤー側の全ユニット参照
+
+// GDP（国力指標）: プレイヤーのパワーを数値化
 let factionGDP;  // initFactionMap()はFACTION_IDS定義後に呼ぶ（後方で初期化）
 // ワールド時間（秒、累積）: 1日=24分想定
 let worldTime = 0;
@@ -5255,7 +5384,7 @@ let humanPlayer = null; // reference to players[0]
 let handCards = []; // alias for humanPlayer.handCards
 
 // Deck & Hand
-let playerDeck = ['knight', 'archer', 'giant', 'musketeer', 'goblins', 'fireball', 'arrows', 'cannon'];
+let playerDeck = ['knight', 'archer', 'giant', 'musketeer', 'goblins', 'miniPekka', 'hogRider', 'cannon'];
 let deckQueue = [];
 let nextCard = null;
 
@@ -5372,12 +5501,93 @@ const COMMENT_POOL = {
   ],
   // 新規視聴者
   newbie: [
-    'はじめまして！', '初見です！', '今来ました', 'フォローしました',
+    'はじめまして！', '初見です！', '今来ました',
     'チャンネル登録した'
   ]
 };
 
-// スパチャ金額プール
+// ============================================================
+// DIVER RANK SYSTEM — 滞在時間ベースのランクシステム
+// ============================================================
+const DIVER_RANKS = [
+  { rank: 1, time: 0,   ability: 'cannon',    label: '砲台設置',       icon: '🔫' },
+  { rank: 2, time: 60,  ability: 'repair',    label: '修理',           icon: '🔧' },
+  { rank: 3, time: 180, ability: 'buff',      label: 'バフ付与',       icon: '💪' },
+  { rank: 4, time: 300, ability: 'airstrike', label: '空爆',           icon: '💣' },
+  { rank: 5, time: 600, ability: 'summon',    label: 'ユニット召喚',   icon: '⚔️' },
+];
+let diverStayTime = 0; // 累計滞在時間（秒）
+let diverRank = 1;
+let diverContribution = 0; // 貢献スコア
+let diverKills = 0;
+
+function getDiverRank(stayTime) {
+  let rank = DIVER_RANKS[0];
+  for (const r of DIVER_RANKS) {
+    if (stayTime >= r.time) rank = r;
+  }
+  return rank;
+}
+
+function saveDiverProgress() {
+  try {
+    localStorage.setItem('cr3d_diver', JSON.stringify({
+      stayTime: diverStayTime,
+      contribution: diverContribution,
+      kills: diverKills
+    }));
+  } catch(_) {}
+}
+
+function loadDiverProgress() {
+  try {
+    const data = JSON.parse(localStorage.getItem('cr3d_diver') || 'null');
+    if (data) {
+      diverStayTime = data.stayTime || 0;
+      diverContribution = data.contribution || 0;
+      diverKills = data.kills || 0;
+      diverRank = getDiverRank(diverStayTime).rank;
+    }
+  } catch(_) {}
+}
+
+function updateDiverRank(dt) {
+  if (!isSpectator && !isNetSpectator) return;
+  diverStayTime += dt;
+  const newRank = getDiverRank(diverStayTime);
+  if (newRank.rank > diverRank) {
+    diverRank = newRank.rank;
+    addCommentary(`🎖️ ランクアップ！ Rank ${newRank.rank}: ${newRank.label}が解放された！`, 'fire');
+    saveDiverProgress();
+  }
+  // 30秒ごとに自動保存
+  if (Math.floor(diverStayTime) % 30 === 0) saveDiverProgress();
+  // ダイバーUI更新
+  updateDiverUI();
+}
+
+function updateDiverUI() {
+  const panel = document.getElementById('diver-rank-panel');
+  if (!panel) return;
+  const rank = getDiverRank(diverStayTime);
+  const nextRank = DIVER_RANKS.find(r => r.rank === rank.rank + 1);
+  const progress = nextRank
+    ? ((diverStayTime - rank.time) / (nextRank.time - rank.time) * 100)
+    : 100;
+  panel.innerHTML = `
+    <div style="font-size:14px;font-weight:bold;color:#ffd700;">🎖️ Rank ${rank.rank}: ${rank.label}</div>
+    <div style="background:#333;border-radius:4px;height:8px;margin:4px 0;overflow:hidden;">
+      <div style="background:linear-gradient(90deg,#ffd700,#ff8c00);height:100%;width:${Math.min(100, progress)}%;transition:width 0.3s;"></div>
+    </div>
+    <div style="font-size:11px;color:#aaa;">
+      ${nextRank ? `次: ${nextRank.icon} ${nextRank.label} (${Math.ceil(nextRank.time - diverStayTime)}秒)` : '最大ランク達成！'}
+      | 貢献: ${diverContribution} | 撃破: ${diverKills}
+    </div>
+  `;
+  panel.style.display = 'block';
+}
+
+// スパチャ金額プール（レガシー）
 const SUPER_CHAT_AMOUNTS = [100, 200, 500, 1000, 2000, 5000, 10000];
 const SUPER_CHAT_MESSAGES = [
   'いつも応援してます！', '勝ってください！', '神プレイ期待！',
@@ -5949,7 +6159,7 @@ function addCommentary(text, factionId) {
   // 実況ログの画面表示は廃止（音声ナレーションのみ残す）
 
   // John Kabira voice! (only during battle, deduplicate)
-  if (gameState === 'PLAYING' || gameState === 'OVERTIME') {
+  if (gameState === 'BUILD' || gameState === 'WAVE' || gameState === 'INTERVAL') {
     // 同じテキストの重複呼び出し防止
     if (addCommentary._lastText !== text || Date.now() - (addCommentary._lastTime || 0) > 500) {
       addCommentary._lastText = text;
@@ -6147,6 +6357,7 @@ function loadFullProgress() {
 
 function loadProgress() {
   loadFullProgress();
+  loadDiverProgress();
 }
 
 function deleteSaveData() {
@@ -6379,7 +6590,7 @@ function serializeBattleState() {
 
 // バトル状態をlocalStorageに保存
 function saveBattleState() {
-  if (gameState !== 'PLAYING' && gameState !== 'OVERTIME') return;
+  if (gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL') return;
   try {
     const data = serializeBattleState();
     localStorage.setItem('cr3d_battle_save', JSON.stringify(data));
@@ -6625,7 +6836,7 @@ function restoreBattleState(data) {
     { const _pg = document.getElementById('postgame-screen'); _pg.style.display = 'none'; _pg.classList.remove('visible', 'win', 'lose'); }
     document.getElementById('hud').style.display = 'block';
     document.getElementById('battle-dock').style.display = 'flex';
-    document.getElementById('structure-toggle-btn').style.display = '';
+    document.getElementById('inventory-toggle-btn').style.display = 'block';
     document.getElementById('commentary-box').style.display = 'block';
     document.getElementById('bottom-status-bar').style.display = 'block';
     document.getElementById('player-stats-panel').style.display = 'block';
@@ -6681,7 +6892,7 @@ function restoreBattleState(data) {
 
 // beforeunloadでバトル状態を自動保存
 window.addEventListener('beforeunload', function() {
-  if (gameState === 'PLAYING' || gameState === 'OVERTIME') {
+  if (gameState === 'BUILD' || gameState === 'WAVE' || gameState === 'INTERVAL') {
     saveBattleState();
   }
 });
@@ -8176,6 +8387,30 @@ function createStructureMesh(type, faction) {
     case 'wall': group = createMcWall(); break;
     case 'smithy': group = createMcSmithy(); break;
     case 'altar': group = createMcAltar(); break;
+    case 'trap': {
+      group = new THREE.Group();
+      const trapMat = mcMat(0x666666);
+      group.add(at(mcBox(8, 2, 8, trapMat), 0, 1, 0));
+      // 歯車っぽい装飾
+      const spikeMat = mcMat(0x444444);
+      for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2;
+        group.add(at(mcBox(2, 3, 2, spikeMat), Math.cos(angle) * 3, 2, Math.sin(angle) * 3));
+      }
+      break;
+    }
+    case 'healingTower': {
+      group = new THREE.Group();
+      const baseMat = mcMat(0x44ff88);
+      const crystalMat = mcMat(0x88ffbb);
+      // 台座
+      group.add(at(mcBox(10, 4, 10, mcMat(0x338855)), 0, 2, 0));
+      // 柱
+      group.add(at(mcBox(4, 14, 4, baseMat), 0, 11, 0));
+      // 頂上クリスタル
+      group.add(at(mcBox(6, 6, 6, crystalMat), 0, 20, 0));
+      break;
+    }
     default: {
       group = new THREE.Group();
       group.add(at(mcBox(6, 5, 6, accentColor), 0, 2.5, 0));
@@ -8222,6 +8457,16 @@ function buildStructure(type, x, z, faction) {
     attackTimer: 0
   };
   structures.push(structure);
+
+  // トラップ: 半透明化（プレイヤーには薄く見えるが敵には見えない演出）
+  if (def.invisible && mesh) {
+    mesh.traverse(c => {
+      if (c.isMesh && c.material) {
+        c.material.transparent = true;
+        c.material.opacity = 0.3;
+      }
+    });
+  }
 
   // Visual feedback
   addCommentary(`${FACTIONS[faction].icon} ${FACTIONS[faction].name}が${def.name}を建設！`, faction);
@@ -8321,6 +8566,67 @@ function updateStructures(dt) {
           child.material.opacity = 0.15 + Math.sin(Date.now() * 0.003) * 0.1;
         }
       });
+    }
+
+    // トラップ: 敵が範囲内に入ると起爆
+    if (s.type === 'trap') {
+      const def = STRUCTURE_DEFS.trap;
+      entities.forEach(e => {
+        if (e.hp <= 0 || e.side === 0) return; // 味方はスキップ
+        if (e.isDragon || e.side === 99) {
+          const dx = e.mesh.position.x - s.x;
+          const dz = e.mesh.position.z - s.z;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist < def.trapRange) {
+            // 起爆！範囲内の全敵にダメージ
+            entities.forEach(e2 => {
+              if (e2.hp <= 0 || e2.side === 0) return;
+              const dx2 = e2.mesh.position.x - s.x;
+              const dz2 = e2.mesh.position.z - s.z;
+              if (Math.sqrt(dx2 * dx2 + dz2 * dz2) < def.trapRange) {
+                e2.hp -= def.trapDmg;
+              }
+            });
+            // 爆発エフェクト
+            const boom = new THREE.Mesh(
+              new THREE.SphereGeometry(def.trapRange, 16, 16),
+              new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.7 })
+            );
+            boom.position.set(s.x, 5, s.z);
+            scene.add(boom);
+            setTimeout(() => scene.remove(boom), 300);
+            // 自壊
+            s.hp = 0;
+            s.destroyed = true;
+            if (s.mesh) scene.remove(s.mesh);
+            if (s.hpContainer) s.hpContainer.remove();
+            addCommentary(`💥 トラップ起爆！`, humanPlayer ? humanPlayer.faction : 'fire');
+          }
+        }
+      });
+    }
+
+    // ヒーリングタワー: 範囲内の味方をHP回復
+    if (s.type === 'healingTower') {
+      const def = STRUCTURE_DEFS.healingTower;
+      entities.forEach(e => {
+        if (e.hp <= 0 || e.side !== 0) return; // 味方のみ
+        if (e.hp >= e.maxHp) return;
+        const dx = e.mesh.position.x - s.x;
+        const dz = e.mesh.position.z - s.z;
+        if (Math.sqrt(dx * dx + dz * dz) < def.healRange) {
+          e.hp = Math.min(e.maxHp, e.hp + def.healPerSec * dt);
+        }
+      });
+      // 緑パルスアニメーション
+      if (s.mesh) {
+        const pulse = Math.sin(Date.now() * 0.003) * 0.2 + 0.8;
+        s.mesh.children.forEach(c => {
+          if (c.isMesh && c.material.color) {
+            c.material.opacity = pulse;
+          }
+        });
+      }
     }
   });
 }
@@ -8467,49 +8773,10 @@ let structurePanelOpen = false;
 let structurePlacementMode = null;
 
 window.toggleStructurePanel = function() {
-  structurePanelOpen = !structurePanelOpen;
-  const panel = document.getElementById('structure-panel');
-  if (panel) {
-    panel.style.display = structurePanelOpen ? '' : 'none';
-    if (structurePanelOpen) renderStructurePanel();
-  }
+  // Legacy: now integrated into inventory panel
+  toggleInventoryPanel();
+  if (inventoryPanelOpen) switchInventoryTab('build');
 };
-
-function renderStructurePanel() {
-  const container = document.getElementById('structure-cards');
-  if (!container || !humanPlayer) return;
-  const faction = humanPlayer.faction;
-  const gdp = Math.floor(factionGDP[faction] || 0);
-
-  const gdpDisp = document.getElementById('structure-gdp-display');
-  if (gdpDisp) gdpDisp.textContent = 'GDP: ' + gdp.toLocaleString();
-
-  let html = '';
-  STRUCTURE_IDS.forEach(id => {
-    const def = STRUCTURE_DEFS[id];
-    const existing = structures.filter(s => s.type === id && s.faction === faction && !s.destroyed).length;
-    const maxReached = existing >= def.maxPerFaction;
-    const canAfford = gdp >= def.cost;
-    const disabled = maxReached || !canAfford ? 'disabled' : '';
-    const maxClass = maxReached ? 'max-reached' : '';
-
-    html += `<div class="structure-card ${disabled} ${maxClass}" data-structure="${id}">
-      <span class="sc-icon">${def.icon}</span>
-      <div class="sc-name">${def.name}</div>
-      <div class="sc-cost">💰 ${def.cost} GDP</div>
-      <div class="sc-desc">${def.description}</div>
-      <div class="sc-count">${existing}/${def.maxPerFaction}</div>
-    </div>`;
-  });
-  container.innerHTML = html;
-
-  container.querySelectorAll('.structure-card:not(.disabled)').forEach(el => {
-    el.addEventListener('click', () => {
-      const sid = el.dataset.structure;
-      startStructurePlacement(sid);
-    });
-  });
-}
 
 function startStructurePlacement(structureType) {
   structurePlacementMode = structureType;
@@ -8616,6 +8883,8 @@ function createTower(x, z, playerId, faction) {
 // Check if two sides are allies (same faction)
 function isAlly(sideA, sideB) {
   if (sideA === sideB) return true;
+  // ドラゴン(side=99)は全プレイヤーの敵、ドラゴン同士は味方
+  if (sideA === 99 || sideB === 99) return false;
   const pA = players[sideA];
   const pB = players[sideB];
   if (!pA || !pB) return false;
@@ -8624,39 +8893,30 @@ function isAlly(sideA, sideB) {
 
 function buildTowers() {
   players = [];
-  // 3国協力プレイ: Player0=ホスト(選択国), Player1,2=敵AI(残り2国)
-  const remainingFactions = FACTION_IDS.filter(f => f !== selectedFaction);
-  const factionAssignment = [selectedFaction, ...remainingFactions];
-
-  for (let i = 0; i < NUM_PLAYERS; i++) {
-    const faction = factionAssignment[i];
-    const factionData = FACTIONS[faction];
-    const pos = PLAYER_POSITIONS[i];
-    const tower = createTower(pos.x, pos.z, i, faction);
-    const p = {
-      id: i,
-      name: PLAYER_NAMES[i],
-      isHuman: i === 0,
-      isRemote: false,
-      faction: faction,
-      color: factionData.color,
-      kingTower: tower,
-      // GDP-based (no per-player elixir)
-      handCards: [],
-      botTimer: 3 + Math.random() * 3,
-      botChestTimer: 0,
-      eliminated: false,
-      kills: 0,
-      unitKills: 0,
-      kingKills: 0
-    };
-    players.push(p);
-    if (i === 0) {
-      humanPlayer = p;
-      playerKingTower = tower;
-      handCards = p.handCards;
-    }
-  }
+  // ウェーブ制タワーディフェンス: プレイヤー1人のみ（中央配置）
+  const faction = selectedFaction;
+  const factionData = FACTIONS[faction];
+  const tower = createTower(0, 0, 0, faction); // マップ中央
+  const p = {
+    id: 0,
+    name: 'あなた',
+    isHuman: true,
+    isRemote: false,
+    faction: faction,
+    color: factionData.color,
+    kingTower: tower,
+    handCards: [],
+    botTimer: 0,
+    botChestTimer: 0,
+    eliminated: false,
+    kills: 0,
+    unitKills: 0,
+    kingKills: 0
+  };
+  players.push(p);
+  humanPlayer = p;
+  playerKingTower = tower;
+  handCards = p.handCards;
 }
 
 // 協力プレイヤーを動的追加（最大4人まで）
@@ -9038,35 +9298,34 @@ function updateHUD() {
   const otBanner = document.getElementById('overtime-banner');
   if (otBanner) otBanner.classList.toggle('visible', false);
 
-  // Faction scoreboard
+  // 王国スコアボード
   const sb = document.getElementById('faction-scoreboard');
-  let html = '';
-  FACTION_IDS.forEach(fid => {
-    const f = FACTIONS[fid];
-    const fPlayers = players.filter(p => p.faction === fid);
-    const alivePlayers = fPlayers.filter(p => !p.eliminated).length;
-    const totalPlayers = fPlayers.length;
-    const unitCount = entities.filter(e => fPlayers.some(p => p.id === e.side)).length;
-    const unitKills = fPlayers.reduce((s, p) => s + p.unitKills, 0);
-    const kingKills = fPlayers.reduce((s, p) => s + p.kingKills, 0);
-    const isMine = humanPlayer && humanPlayer.faction === fid;
-    const dead = alivePlayers === 0;
-    const fLv = factionLevels[fid] || 1;
-    html += `<div class="faction-score ${fid}${isMine ? ' mine' : ''}${dead ? ' dead' : ''}" style="border-left:3px solid ${f.colorHex};">
+  if (sb && humanPlayer) {
+    const f = FACTIONS[humanPlayer.faction];
+    const unitCount = entities.filter(e => e.side === 0 && e.hp > 0).length;
+    const dragonCount = waveEnemies.filter(e => e.hp > 0).length;
+    const fLv = factionLevels[humanPlayer.faction] || 1;
+    sb.innerHTML = `<div class="faction-score ${humanPlayer.faction} mine" style="border-left:3px solid ${f.colorHex};">
       <div class="fs-header">
         <span class="fs-header-icon">${f.icon}</span>
         <span class="fs-header-name" style="color:${f.colorHex}">${f.name}</span>
         <span class="fs-header-lv">Lv.${fLv}</span>
       </div>
       <div class="fs-stats">
-        <div class="fs-stat"><div class="fs-val">${alivePlayers}</div><div class="fs-lbl">生存</div></div>
-        <div class="fs-stat"><div class="fs-val">${unitCount}</div><div class="fs-lbl">兵</div></div>
-        <div class="fs-stat"><div class="fs-val">${unitKills}</div><div class="fs-lbl">撃破</div></div>
-        <div class="fs-stat"><div class="fs-val">${kingKills}</div><div class="fs-lbl">👑</div></div>
+        <div class="fs-stat"><div class="fs-val">${unitCount}</div><div class="fs-lbl">自軍</div></div>
+        <div class="fs-stat"><div class="fs-val">${dragonCount}</div><div class="fs-lbl">🐲敵</div></div>
+        <div class="fs-stat"><div class="fs-val">${humanPlayer.kills || 0}</div><div class="fs-lbl">撃破</div></div>
+        <div class="fs-stat"><div class="fs-val">${structures.filter(s=>!s.destroyed).length}</div><div class="fs-lbl">施設</div></div>
       </div>
     </div>`;
-  });
-  sb.innerHTML = html;
+  }
+
+  // 自軍カウント更新
+  const armyEl = document.getElementById('army-count');
+  if (armyEl) {
+    playerArmy = playerArmy.filter(e => e.hp > 0);
+    armyEl.textContent = `⚔️ 自軍: ${playerArmy.length}体`;
+  }
 
   // Bottom status bar は廃止済み（crown-display/scoreboardに統合）
 }
@@ -9131,6 +9390,166 @@ function createUnitMesh(cardId, def, baseColor) {
   }
   group.traverse(child => { if(child.isMesh) { child.castShadow = false; child.receiveShadow = false; } });
   return group;
+}
+
+// ============================================================
+// WAVE DEFENSE — 開戦・ウェーブスポーン・初期軍
+// ============================================================
+function startFirstWave() {
+  if (gameState !== 'BUILD') return;
+  const btn = document.getElementById('btn-start-wave');
+  if (btn) btn.style.display = 'none';
+  currentWave = 1;
+  gameState = 'WAVE';
+  spawnWave(currentWave);
+  speakKabira(`ドラゴンが攻めてくるぞ！ 王国を守れ！`);
+  addCommentary(`⚔️ ドラゴン襲来！`, humanPlayer ? humanPlayer.faction : 'fire');
+}
+window.startFirstWave = startFirstWave;
+// オプション画面からアクセスできるように公開
+window.maxWaves = maxWaves;
+window.waveConfig = waveConfig;
+
+function spawnInitialArmy() {
+  // プレイヤーのキングタワー近くに騎士2体を配置
+  if (!humanPlayer) return;
+  const kt = humanPlayer.kingTower;
+  if (!kt || !kt.mesh) return;
+  const kx = kt.mesh.position.x;
+  const kz = kt.mesh.position.z;
+  for (let i = 0; i < 2; i++) {
+    const ox = (i === 0 ? -15 : 15);
+    const before = entities.length;
+    spawnEntity('knight', kx + ox, kz + 20, humanPlayer.id);
+    // spawnEntityが返さないので、追加されたエンティティを末尾から取得
+    for (let j = before; j < entities.length; j++) {
+      playerArmy.push(entities[j]);
+    }
+  }
+}
+
+// ドラゴン定義
+const DRAGON_DEFS = {
+  dragonling:  { hp: 200, dmg: 30, speed: 3.5, range: 1.5, color: 0x88cc44, scale: 0.8, name: 'ドラゴンリング' },
+  firedrake:   { hp: 400, dmg: 60, speed: 2.8, range: 2.0, color: 0xff4422, scale: 1.0, name: 'ファイアドレイク' },
+  frostdrake:  { hp: 350, dmg: 45, speed: 3.0, range: 3.0, color: 0x44aaff, scale: 1.0, name: 'フロストドレイク' },
+  stonedrake:  { hp: 800, dmg: 80, speed: 1.5, range: 1.5, color: 0x886644, scale: 1.3, name: 'ストーンドレイク' },
+  elderdragon: { hp: 1200, dmg: 120, speed: 2.0, range: 2.5, color: 0xaa22ff, scale: 1.6, name: 'エルダードラゴン' },
+};
+const DRAGON_IDS = Object.keys(DRAGON_DEFS);
+
+// ドラゴンメッシュ生成（マイクラ風）
+function buildDragonMesh(type) {
+  const def = DRAGON_DEFS[type];
+  const s = def.scale;
+  const mat = mcMat(def.color);
+  const matDark = mcMat(new THREE.Color(def.color).multiplyScalar(0.6).getHex());
+  const matLight = mcMat(new THREE.Color(def.color).multiplyScalar(1.4).getHex());
+  const g = new THREE.Group();
+  // 胴体
+  g.add(at(mcBox(12*s, 8*s, 18*s, mat), 0, 6*s, 0));
+  // 頭
+  g.add(at(mcBox(8*s, 8*s, 8*s, matLight), 0, 12*s, -10*s));
+  // 目（赤）
+  const eyeMat = mcMat(0xff0000);
+  g.add(at(mcBox(2*s, 2*s, 1*s, eyeMat), -3*s, 14*s, -14*s));
+  g.add(at(mcBox(2*s, 2*s, 1*s, eyeMat), 3*s, 14*s, -14*s));
+  // 翼
+  g.add(at(mcBox(16*s, 2*s, 10*s, matDark), -14*s, 10*s, 0));
+  g.add(at(mcBox(16*s, 2*s, 10*s, matDark), 14*s, 10*s, 0));
+  // 尻尾
+  g.add(at(mcBox(4*s, 4*s, 14*s, matDark), 0, 6*s, 16*s));
+  // 脚
+  g.add(at(mcBox(4*s, 6*s, 4*s, matDark), -5*s, 0, 0));
+  g.add(at(mcBox(4*s, 6*s, 4*s, matDark), 5*s, 0, 0));
+  g.traverse(c => { if(c.isMesh) { c.castShadow = false; c.receiveShadow = false; } });
+  return g;
+}
+
+// ドラゴンスポーンポイント（マップ外周4方向）
+const DRAGON_SPAWN_POINTS = [
+  { x: 0, z: -ARENA_L * 0.48 },              // 北
+  { x: 0, z:  ARENA_L * 0.48 },              // 南
+  { x: -ARENA_W_BASE * 0.48, z: 0 },         // 西
+  { x:  ARENA_W_BASE * 0.48, z: 0 },         // 東
+];
+
+// ドラゴンをエンティティとしてスポーン
+function spawnDragon(type, x, z, aiPattern) {
+  const def = DRAGON_DEFS[type];
+  const mesh = buildDragonMesh(type);
+  mesh.position.set(x, 0, z);
+  scene.add(mesh);
+
+  const entity = {
+    cardId: 'dragon_' + type,
+    type: 'troop',
+    mesh: mesh,
+    hp: def.hp,
+    maxHp: def.hp,
+    dmg: def.dmg,
+    speed: def.speed,
+    range: def.range * 10, // ゲーム内スケール
+    attackSpeed: 1.2,
+    attackTimer: 0,
+    side: 99, // ドラゴン側（敵）
+    isDragon: true,
+    dragonType: type,
+    aiPattern: aiPattern || 'rush', // 'rush' or 'siege'
+    target: null,
+    isFlying: true,
+    lifetime: Infinity, // 永続
+    spawnTime: matchTimer,
+    hpContainer: null,
+    dead: false,
+  };
+
+  // HPバー
+  const hpC = document.createElement('div');
+  hpC.className = 'hp-bar-container';
+  hpC.innerHTML = '<div class="hp-bar-fill enemy"></div>';
+  document.getElementById('hud').appendChild(hpC);
+  entity.hpContainer = hpC;
+
+  entities.push(entity);
+  waveEnemies.push(entity);
+  return entity;
+}
+
+function spawnWave(waveNum) {
+  const difficulty = waveConfig.startDifficulty * Math.pow(waveConfig.scaling, waveNum - 1);
+  // ウェーブ番号に応じてドラゴン種と数を決定
+  let budget = Math.floor(5 + waveNum * 3 * difficulty);
+  const costs = { dragonling: 1, firedrake: 2, frostdrake: 2, stonedrake: 4, elderdragon: 6 };
+  // 利用可能なドラゴン種（ウェーブが進むと強いのが出る）
+  let available = ['dragonling'];
+  if (waveNum >= 2) available.push('firedrake');
+  if (waveNum >= 3) available.push('frostdrake');
+  if (waveNum >= 5) available.push('stonedrake');
+  if (waveNum >= 8) available.push('elderdragon');
+
+  const toSpawn = [];
+  while (budget > 0) {
+    // 予算内で出せるドラゴンをフィルタ
+    const affordable = available.filter(d => costs[d] <= budget);
+    if (affordable.length === 0) break;
+    const pick = affordable[Math.floor(Math.random() * affordable.length)];
+    toSpawn.push(pick);
+    budget -= costs[pick];
+  }
+
+  // スポーンポイントに分散配置
+  toSpawn.forEach((type, i) => {
+    const sp = DRAGON_SPAWN_POINTS[i % DRAGON_SPAWN_POINTS.length];
+    const ox = (Math.random() - 0.5) * 60;
+    const oz = (Math.random() - 0.5) * 60;
+    const aiPattern = Math.random() < 0.6 ? 'rush' : 'siege';
+    spawnDragon(type, sp.x + ox, sp.z + oz, aiPattern);
+  });
+
+  // ウェーブ情報UI更新
+  const waveInfo = document.getElementById('wave-info');
+  if (waveInfo) waveInfo.textContent = `🐲 ウェーブ ${waveNum} / ${maxWaves}  —  ${toSpawn.length}体のドラゴン`;
 }
 
 // ============================================================
@@ -9391,6 +9810,58 @@ function getMovementTarget(entity) {
   const x = entity.mesh.position.x;
   const z = entity.mesh.position.z;
   const nearby = getNearbyFromGrid(x, z);
+
+  // ── ドラゴンAI ──
+  if (entity.isDragon) {
+    if (entity.aiPattern === 'siege') {
+      // siege: 経路上の建物（施設）を優先破壊しながら進軍
+      let nearestStructure = null, sDist = Infinity;
+      for (let i = 0; i < structures.length; i++) {
+        const s = structures[i];
+        if (s.destroyed || !s.mesh) continue;
+        const d = Math.sqrt((s.mesh.position.x - x) ** 2 + (s.mesh.position.z - z) ** 2);
+        if (d < sDist) { sDist = d; nearestStructure = s; }
+      }
+      if (nearestStructure && sDist < 400) {
+        return { x: nearestStructure.mesh.position.x, z: nearestStructure.mesh.position.z, target: nearestStructure };
+      }
+      // 施設がなければ射程内の味方ユニットを攻撃、最終的にキングタワーへ
+      let nearestEnemy = null, eDist = Infinity;
+      for (let ni = 0; ni < nearby.length; ni++) {
+        const e = nearby[ni];
+        if (e.destroyed !== undefined || e.isDragon) continue;
+        if (e.side === 99 || e.hp <= 0) continue; // 同じドラゴンはスキップ
+        const d = Math.sqrt((e.mesh.position.x - x) ** 2 + (e.mesh.position.z - z) ** 2);
+        if (d < eDist) { eDist = d; nearestEnemy = e; }
+      }
+      if (nearestEnemy && eDist < 200) {
+        return { x: nearestEnemy.mesh.position.x, z: nearestEnemy.mesh.position.z, target: nearestEnemy };
+      }
+    } else {
+      // rush: 射程内に敵ユニットがいれば攻撃、なければキングタワーに直進
+      let nearestEnemy = null, eDist = Infinity;
+      for (let ni = 0; ni < nearby.length; ni++) {
+        const e = nearby[ni];
+        if (e.destroyed !== undefined || e.isDragon) continue;
+        if (e.side === 99 || e.hp <= 0) continue;
+        const d = Math.sqrt((e.mesh.position.x - x) ** 2 + (e.mesh.position.z - z) ** 2);
+        if (d < eDist) { eDist = d; nearestEnemy = e; }
+      }
+      if (nearestEnemy && eDist < 150) {
+        return { x: nearestEnemy.mesh.position.x, z: nearestEnemy.mesh.position.z, target: nearestEnemy };
+      }
+    }
+    // 最終目標: キングタワー
+    let nearestKing = null, kDist = Infinity;
+    towers.forEach(t => {
+      if (t.destroyed || t.side === 99) return;
+      const d = Math.sqrt((t.x - x) ** 2 + (t.z - z) ** 2);
+      if (d < kDist) { kDist = d; nearestKing = t; }
+    });
+    if (nearestKing) return { x: nearestKing.x, z: nearestKing.z, target: nearestKing };
+    return { x: 0, z: 0, target: null }; // フォールバック: マップ中央
+  }
+
   // ギフトユニット(forceKing): 射程内に敵ユニットがいれば反撃、それ以外は最寄り敵キング直進
   if (entity.forceKing) {
     // 射程 + 少し余裕で敵ユニットチェック（反撃モード）
@@ -9694,7 +10165,7 @@ function updateEntities(dt) {
       }
       // Terrain follow + bobbing
       const terrainY = getTerrainHeight(e.mesh.position.x, e.mesh.position.z);
-      const baseY = e.def.size ? (e.def.size[1] || e.def.size[0]) / 2 : 4;
+      const baseY = e.def && e.def.size ? (e.def.size[1] || e.def.size[0]) / 2 : 4;
       const bob = Math.sin(clock.elapsedTime * 3) * 0.05;
       e.mesh.position.y = terrainY + baseY + bob;
       updateHPBarPosition(e);
@@ -9831,7 +10302,7 @@ function updateEntities(dt) {
     // Bobbing animation for troops + 地形追従
     {
       const terrainY = e.fly ? 0 : getTerrainHeight(e.mesh.position.x, e.mesh.position.z);
-      const baseY = e.fly ? 25 : (e.def.size ? (e.def.size[1] || e.def.size[0]) / 2 : 4);
+      const baseY = e.fly ? 25 : (e.def && e.def.size ? (e.def.size[1] || e.def.size[0]) / 2 : 4);
       const bob = e.state === 'moving' ? Math.sin(clock.elapsedTime * 5) * 0.05 : 0;
       e.mesh.position.y = terrainY + baseY + bob;
     }
@@ -10226,7 +10697,7 @@ function updateAutoSpawn(dt) {
   // 通常オートスポーンは廃止：ユニット出現は襲来イベント（予兆付き）のみに統一
   return;
   // ↓以下レガシー（呼ばれない）
-  if (gameState !== 'PLAYING' && gameState !== 'OVERTIME') return;
+  if (gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL') return;
   if (raidWarning) return;
 
   FACTION_IDS.forEach(fid => {
@@ -10588,7 +11059,7 @@ function despawnBoss(bossEntity) {
 }
 
 function updateRaidSystem(dt) {
-  if (gameState !== 'PLAYING' && gameState !== 'OVERTIME') return;
+  if (gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL') return;
 
   // 予兆中：カウントダウン
   if (raidWarning) {
@@ -10851,35 +11322,14 @@ function showStreamToast(kind, title, body) {
 // 定期的なトースト発火
 let toastTimer = 0;
 function updateStreamToasts(dt) {
-  toastTimer -= dt;
-  if (toastTimer > 0) return;
-  toastTimer = 12 + Math.random() * 18; // 12〜30秒
-
-  const roll = Math.random();
-  const name = pickRandom(VIEWER_NAMES);
-  if (roll < 0.35) {
-    showStreamToast('follow', '新しいフォロワー', `${name}さんがフォローしました`);
-    viewerCountTarget += 5 + Math.floor(Math.random() * 20);
-  } else if (roll < 0.55) {
-    showStreamToast('clip', '切り抜き作成', `${name}さんが切り抜き動画を作成しました`);
-  } else if (roll < 0.70) {
-    showStreamToast('pin', 'ピン留め', `${name}さんが配信をピン留めしました`);
-  } else if (roll < 0.85) {
-    const count = 3 + Math.floor(Math.random() * 20);
-    showStreamToast('join', '新規視聴', `＋${count}人が視聴を開始しました`);
-    viewerCountTarget += count;
-  } else {
-    // 視点切替メッセージ
-    const targets = players.filter(p => !p.eliminated && p.streamerName);
-    if (targets.length >= 2) {
-      const from = pickRandom(targets);
-      const to = pickRandom(targets.filter(p => p.id !== from.id));
-      addStreamChatMessage('[システム]', `${pickRandom(VIEWER_NAMES)}が${to.streamerName}視点に切替`, 'system-event');
-    }
-  }
+  // 配信関連通知は全て廃止
+  return;
 }
 
 function updateStreamMode(dt) {
+  // ダイバーランク更新（観戦者のみ）
+  updateDiverRank(dt);
+
   if (streamMode === 'off') {
     updateViewerBadges(); // クリア用に呼ぶ
     return;
@@ -11002,7 +11452,7 @@ function getCounterScore(cardId, laneX, enemySide) {
     // Swarm counters splash
     if (e.splash && def.count > 1) score += 20;
     // Mini pekka counters tanks
-    if (e.def.hp > 1000 && def.dmg > 150) score += 30;
+    if (e.def && e.def.hp > 1000 && def.dmg > 150) score += 30;
     // Anti-air for flying
     if (e.fly && def.target === 'both') score += 25;
     // General counter value
@@ -11223,12 +11673,17 @@ function confirmPlacement() {
     if ((factionGDP[faction] || 0) < def.cost) return;
     addGDP(faction, -def.cost);
     matchGDPSpent += def.cost;
+    const beforeLen = entities.length;
     spawnEntity(cardId, placeX, placeZ, 0);
+    // 新しく追加されたユニットをplayerArmyに登録
+    for (let j = beforeLen; j < entities.length; j++) {
+      playerArmy.push(entities[j]);
+    }
   }
 
   // 砕け演出: 先に該当カードDOMへ.shatter付与してからデータ削除
   const usedIdx = selectedCardIndex;
-  const cardEl = document.querySelector(`#card-hand .hand-card[data-card-index="${usedIdx}"]`);
+  const cardEl = document.querySelector(`#inventory-cards .hand-card[data-card-index="${usedIdx}"]`);
   if (cardEl) {
     cardEl.classList.add('shatter');
   }
@@ -11249,7 +11704,7 @@ function confirmPlacement() {
     const i = handCards.indexOf(cardId);
     if (i >= 0) handCards.splice(i, 1);
     // force re-render by invalidating cache
-    const c = document.getElementById('card-hand');
+    const c = document.getElementById('inventory-cards');
     if (c) c._lastHTML = null;
     renderHand();
   }, 420);
@@ -11426,7 +11881,7 @@ function spawnChest() {
 }
 
 function updateChests(dt) {
-  if (gameState !== 'PLAYING' && gameState !== 'OVERTIME' && gameState !== 'TUTORIAL') return;
+  if (gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL' && gameState !== 'TUTORIAL') return;
   if (deckEditMode) return;
 
   // Spawn timer (not during tutorial - tutorial spawns chests manually)
@@ -11583,15 +12038,86 @@ function showDeckEditOverlay(newCardId) {
   });
 }
 
+// Inventory panel state
+let inventoryPanelOpen = false;
+let inventoryActiveTab = 'army';
+
+window.toggleInventoryPanel = function() {
+  inventoryPanelOpen = !inventoryPanelOpen;
+  const panel = document.getElementById('inventory-panel');
+  if (panel) {
+    if (inventoryPanelOpen) {
+      panel.classList.add('visible');
+      renderHand();
+      renderInventoryStructures();
+    } else {
+      panel.classList.remove('visible');
+    }
+  }
+};
+
+window.switchInventoryTab = function(tab) {
+  inventoryActiveTab = tab;
+  document.querySelectorAll('.inv-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.inv-tab-content').forEach(c => c.classList.toggle('active', c.id === 'inv-tab-' + tab));
+  if (tab === 'army') renderHand();
+  else renderInventoryStructures();
+};
+
+function renderInventoryStructures() {
+  const container = document.getElementById('inventory-structures');
+  if (!container || !humanPlayer) return;
+  const faction = humanPlayer.faction;
+  const gdp = Math.floor(factionGDP[faction] || 0);
+
+  let html = '';
+  STRUCTURE_IDS.forEach(id => {
+    const def = STRUCTURE_DEFS[id];
+    const existing = structures.filter(s => s.type === id && s.faction === faction && !s.destroyed).length;
+    const maxReached = existing >= def.maxPerFaction;
+    const canAfford = gdp >= def.cost;
+    const disabled = maxReached || !canAfford ? 'disabled' : '';
+    const maxClass = maxReached ? 'max-reached' : '';
+
+    html += `<div class="structure-card ${disabled} ${maxClass}" data-structure="${id}">
+      <span class="sc-icon">${def.icon}</span>
+      <div class="sc-name">${def.name}</div>
+      <div class="sc-cost">💰 ${def.cost}</div>
+      <div class="sc-desc">${def.description}</div>
+      <div class="sc-count">${existing}/${def.maxPerFaction}</div>
+    </div>`;
+  });
+  container.innerHTML = html;
+
+  container.querySelectorAll('.structure-card:not(.disabled)').forEach(el => {
+    el.addEventListener('click', () => {
+      const sid = el.dataset.structure;
+      // Close inventory panel then start placement
+      inventoryPanelOpen = false;
+      document.getElementById('inventory-panel')?.classList.remove('visible');
+      startStructurePlacement(sid);
+    });
+  });
+}
+
 // 常時8枠表示
 const HAND_SLOT_COUNT = 8;
 function renderHand() {
-  const container = document.getElementById('card-hand');
-  container.classList.add('visible');
+  // Render into inventory panel instead of always-visible card-hand
+  const container = document.getElementById('inventory-cards');
+  if (!container) return;
+
+  // Update inventory button count
+  const countEl = document.querySelector('#inventory-toggle-btn .inv-count');
+  if (countEl) countEl.textContent = handCards.length;
 
   // Build new hand content
   const myFaction = humanPlayer ? humanPlayer.faction : 'fire';
   const myGdp = factionGDP[myFaction] || 0;
+
+  // Update GDP display in inventory header
+  const gdpDisp = document.getElementById('inventory-gdp-display');
+  if (gdpDisp) gdpDisp.textContent = '💰 GDP: ' + Math.floor(myGdp).toLocaleString();
 
   const cardCells = handCards.map((cardId, i) => {
     const def = CARD_DEFS[cardId];
@@ -11665,12 +12191,6 @@ function renderHand() {
     </div>`;
   });
 
-  // 空スロットで残りを埋める
-  const emptyCount = Math.max(0, HAND_SLOT_COUNT - handCards.length);
-  for (let i = 0; i < emptyCount; i++) {
-    cardCells.push('<div class="hand-slot-empty"></div>');
-  }
-
   const html = cardCells.join('');
   if (container._lastHTML !== html) {
     container.innerHTML = html;
@@ -11678,9 +12198,9 @@ function renderHand() {
   }
 }
 
-// Event delegation for card clicks (no lost events on re-render)
+// Event delegation for card clicks (inventory panel)
 {
-  const container = document.getElementById('card-hand');
+  const container = document.getElementById('inventory-cards');
   container.addEventListener('click', (e) => {
     e.stopPropagation();
     const card = e.target.closest('.hand-card');
@@ -11698,6 +12218,10 @@ function renderHand() {
       cancelPlacement();
     } else {
       playCard(idx);
+      // Close inventory panel after selecting a card
+      inventoryPanelOpen = false;
+      const panel = document.getElementById('inventory-panel');
+      if (panel) panel.classList.remove('visible');
     }
   });
 
@@ -11818,17 +12342,17 @@ window.hideDeckEditor = function hideDeckEditor() {
 
 // Card-to-faction mapping for arsenal display
 const CARD_FACTIONS = {
-  fire: ['knight', 'miniPekka', 'valkyrie', 'wizard', 'fireball', 'rage'],
-  ice: ['archer', 'musketeer', 'skeletonArmy', 'babyDragon', 'freeze', 'arrows'],
+  fire: ['knight', 'miniPekka', 'valkyrie', 'wizard'],
+  ice: ['archer', 'musketeer', 'skeletonArmy', 'babyDragon'],
   earth: ['giant', 'goblins', 'hogRider', 'cannon', 'infernoTower']
 };
 
 // Buildings = player-placeable, others = auto-spawn from faction
-const BUILDING_CARDS = ['cannon', 'infernoTower', 'struct_farm', 'struct_watchtower', 'struct_wall', 'struct_smithy', 'struct_altar'];
-const STRUCTURE_CARDS = ['struct_farm', 'struct_watchtower', 'struct_wall', 'struct_smithy', 'struct_altar'];
+const BUILDING_CARDS = ['cannon', 'infernoTower', 'struct_farm', 'struct_watchtower', 'struct_wall', 'struct_smithy', 'struct_altar', 'struct_trap', 'struct_healingTower'];
+const STRUCTURE_CARDS = ['struct_farm', 'struct_watchtower', 'struct_wall', 'struct_smithy', 'struct_altar', 'struct_trap', 'struct_healingTower'];
 const AUTO_SPAWN_CARDS = {
-  fire: ['knight', 'miniPekka', 'valkyrie', 'wizard', 'fireball', 'rage'],
-  ice: ['archer', 'musketeer', 'skeletonArmy', 'babyDragon', 'freeze', 'arrows'],
+  fire: ['knight', 'miniPekka', 'valkyrie', 'wizard'],
+  ice: ['archer', 'musketeer', 'skeletonArmy', 'babyDragon'],
   earth: ['giant', 'goblins', 'hogRider']
 };
 
@@ -12024,7 +12548,7 @@ function animateCountUp(el, target, duration) {
 
 // ポーズ = 現時点のリザルトスナップショット
 function showResultSnapshot() {
-  if (gameState !== 'PLAYING' && gameState !== 'OVERTIME') return;
+  if (gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL') return;
   isPaused = true;
   const screen = document.getElementById('postgame-screen');
   if (!screen) return;
@@ -12068,8 +12592,8 @@ window.resumeFromResult = function() {
   }
 };
 
-function endMatch() {
-  gameState = 'POSTGAME';
+function endMatch(won) {
+  gameState = 'RESULT';
   // バトル終了時にバトルセーブを削除
   clearBattleSave();
   // 予兆中だった場合の後片付け
@@ -12080,11 +12604,15 @@ function endMatch() {
   const _rwbEnd = document.getElementById('raid-warning-banner');
   if (_rwbEnd) _rwbEnd.style.display = 'none';
 
-  const aliveFactions = getAliveFactions();
-  const humanAlive = humanPlayer && !humanPlayer.eliminated;
+  // won が未指定の場合は旧ロジックでフォールバック
+  if (won === undefined) {
+    const aliveFactions = getAliveFactions();
+    const humanAlive = humanPlayer && !humanPlayer.eliminated;
+    const playerFaction = humanPlayer ? humanPlayer.faction : null;
+    won = humanAlive && aliveFactions.length === 1 && aliveFactions[0] === playerFaction;
+  }
   const playerFaction = humanPlayer ? humanPlayer.faction : null;
   const playerFactionData = playerFaction ? FACTIONS[playerFaction] : null;
-  const won = humanAlive && aliveFactions.length === 1 && aliveFactions[0] === playerFaction;
 
   // ── スクリーン切り替え ──
   const screen = document.getElementById('postgame-screen');
@@ -12102,16 +12630,11 @@ function endMatch() {
   if (won) {
     bannerEn.textContent = 'VICTORY';
     bannerJp.textContent = '勝  利';
-    subtitle.textContent = `${playerFactionData.icon} ${playerFactionData.name} が天下を制した`;
-  } else if (humanAlive) {
-    bannerEn.textContent = 'SURVIVED';
-    bannerJp.textContent = '生  存';
-    subtitle.textContent = '激戦を生き延びた';
+    subtitle.textContent = `🏰 全${maxWaves}ウェーブを撃退！ 王国は守られた！`;
   } else {
     bannerEn.textContent = 'DEFEAT';
     bannerJp.textContent = '敗  北';
-    const winner = aliveFactions.length === 1 ? FACTIONS[aliveFactions[0]] : null;
-    subtitle.textContent = winner ? `${winner.icon} ${winner.name} の勝利` : '力尽きた...';
+    subtitle.textContent = `王国は陥落した...`;
   }
 
   // ── パーティクル ──
@@ -13310,7 +13833,7 @@ function receiveHostState(data) {
       // 観戦モード起動
       isSpectator = true;
       streamMode = 'viewer';
-      gameState = 'PLAYING';
+      gameState = 'WAVE';
       // 配信名を付与（enterSpectatorModeと同様）
       if (!players[0] || !players[0].streamerName) assignStreamerNames();
       // 最初の生存プレイヤーを観戦対象に
@@ -13547,7 +14070,7 @@ window.confirmCharacter = function() {
     selectedCharacter = _charPick || 'knight';
     // キャラ選択画面を閉じてバトル画面へ
     crossFadeScreen(document.getElementById('char-select-screen'), () => {
-      gameState = 'PLAYING';
+      gameState = 'WAVE';
       enterSpectatorMode(); // 観戦カメラで開始、状態受信後に自分のキングに追従
     });
     return;
@@ -13926,7 +14449,7 @@ window.startBattle = function() {
   document.getElementById('commentary-box').style.display = 'block';
   document.getElementById('commentary-box').innerHTML = '';
   document.getElementById('bottom-status-bar').style.display = 'block';
-  document.getElementById('structure-toggle-btn').style.display = '';
+  document.getElementById('inventory-toggle-btn').style.display = 'block';
 
   // Reset stats
   myUnits = [];
@@ -13960,13 +14483,21 @@ window.startBattle = function() {
   initPlayerDeck();
   updateHUD();
 
-  gameState = 'PLAYING';
+  // ウェーブ制: BUILD（育成）フェーズから開始
+  gameState = 'BUILD';
+  currentWave = 0;
+  waveEnemies = [];
+  playerArmy = [];
+  intervalTimer = 0;
   battleSaveTimer = 30; // 自動セーブタイマーリセット
   resetQueenLevel();
   resetFactionLevels();
   resetVoiceState(); // 音声フラグをリセット
   playBattleBGM();
-  addCommentary(`⚔️ 64人バトル開始！${FACTIONS[selectedFaction].icon} ${FACTIONS[selectedFaction].name}の戦士よ、勝利を掴め！`, selectedFaction);
+  addCommentary(`🏰 育成フェーズ開始！軍を整え、準備ができたら「開戦」を押せ！`, selectedFaction);
+
+  // 初期騎士2体を配置
+  spawnInitialArmy();
 
   // 配信モード自動有効化（設定がONなら）
   isSpectator = false;
@@ -14069,7 +14600,7 @@ function setupInput() {
   }, { passive: false });
 
   renderer.domElement.addEventListener('click', (e) => {
-    if (gameState !== 'PLAYING' && gameState !== 'OVERTIME' && gameState !== 'TUTORIAL') return;
+    if (gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL' && gameState !== 'TUTORIAL') return;
     // 施設配置モード
     if (structurePlacementMode) {
       raycaster.setFromCamera(mouse, camera);
@@ -14104,11 +14635,11 @@ function setupInput() {
     }
     keysPressed[e.key.toLowerCase()] = true;
     // 視聴者モード時: ←→キーで観戦対象切替
-    if (isSpectator && (gameState === 'PLAYING' || gameState === 'OVERTIME')) {
+    if (isSpectator && (gameState === 'BUILD' || gameState === 'WAVE' || gameState === 'INTERVAL')) {
       if (e.key === 'ArrowLeft') { cycleSpectatedPlayer(-1); e.preventDefault(); return; }
       if (e.key === 'ArrowRight') { cycleSpectatedPlayer(1); e.preventDefault(); return; }
     }
-    if (gameState !== 'PLAYING' && gameState !== 'OVERTIME' && gameState !== 'TUTORIAL') return;
+    if (gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL' && gameState !== 'TUTORIAL') return;
     if (e.key >= '1' && e.key <= '8') {
       const idx = parseInt(e.key) - 1;
       if (idx < handCards.length) {
@@ -14600,7 +15131,7 @@ function updateActionStatus() {
   const el = document.getElementById('action-status');
   const dim = document.getElementById('placing-dim-overlay');
   if (!el) return;
-  if (gameState !== 'PLAYING' && gameState !== 'OVERTIME') {
+  if (gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL') {
     el.classList.remove('visible');
     if (dim) dim.classList.remove('active');
     return;
@@ -14660,7 +15191,7 @@ function updateMinimap() {
   const mm = document.getElementById('minimap');
   const canvas = document.getElementById('minimap-canvas');
   if (!mm || !canvas) return;
-  if (gameState !== 'PLAYING' && gameState !== 'OVERTIME') {
+  if (gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL') {
     mm.classList.remove('visible'); return;
   }
   mm.classList.add('visible');
@@ -14825,7 +15356,9 @@ function updateGame(dt) {
     return;
   }
 
-  if (gameState !== 'PLAYING' && gameState !== 'OVERTIME') return;
+  // BUILD / WAVE / INTERVAL / RESULT のいずれかでないとスキップ
+  if (gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL' && gameState !== 'RESULT'
+      && gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL') return;
   if (isPaused) return;
 
   // 30秒ごとの自動セーブ
@@ -14841,26 +15374,13 @@ function updateGame(dt) {
   updateLightingFromWorldTime();
   updateClouds(dt);
 
-  // GDP 秒次収入（生存タワー & 生存ユニット）
-  FACTION_IDS.forEach(fid => {
-    const aliveTowers = towers.filter(t => !t.destroyed && players[t.playerId]?.faction === fid).length;
-    const aliveUnits = entities.filter(e => players[e.side]?.faction === fid).length;
-    const fBoosts = getStructureBoosts(fid);
-    addGDP(fid, (aliveTowers * 1 + aliveUnits * 0.2) * (1 + fBoosts.gdpBoost) * dt);
-  });
-
-  // BOT キング復活処理 & プレイヤーリスポーン
-  tryReviveBotKings(dt);
-
-  // BOTキングのバウンスアニメ（シンプルメッシュのみ、FBXはAnimationMixerで処理）
-  for (let i = 1; i < towers.length; i++) {
-    const t = towers[i];
-    if (t.destroyed || !t.mesh || t.mesh.userData.isFBXKing) continue;
-    const elapsed = matchTimer + i * 0.5; // 各BOTでオフセットして同期を避ける
-    t.mesh.children.forEach(child => {
-      if (child.isMesh) child.position.y += Math.sin(elapsed * 2.5) * 0.03; // 微妙な上下揺れ
-    });
+  // GDP passive regen for human player's faction
+  if (humanPlayer && !humanPlayer.eliminated) {
+    const myBoosts = getStructureBoosts(humanPlayer.faction);
+    addGDP(humanPlayer.faction, GDP_PASSIVE_RATE * (1 + myBoosts.gdpRegenBoost) * dt);
   }
+
+  // プレイヤーリスポーン
   if (playerRespawnTimer > 0) {
     playerRespawnTimer -= dt;
     showRespawnCountdown(playerRespawnTimer);
@@ -14870,33 +15390,106 @@ function updateGame(dt) {
     }
   }
 
-  // GDP passive regen for human player's faction
-  if (humanPlayer && !humanPlayer.eliminated) {
-    const myBoosts = getStructureBoosts(humanPlayer.faction);
-    addGDP(humanPlayer.faction, GDP_PASSIVE_RATE * (1 + myBoosts.gdpRegenBoost) * dt);
-  }
-
   // Update GDP bar
   const myFac = humanPlayer ? humanPlayer.faction : 'fire';
   const myGdpNow = Math.floor(factionGDP[myFac] || 0);
   const elxFill = document.getElementById('elixir-bar-fill');
-  // GDP bar: show percentage relative to a soft cap for visual feedback
   const gdpVisualMax = 2000;
   const gdpPct = Math.min(100, (myGdpNow / gdpVisualMax) * 100);
   elxFill.style.width = gdpPct + '%';
   elxFill.classList.toggle('full', myGdpNow >= gdpVisualMax);
   document.getElementById('elixir-text').textContent = `GDP: ${myGdpNow}`;
 
-  // Update systems
+  // ============ WAVE DEFENSE STATE MACHINE ============
+
+  // BUILD: 自軍育成フェーズ — 敵なし、プレイヤーが「開戦」を押すまで
+  if (gameState === 'BUILD') {
+    frameCount++;
+    updateEntities(dt);
+    updateEntityAnimations(dt);
+    updateTowers(dt);
+    updateProjectiles(dt);
+    updateSpellEffects(dt);
+    updateStreamMode(dt);
+    if (isSpectator) updateSpectatorMode(dt);
+    updateKingMovement(dt);
+    updateGhostPosition();
+    updateChests(dt);
+    updateStructures(dt);
+    if (frameCount % 3 === 0) { updateHUD(); updateMinimap(); }
+    if (structurePanelOpen && frameCount % 10 === 0) renderStructurePanel();
+    updateCommentary(dt);
+    updateQueenAuraAnimation(dt);
+    if (frameCount % 3 === 0) updateActionStatus();
+    if (frameCount % 15 === 0) renderHand();
+    // 「開戦」ボタン表示
+    const startBtn = document.getElementById('btn-start-wave');
+    if (startBtn) startBtn.style.display = 'block';
+    // ホスト: 観戦者への状態ブロードキャスト
+    if (isNetHost && netConnections.length > 0) {
+      netBroadcastTimer += dt;
+      if (netBroadcastTimer >= NET_BROADCAST_INTERVAL) { netBroadcastTimer = 0; broadcastState(); }
+    }
+    return;
+  }
+
+  // WAVE: ドラゴン襲来中
+  if (gameState === 'WAVE' || gameState === 'BUILD' || gameState === 'WAVE' || gameState === 'INTERVAL') {
+    // 「開戦」ボタン非表示
+    const startBtn = document.getElementById('btn-start-wave');
+    if (startBtn) startBtn.style.display = 'none';
+
+    // ウェーブクリア判定 — 終わりなし、ここで生きる
+    waveEnemies = waveEnemies.filter(e => e.hp > 0);
+    if (waveEnemies.length === 0 && currentWave > 0) {
+      // 次ウェーブへのインターバル（無限継続）
+      gameState = 'INTERVAL';
+      intervalTimer = INTERVAL_DURATION;
+      speakKabira(`撃退成功！ 次の襲来まで${INTERVAL_DURATION}秒！`);
+      return;
+    }
+
+    // キングタワー全滅チェック
+    if (humanPlayer && humanPlayer.eliminated) {
+      gameState = 'RESULT';
+      endMatch(false); // 敗北
+      return;
+    }
+  }
+
+  // INTERVAL: ウェーブ間休憩
+  if (gameState === 'INTERVAL') {
+    intervalTimer -= dt;
+    // インターバル中のUI更新
+    const waveInfo = document.getElementById('wave-info');
+    if (waveInfo) waveInfo.textContent = `次のウェーブまで: ${Math.ceil(intervalTimer)}秒`;
+    if (intervalTimer <= 0) {
+      // 次ウェーブ開始
+      currentWave++;
+      gameState = 'WAVE';
+      spawnWave(currentWave);
+      speakKabira(`ドラゴンの群れだ！ 迎え撃て！`);
+    }
+  }
+
+  // RESULT: スコア表示中 — 更新はミニマル
+  if (gameState === 'RESULT') {
+    updateEntityAnimations(dt);
+    updateQueenAuraAnimation(dt);
+    if (isNetHost && netConnections.length > 0) {
+      netBroadcastTimer += dt;
+      if (netBroadcastTimer >= NET_BROADCAST_INTERVAL) { netBroadcastTimer = 0; broadcastState(); }
+    }
+    return;
+  }
+
+  // Update systems (BUILD以外の共通処理)
   frameCount++;
   updateEntities(dt);
   updateEntityAnimations(dt);
   updateTowers(dt);
   updateProjectiles(dt);
   updateSpellEffects(dt);
-  updateAllBotsAI(dt);
-  updateAutoSpawn(dt);
-  updateRaidSystem(dt);
   updateStreamMode(dt);
   if (isSpectator) updateSpectatorMode(dt);
   updateKingMovement(dt);
@@ -14908,8 +15501,6 @@ function updateGame(dt) {
   updateCommentary(dt);
   if (frameCount % 3 === 0) updatePlayerStats(dt);
   updateQueenAuraAnimation(dt);
-  updateBossAuras(dt);
-  checkTerritoryExpansion(dt);
   if (frameCount % 3 === 0) updateActionStatus();
 
   // Re-render hand (for GDP cost checking) — every ~0.5 seconds
