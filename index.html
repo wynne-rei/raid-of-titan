@@ -13049,7 +13049,8 @@ function showResultSnapshot() {
   if (bannerEn) bannerEn.textContent = 'RESULT';
   if (bannerJp) bannerJp.textContent = '戦 績';
   if (subtitle) {
-    subtitle.textContent = `Wave ${currentWave} ｜ 自軍 ${playerArmy.length}体`;
+    const dragons = entities.filter(e => e.side === 99 && !e.dead).length;
+    subtitle.textContent = `自軍 ${playerArmy.length}体 ｜ 残存ドラゴン ${dragons}体`;
   }
 
   const kills = humanPlayer ? (humanPlayer.kills || 0) : 0;
