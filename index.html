@@ -5150,12 +5150,7 @@ const CARD_DEFS = {
     shape: 'cylinder', size: [5, 12, 5], count: 1
   },
   // === 永続施設カード（GDP消費・手札から配置） ===
-  struct_farm: {
-    name: '農場', cost: 150, type: 'structure', category: 'defense', icon: '🌾',
-    hp: 800, color: 0x8bc34a, unlockLevel: 1, count: 1,
-    structureId: 'farm',
-    description: 'GDP回復速度+15%'
-  },
+  // struct_farm: 一旦削除
   struct_watchtower: {
     name: '見張り塔', cost: 200, type: 'structure', category: 'attack', icon: '🗼',
     hp: 600, dmg: 40, range: 80, attackSpeed: 1.5, color: 0x795548, unlockLevel: 1, count: 1,
@@ -5168,30 +5163,15 @@ const CARD_DEFS = {
     structureId: 'wall',
     description: '敵の侵入を阻む壁'
   },
-  struct_smithy: {
-    name: '鍛冶場', cost: 250, type: 'structure', category: 'attack', icon: '⚒️',
-    hp: 700, color: 0xf44336, unlockLevel: 1, count: 1,
-    structureId: 'smithy',
-    description: '味方ユニット攻撃力+20%'
-  },
-  struct_altar: {
-    name: '祭壇', cost: 300, type: 'structure', category: 'defense', icon: '🔮',
-    hp: 500, color: 0x9c27b0, unlockLevel: 1, count: 1,
-    structureId: 'altar',
-    description: 'GDP収入+30%'
-  }
+  // struct_smithy: 一旦削除
+  // struct_altar: 一旦削除
 };
 
 // ============================================================
 // STRUCTURE_DEFS — 永続施設定義
 // ============================================================
 const STRUCTURE_DEFS = {
-  farm: {
-    name: '農場', icon: '🌾', cost: 150,
-    hp: 800, effect: 'gdpRegenBoost', effectValue: 0.15,
-    description: 'GDP回復速度+15%',
-    color: 0x8bc34a, size: { w: 18, h: 8, d: 18 }, maxPerFaction: 3
-  },
+  // farm: 一旦削除
   watchtower: {
     name: '見張り塔', icon: '🗼', cost: 200,
     hp: 600, effect: 'visionRange', effectValue: 50,
@@ -5205,18 +5185,8 @@ const STRUCTURE_DEFS = {
     description: '敵の侵入を阻む壁',
     color: 0x9e9e9e, size: { w: 30, h: 12, d: 6 }, maxPerFaction: 6
   },
-  smithy: {
-    name: '鍛冶場', icon: '⚒️', cost: 250,
-    hp: 700, effect: 'attackBoost', effectValue: 0.2,
-    description: '味方ユニット攻撃力+20%',
-    color: 0xf44336, size: { w: 14, h: 10, d: 14 }, maxPerFaction: 2
-  },
-  altar: {
-    name: '祭壇', icon: '🔮', cost: 300,
-    hp: 500, effect: 'gdpBoost', effectValue: 0.3,
-    description: 'GDP収入+30%',
-    color: 0x9c27b0, size: { w: 12, h: 16, d: 12 }, maxPerFaction: 1
-  },
+  // smithy: 一旦削除
+  // altar: 一旦削除
   trap: {
     name: 'トラップ', icon: '💥', cost: 150,
     hp: 1, effect: 'trap', effectValue: 300,
@@ -5284,8 +5254,9 @@ window._dragonDebug = () => {
 };
 window._spawnTestDragons = () => {
   const hp = humanPlayer;
-  const px = hp && hp.mesh ? hp.mesh.position.x : 0;
-  const pz = hp && hp.mesh ? hp.mesh.position.z : 0;
+  const pm = hp && hp.kingTower && hp.kingTower.mesh ? hp.kingTower.mesh : (hp && hp.mesh ? hp.mesh : null);
+  const px = pm ? pm.position.x : 0;
+  const pz = pm ? pm.position.z : 0;
   // プレイヤーの向いている方向（カメラの前方）に配置
   // 3人称カメラはプレイヤーの後ろから見るので、pz - offset（前方）
   const types = ['dragonling', 'firedrake', 'frostdrake', 'stonedrake', 'elderdragon'];
@@ -5302,9 +5273,10 @@ window._teleportToDragon = (idx) => {
   const dragons = entities.filter(e => e.isDragon && e.hp > 0);
   if (!dragons.length) return 'no dragons';
   const d = dragons[idx || 0];
-  if (humanPlayer && humanPlayer.mesh) {
-    humanPlayer.mesh.position.x = d.mesh.position.x - 30;
-    humanPlayer.mesh.position.z = d.mesh.position.z - 30;
+  const pm2 = humanPlayer && humanPlayer.kingTower && humanPlayer.kingTower.mesh ? humanPlayer.kingTower.mesh : (humanPlayer && humanPlayer.mesh ? humanPlayer.mesh : null);
+  if (pm2) {
+    pm2.position.x = d.mesh.position.x - 30;
+    pm2.position.z = d.mesh.position.z - 30;
     return `Teleported to ${d.dragonType}`;
   }
   return 'no player';
@@ -10150,9 +10122,9 @@ function getMovementTarget(entity) {
     if (nearest) return { x: nearest.x, z: nearest.z, target: nearest };
   }
 
-  // プレイヤー追従用
+  // プレイヤー追従用（キャラクター＝キングタワーのメッシュ）
   const followRange = 300;
-  const playerPos = humanPlayer && humanPlayer.mesh ? humanPlayer.mesh.position : null;
+  const playerPos = humanPlayer && humanPlayer.kingTower && humanPlayer.kingTower.mesh ? humanPlayer.kingTower.mesh.position : null;
 
   // Step 1: 空間グリッドから近くの敵を検索
   let nearest = null, minDist = Infinity;
@@ -15797,6 +15769,36 @@ function animate() {
   _lastRAF = performance.now();
   tick();
 }
+
+// デバッグ用グローバルエクスポート
+window._dbg = () => {
+  const allEnts = entities.filter(e => e && !e.dead);
+  const knights = allEnts.filter(e => e.type === 'knight');
+  const dragons = allEnts.filter(e => e.isDragon);
+  return {
+    gameState,
+    humanPlayerId: humanPlayer ? humanPlayer.id : null,
+    entityCount: allEnts.length,
+    allTypes: allEnts.map(e => e.cardId || e.type || e.dragonType || 'unknown'),
+    knights: allEnts.filter(e => e.cardId === 'knight').map(e => ({ side: e.side, state: e.state, x: Math.round(e.mesh.position.x), z: Math.round(e.mesh.position.z), targetType: e.targetType, speed: e.speed, range: e.range })),
+    dragons: dragons.map(e => ({ type: e.dragonType, side: e.side, x: Math.round(e.mesh.position.x), z: Math.round(e.mesh.position.z), hp: e.hp })),
+    playerPos: humanPlayer && humanPlayer.kingTower && humanPlayer.kingTower.mesh ? { x: Math.round(humanPlayer.kingTower.mesh.position.x), z: Math.round(humanPlayer.kingTower.mesh.position.z) } : null,
+    playerArmyCount: playerArmy.length,
+    playerHasMesh: !!(humanPlayer && humanPlayer.mesh),
+    players: typeof players !== 'undefined' ? players.map(p => ({ id: p.id, name: p.name, hasMesh: !!p.mesh })) : [],
+  };
+};
+
+window._movePlayer = (x, z) => {
+  if (playerKingTower && playerKingTower.mesh) {
+    playerKingTower.mesh.position.x = x;
+    playerKingTower.mesh.position.z = z;
+    playerKingTower.x = x;
+    playerKingTower.z = z;
+    return `Player moved to (${x}, ${z})`;
+  }
+  return 'No playerKingTower';
+};
 
 let lastTime = 0;
 function tick() {
