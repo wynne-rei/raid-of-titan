@@ -6168,7 +6168,10 @@ function showWaveClearReport() {
   killReport.sort((a, b) => b.kills - a.kills);
 
   // ポップアップHTML生成
-  let reportHTML = `<div style="font-size:18px;font-weight:bold;color:#ffd700;margin-bottom:8px;">${facIcon} 第${currentWave}波 撃退！</div>`;
+  const waveFac = currentWaveFaction && FACTIONS[currentWaveFaction] ? FACTIONS[currentWaveFaction] : null;
+  const waveFacName = waveFac ? waveFac.name : 'ドラゴン';
+  const waveFacIcon = waveFac ? waveFac.icon : '🐉';
+  let reportHTML = `<div style="font-size:18px;font-weight:bold;color:#ffd700;margin-bottom:8px;">${waveFacIcon} ${waveFacName}からの猛攻を耐えた！</div>`;
   if (killReport.length > 0) {
     reportHTML += '<div style="text-align:left;margin:0 auto;display:inline-block;">';
     killReport.forEach(r => {
@@ -6190,7 +6193,7 @@ function showWaveClearReport() {
   el.style.opacity = '1';
 
   // 実況
-  speakKabira(`第${currentWave}波 撃退！ 次の襲来まで${INTERVAL_DURATION}秒！`);
+  speakKabira(`${waveFacName}からの猛攻を耐えた！ 次の襲来まで${INTERVAL_DURATION}秒！`);
 
   // 5秒後にフェードアウト
   setTimeout(() => { el.style.opacity = '0'; }, 5000);
