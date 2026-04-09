@@ -6191,22 +6191,8 @@ let _playerKillStreak = 0;
 let _playerLastKillTime = 0;
 const KILL_STREAK_NAMES = [null, null, 'DOUBLE KILL', 'TRIPLE KILL', 'RAMPAGE', 'GODLIKE', 'LEGENDARY'];
 function onPlayerKill() {
-  const now = performance.now();
-  if (now - _playerLastKillTime < 4500) {
-    _playerKillStreak++;
-  } else {
-    _playerKillStreak = 1;
-  }
-  _playerLastKillTime = now;
-  if (_playerKillStreak === 1 && !onPlayerKill._firstShown) {
-    onPlayerKill._firstShown = true;
-    showAchievement('FIRST BLOOD', '最初のキル！', '🎯');
-  }
-  const idx = Math.min(_playerKillStreak, KILL_STREAK_NAMES.length - 1);
-  const name = KILL_STREAK_NAMES[idx];
-  if (name) {
-    showDramaBanner(name, `${_playerKillStreak} KILLS`, 'killstreak', 1800);
-  }
+  // キルストリーク演出は無効化（ウェーブディフェンスモードでは不要）
+  return;
 }
 
 // ── マイルストーン（残り人数） ──
@@ -10009,6 +9995,9 @@ function showDamageNumber(x, z, dmg) {
 // PROJECTILE
 // ============================================================
 function fireProjectile(from, to, dmg, splash, splashRadius, side) {
+  // 死亡済みエンティティからの発射/死亡ターゲットへの発射を防止
+  if (!from || from.dead || (!from.mesh && from.x == null)) return;
+  if (!to || to.dead || (!to.mesh && to.x == null)) return;
   // ドラゴンブレス攻撃の場合は特殊プロジェクタイル
   const isDragonBreath = from.isDragon && from.dragonType;
   let mesh;
@@ -10131,7 +10120,7 @@ function getMovementTarget(entity) {
       const e = nearby[ni];
       if (e.destroyed !== undefined || e.isKing) continue; // skip towers
       if (isAlly(e.side, side) || e.hp <= 0) continue;
-      if (entity.targetType === 'ground' && e.fly) continue;
+      if (entity.targetType === 'ground' && e.fly && e.side !== 99) continue; // ドラゴンは飛行でも攻撃可
       const d = Math.sqrt((e.mesh.position.x - x) ** 2 + (e.mesh.position.z - z) ** 2);
       if (d <= atkRange && d < atkDist) { atkDist = d; atkNear = e; }
     }
@@ -10168,7 +10157,7 @@ function getMovementTarget(entity) {
     if (e.destroyed !== undefined || e.isKing) continue; // skip towers
     if (e.dead) continue; // 死亡済みエンティティをスキップ
     if (isAlly(e.side, side) || e.hp <= 0) continue;
-    if (entity.targetType === 'ground' && e.fly) continue;
+    if (entity.targetType === 'ground' && e.fly && e.side !== 99) continue; // ドラゴンは飛行でも攻撃可
     const d = Math.sqrt((e.mesh.position.x - x) ** 2 + (e.mesh.position.z - z) ** 2);
     if (d < minDist) { minDist = d; nearest = e; }
   }
@@ -10465,8 +10454,9 @@ function updateEntities(dt) {
           // ストーンドレイクは近接攻撃（体当たり）、他のドラゴンはブレス攻撃
           const useRanged = (e.isDragon && e.dragonType === 'stonedrake') ? false : (e.range > 2);
           if (useRanged) {
-            fireProjectile(e, target, e.dmg, e.splash, e.splashRadius, e.side);
+            if (!target.dead) fireProjectile(e, target, e.dmg, e.splash, e.splashRadius, e.side);
           } else {
+            if (target.dead) continue;
             // Melee
             if (e.splash) {
               entities.forEach(t => {
@@ -15242,13 +15232,12 @@ function updateTutorial(dt) {
     if (handCards.length > 0) {
       advanceTutorialToStep3();
     }
-    // Auto-advance after 15 seconds (force give a card)
-    if (tutorialTimer >= 15 && handCards.length === 0) {
-      // Force give a card
-      handCards.push('cannon');
-      renderHand();
-      advanceTutorialToStep3();
-    }
+    // 自動カード補充は無効化（宝箱から入手する設計）
+    // if (tutorialTimer >= 15 && handCards.length === 0) {
+    //   handCards.push('cannon');
+    //   renderHand();
+    //   advanceTutorialToStep3();
+    // }
   } else if (tutorialStep === 3) {
     // Spawn giant if not yet
     if (!tutorialGiant) {
@@ -15653,7 +15642,7 @@ function updateGame(dt) {
       const label = document.getElementById('wave-info-label');
       const bar = document.getElementById('wave-progress-bar');
       const pct = Math.min(100, ((DRAGON_COUNTDOWN - dragonCountdownTimer) / DRAGON_COUNTDOWN) * 100);
-      if (label) label.textContent = `🐉 ドラゴン襲来まで ${Math.ceil(Math.max(0, dragonCountdownTimer))}秒`;
+      if (label) label.textContent = `🐉 ドラゴン襲来`;
       if (bar) bar.style.width = pct + '%';
     }
     if (dragonCountdownTimer <= 0) {
@@ -15698,7 +15687,7 @@ function updateGame(dt) {
       const label = document.getElementById('wave-info-label');
       const bar = document.getElementById('wave-progress-bar');
       const pct = Math.min(100, ((10 - intervalTimer) / 10) * 100);
-      if (label) label.textContent = `🐉 次のドラゴン襲来まで ${Math.ceil(intervalTimer)}秒`;
+      if (label) label.textContent = `🐉 次のドラゴン襲来`;
       if (bar) bar.style.width = pct + '%';
     }
     if (intervalTimer <= 0) {
@@ -15768,14 +15757,19 @@ function animate() {
 
 let lastTime = 0;
 function tick() {
+  const now = performance.now();
+  const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 0.016;
+  lastTime = now;
   try {
-    const now = performance.now();
-    const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 0.016;
-    lastTime = now;
     updateGame(dt);
+  } catch(e) {
+    console.error('updateGame error:', e.message, e.stack);
+  }
+  // renderer.render は絶対に実行する（フリーズ防止）
+  try {
     renderer.render(scene, camera);
   } catch(e) {
-    console.error('tick error:', e.message, e.stack);
+    console.error('render error:', e.message, e.stack);
   }
 }
 
