@@ -3263,6 +3263,9 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
   </div>
   <div id="inv-tab-build" class="inv-tab-content active">
     <div id="inventory-structures"></div>
+    <div id="inventory-cards-section" style="margin-top:8px;">
+      <div id="inventory-cards"></div>
+    </div>
   </div>
 </div>
 
@@ -5298,6 +5301,35 @@ window._teleportToDragon = (idx) => {
     return `Teleported to ${d.dragonType}`;
   }
   return 'no player';
+};
+// カメラを一時停止してドラゴンを見る（スクショ用）
+window._freezeCamAtDragon = (idx) => {
+  const dragons = entities.filter(e => e.isDragon && e.hp > 0);
+  if (!dragons.length) return 'no dragons';
+  const d = dragons[idx || 0];
+  const px = d.mesh.position.x, py = d.mesh.position.y, pz = d.mesh.position.z;
+  // カメラを斜め前方から
+  window._freezeCam = true;
+  camera.position.set(px + 120, py + 80, pz + 150);
+  camera.lookAt(px, py, pz);
+  return `Camera frozen at ${d.dragonType} (${Math.round(px)},${Math.round(py)},${Math.round(pz)})`;
+};
+window._unfreezeCam = () => { window._freezeCam = false; return 'unfrozen'; };
+window._dragonMeshInfo = (idx) => {
+  const dragons = entities.filter(e => e.isDragon && e.hp > 0);
+  if (!dragons.length) return 'no dragons';
+  const d = dragons[idx || 0];
+  const m = d.mesh;
+  return JSON.stringify({
+    type: d.dragonType,
+    visible: m.visible,
+    inScene: !!m.parent,
+    children: m.children.length,
+    pos: { x: m.position.x.toFixed(1), y: m.position.y.toFixed(1), z: m.position.z.toFixed(1) },
+    scale: { x: m.scale.x, y: m.scale.y, z: m.scale.z },
+    camPos: { x: camera.position.x.toFixed(1), y: camera.position.y.toFixed(1), z: camera.position.z.toFixed(1) },
+    camFar: camera.far,
+  });
 };
 // gameState: 'MENU' | 'BUILD' | 'WAVE' | 'INTERVAL' | 'RESULT' | 'TUTORIAL'
 let gameState = 'MENU';
@@ -10744,6 +10776,7 @@ function updateTowers(dt) {
 function updateProjectiles(dt) {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
+    if (!p.target) { scene.remove(p.mesh); projectiles.splice(i, 1); continue; }
     const tx = p.target.mesh ? p.target.mesh.position.x : (p.target.x || p.tx);
     const ty = p.target.mesh ? p.target.mesh.position.y : (p.ty || 1);
     const tz = p.target.mesh ? p.target.mesh.position.z : (p.target.z || p.tz);
@@ -12254,6 +12287,7 @@ window.toggleInventoryPanel = function() {
     if (inventoryPanelOpen) {
       panel.classList.add('visible');
       renderInventoryStructures();
+      renderHand();
     } else {
       panel.classList.remove('visible');
     }
@@ -14963,6 +14997,7 @@ function updateKingMovement(dt) {
   }
 
   // Assassin's Creed style third-person camera
+  if (window._freezeCam) return; // デバッグ用カメラ固定
   const kx = playerKingTower.mesh.position.x;
   const kz = playerKingTower.mesh.position.z;
   const sinYaw = Math.sin(cameraYaw);
