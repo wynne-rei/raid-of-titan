@@ -3240,12 +3240,16 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
   <!-- 王国ステータス: 自軍情報 -->
   <div id="victory-progress">
     <div class="vp-title">🏰 KINGDOM STATUS</div>
-    <div class="vp-row" data-fac="player">
-      <span class="vp-icon" id="vp-player-icon">🔥</span>
-      <div class="vp-bar"><div class="vp-fill"></div></div>
-      <span class="vp-pct">0%</span>
+    <div id="ks-gdp" style="color:#ffd700;font-size:14px;margin:4px 0;">💰 GDP: <span id="ks-gdp-val">5000</span> <span id="ks-gdp-rate" style="color:#88ff88;font-size:11px;">(+20/s)</span></div>
+    <div id="ks-king-hp" style="margin:4px 0;">
+      <div style="color:#ddd;font-size:12px;margin-bottom:2px;">🛡️ キングHP</div>
+      <div style="background:rgba(0,0,0,0.5);border-radius:3px;height:8px;overflow:hidden;">
+        <div id="ks-king-hp-fill" style="width:100%;height:100%;background:#4caf50;transition:width 0.3s;"></div>
+      </div>
+      <div id="ks-king-hp-text" style="color:#aaa;font-size:10px;text-align:right;">2400/2400</div>
     </div>
-    <div id="army-count" style="color:#ffd700;font-size:13px;text-align:center;margin-top:4px;">⚔️ 自軍: 0体</div>
+    <div id="army-count" style="color:#ffd700;font-size:13px;margin-top:4px;">⚔️ 自軍: 0体</div>
+    <div id="ks-kills" style="color:#ff6b6b;font-size:13px;margin-top:2px;">🐉 撃破: 0体</div>
   </div>
 </div>
 
@@ -6107,6 +6111,84 @@ function resetVoiceState() {
 // ============================================================
 // DRAMA BANNER / ACHIEVEMENT TOAST / SCREEN SHAKE
 // ============================================================
+// ウェーブクリア途中報告
+// ============================================================
+let _waveKillsSnapshot = []; // ウェーブ開始時のstatKillsスナップショット
+
+function snapshotWaveKills() {
+  // ウェーブ開始時に全味方ユニットのキル数をスナップショット
+  _waveKillsSnapshot = [];
+  entities.filter(e => e && !e.dead && e.side === 0).forEach(e => {
+    _waveKillsSnapshot.push({ entity: e, startKills: e.statKills || 0 });
+  });
+  // キングタワーも
+  towers.filter(t => t.side === 0 && !t.destroyed).forEach(t => {
+    _waveKillsSnapshot.push({ entity: t, startKills: t.statKills || 0, isTower: true });
+  });
+}
+
+function showWaveClearReport() {
+  const facId = currentWaveFaction;
+  const facData = facId ? FACTIONS[facId] : null;
+  const facName = facData ? facData.name : 'ドラゴン';
+  const facIcon = facData ? facData.icon : '🐉';
+
+  // ユニット別キル集計（ウェーブ中のキル = 現在のstatKills - スナップショット時のstatKills）
+  const killReport = [];
+  let totalWaveKills = 0;
+
+  // 生存中のユニット
+  _waveKillsSnapshot.forEach(snap => {
+    const e = snap.entity;
+    const currentKills = e.statKills || 0;
+    const waveKills = currentKills - snap.startKills;
+    if (waveKills > 0) {
+      const name = snap.isTower ? '🏰 キングタワー' :
+                   (CARD_DEFS[e.cardId] ? CARD_DEFS[e.cardId].icon + ' ' + CARD_DEFS[e.cardId].name : e.cardId || '不明');
+      killReport.push({ name, kills: waveKills });
+      totalWaveKills += waveKills;
+    }
+  });
+
+  // 死亡したユニットのキルも加算（playerArmyから消えたがmyUnitsログに残る）
+  // killReport が空の場合は合計キル数から推定
+  if (totalWaveKills === 0 && humanPlayer) {
+    totalWaveKills = humanPlayer.kills || 0; // フォールバック
+  }
+
+  // ソート（キル数降順）
+  killReport.sort((a, b) => b.kills - a.kills);
+
+  // ポップアップHTML生成
+  let reportHTML = `<div style="font-size:18px;font-weight:bold;color:#ffd700;margin-bottom:8px;">${facIcon} ${facName}からの猛攻を抑えた！</div>`;
+  if (killReport.length > 0) {
+    reportHTML += '<div style="text-align:left;margin:0 auto;display:inline-block;">';
+    killReport.forEach(r => {
+      reportHTML += `<div style="font-size:14px;color:#eee;margin:3px 0;">${r.name} — <span style="color:#ff6b6b;font-weight:bold;">${r.kills} kills</span></div>`;
+    });
+    reportHTML += '</div>';
+    reportHTML += `<div style="font-size:13px;color:#aaa;margin-top:8px;border-top:1px solid rgba(255,255,255,0.2);padding-top:6px;">合計: ${totalWaveKills}体撃破</div>`;
+  }
+
+  // 表示
+  let el = document.getElementById('wave-clear-report');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'wave-clear-report';
+    el.style.cssText = 'position:fixed;left:50%;top:35%;transform:translate(-50%,-50%);z-index:8000;background:rgba(0,0,0,0.85);border:2px solid rgba(255,215,0,0.5);border-radius:12px;padding:20px 30px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.4s;min-width:250px;';
+    document.body.appendChild(el);
+  }
+  el.innerHTML = reportHTML;
+  el.style.opacity = '1';
+
+  // 実況
+  speakKabira(`${facName}からの猛攻を抑えた！ 次の襲来まで${INTERVAL_DURATION}秒！`);
+
+  // 5秒後にフェードアウト
+  setTimeout(() => { el.style.opacity = '0'; }, 5000);
+}
+
+// ============================================================
 let _dramaTimer = null;
 function showDramaBanner(mainText, subText, style, duration) {
   const banner = document.getElementById('drama-banner');
@@ -8916,7 +8998,8 @@ function createTower(x, z, playerId, faction) {
     x, z, hpContainer,
     destroyed: false,
     activated: true,
-    lastHitBy: -1
+    lastHitBy: -1,
+    statKills: 0, statDmg: 0
   };
   towers.push(tower);
   return tower;
@@ -9369,6 +9452,33 @@ function updateHUD() {
     armyEl.textContent = `⚔️ 自軍: ${playerArmy.length}体`;
   }
 
+  // KINGDOM STATUS更新
+  const ksGdpVal = document.getElementById('ks-gdp-val');
+  if (ksGdpVal && humanPlayer) {
+    const myGdp = Math.round(factionGDP[humanPlayer.faction] || 0);
+    ksGdpVal.textContent = myGdp.toLocaleString();
+  }
+  const ksGdpRate = document.getElementById('ks-gdp-rate');
+  if (ksGdpRate) {
+    const _boosts = humanPlayer ? getStructureBoosts(humanPlayer.faction) : { gdpRegenBoost: 0 };
+    const rate = Math.round(GDP_PASSIVE_RATE * (1 + (_boosts.gdpRegenBoost || 0)));
+    ksGdpRate.textContent = `(+${rate}/s)`;
+  }
+  const ksKingFill = document.getElementById('ks-king-hp-fill');
+  const ksKingText = document.getElementById('ks-king-hp-text');
+  if (ksKingFill && playerKingTower) {
+    const hp = Math.max(0, playerKingTower.hp);
+    const maxHp = playerKingTower.maxHp;
+    const pct = maxHp > 0 ? (hp / maxHp) * 100 : 0;
+    ksKingFill.style.width = pct + '%';
+    ksKingFill.style.background = pct > 50 ? '#4caf50' : pct > 25 ? '#ff9800' : '#ef5350';
+    if (ksKingText) ksKingText.textContent = `${Math.round(hp)}/${maxHp}`;
+  }
+  const ksKills = document.getElementById('ks-kills');
+  if (ksKills && humanPlayer) {
+    ksKills.textContent = `🐉 撃破: ${humanPlayer.kills || 0}体`;
+  }
+
   // Bottom status bar は廃止済み（crown-display/scoreboardに統合）
 }
 
@@ -9444,8 +9554,8 @@ function startFirstWave() {
   if (gameState !== 'BUILD') return;
   currentWave = 1;
   gameState = 'WAVE';
+  snapshotWaveKills();
   spawnWave(currentWave);
-  speakKabira(`ドラゴンが攻めてくるぞ！ 王国を守れ！`);
   addCommentary(`🐉 ドラゴン襲来！`, humanPlayer ? humanPlayer.faction : 'fire');
 }
 window.startFirstWave = startFirstWave;
@@ -9481,9 +9591,10 @@ const DRAGON_DEFS = {
 };
 const DRAGON_IDS = Object.keys(DRAGON_DEFS);
 
-// ドラゴンメッシュ生成（マイクラ風・飛行型/地上型対応）
-function buildDragonMesh(type) {
+// ドラゴンメッシュ生成（エンダードラゴン風・色のみ差別化）
+function buildDragonMesh(type, factionColor) {
   const def = DRAGON_DEFS[type];
+  /* --- OLD MESH CODE START (replaced with Ender Dragon style) ---
   const s = def.scale;
   const c = def.color;
   const cDark = new THREE.Color(c).multiplyScalar(0.5).getHex();
@@ -9649,6 +9760,122 @@ function buildDragonMesh(type) {
 
   return g;
 }
+--- OLD MESH CODE END --- */
+
+  // エンダードラゴン風メッシュ（全種共通の形、色のみ差別化）
+  const s = def.scale;
+  const c = new THREE.Color(factionColor || def.color);
+  const cDark = c.clone().multiplyScalar(0.45);
+  const cBelly = c.clone().lerp(new THREE.Color(0xeeddcc), 0.4);
+  const cEye = new THREE.Color(0xff00ff);
+  const cHorn = new THREE.Color(0xccccaa);
+
+  function box(w,h,d, col) {
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(w,h,d),
+      new THREE.MeshStandardMaterial({ color: col, roughness: 0.7, metalness: 0.1, flatShading: true })
+    );
+    m.castShadow = true; m.receiveShadow = false;
+    return m;
+  }
+  function emitBox(w,h,d, col, emCol, intensity) {
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(w,h,d),
+      new THREE.MeshStandardMaterial({ color: col, emissive: emCol, emissiveIntensity: intensity || 0.6, roughness: 0.3, flatShading: true })
+    );
+    m.castShadow = true; m.receiveShadow = false;
+    return m;
+  }
+
+  const g = new THREE.Group();
+
+  // === 胴体（メインボディ） ===
+  g.add(at(box(4*s, 3*s, 8*s, c), 0, 4*s, 0));
+  // 腹（明るめ）
+  g.add(at(box(3.5*s, 1.5*s, 7*s, cBelly), 0, 2.5*s, 0));
+  // 背中のトゲ（エンダードラゴンの背びれ）
+  for (let i = -3; i <= 2; i++) {
+    const spH = (1.2 - Math.abs(i) * 0.15) * s;
+    g.add(at(box(0.6*s, spH, 0.6*s, cDark), 0, 5.8*s, i * 1.3*s));
+  }
+
+  // === 首（長い、3セグメント） ===
+  g.add(at(box(2.5*s, 2.5*s, 3*s, c), 0, 5*s, -5.5*s));
+  g.add(at(box(2*s, 2*s, 2.5*s, c), 0, 6*s, -8*s));
+  g.add(at(box(1.8*s, 1.8*s, 2*s, c), 0, 6.8*s, -10*s));
+
+  // === 頭（エンダードラゴン風：横長、口が突き出る） ===
+  g.add(at(box(3.5*s, 3*s, 4*s, c), 0, 7.5*s, -12.5*s));
+  // 口（前に突出）
+  g.add(at(box(2.5*s, 1.8*s, 3*s, cDark), 0, 6.8*s, -15*s));
+  // 下あご
+  g.add(at(box(2.2*s, 0.8*s, 2.5*s, cDark), 0, 5.8*s, -14.5*s));
+  // 目（エミッシブ、紫）
+  g.add(at(emitBox(0.7*s, 0.9*s, 0.5*s, cEye, cEye, 0.8), 1.5*s, 8*s, -12*s));
+  g.add(at(emitBox(0.7*s, 0.9*s, 0.5*s, cEye, cEye, 0.8), -1.5*s, 8*s, -12*s));
+  // 角（2本）
+  const horn1 = at(box(0.5*s, 2.5*s, 0.5*s, cHorn), 1.2*s, 9.5*s, -11.5*s);
+  horn1.rotation.z = -0.3;
+  g.add(horn1);
+  const horn2 = at(box(0.5*s, 2.5*s, 0.5*s, cHorn), -1.2*s, 9.5*s, -11.5*s);
+  horn2.rotation.z = 0.3;
+  g.add(horn2);
+
+  // === 翼（大きい、エンダードラゴンの特徴的な翼） ===
+  const wingSpan = 7 * s;
+  // 左翼
+  const lwBone1 = at(box(wingSpan, 0.6*s, 1.5*s, cDark), wingSpan*0.5 + 2*s, 5.5*s, -1*s);
+  lwBone1.rotation.z = -0.3;
+  g.add(lwBone1);
+  const lwBone2 = at(box(wingSpan*0.7, 0.4*s, 1*s, cDark), wingSpan*1.0 + 2*s, 4*s, -1*s);
+  lwBone2.rotation.z = -0.5;
+  g.add(lwBone2);
+  const lwMem = at(new THREE.Mesh(
+    new THREE.BoxGeometry(wingSpan*1.2, 0.2*s, 5*s),
+    new THREE.MeshStandardMaterial({ color: c, transparent: true, opacity: 0.5, side: THREE.DoubleSide, roughness: 0.5, flatShading: true })
+  ), wingSpan*0.6 + 2*s, 4.5*s, 0.5*s);
+  lwMem.rotation.z = -0.25;
+  g.add(lwMem);
+  // 右翼（ミラー）
+  const rwBone1 = at(box(wingSpan, 0.6*s, 1.5*s, cDark), -(wingSpan*0.5 + 2*s), 5.5*s, -1*s);
+  rwBone1.rotation.z = 0.3;
+  g.add(rwBone1);
+  const rwBone2 = at(box(wingSpan*0.7, 0.4*s, 1*s, cDark), -(wingSpan*1.0 + 2*s), 4*s, -1*s);
+  rwBone2.rotation.z = 0.5;
+  g.add(rwBone2);
+  const rwMem = at(new THREE.Mesh(
+    new THREE.BoxGeometry(wingSpan*1.2, 0.2*s, 5*s),
+    new THREE.MeshStandardMaterial({ color: c, transparent: true, opacity: 0.5, side: THREE.DoubleSide, roughness: 0.5, flatShading: true })
+  ), -(wingSpan*0.6 + 2*s), 4.5*s, 0.5*s);
+  rwMem.rotation.z = 0.25;
+  g.add(rwMem);
+
+  // === 脚（4本） ===
+  // 前脚
+  g.add(at(box(1.2*s, 3*s, 1.2*s, cDark), 2*s, 1.5*s, -3*s));
+  g.add(at(box(1.2*s, 3*s, 1.2*s, cDark), -2*s, 1.5*s, -3*s));
+  // 後脚（太め）
+  g.add(at(box(1.5*s, 3.5*s, 1.5*s, cDark), 2.2*s, 1.5*s, 3*s));
+  g.add(at(box(1.5*s, 3.5*s, 1.5*s, cDark), -2.2*s, 1.5*s, 3*s));
+  // 爪（前後4組）
+  [-3, 3].forEach(zOff => {
+    [-2, 2].forEach(xOff => {
+      g.add(at(box(1.5*s, 0.5*s, 1*s, 0x333333), xOff*s, 0.25*s, zOff*s));
+    });
+  });
+
+  // === 尻尾（4セグメント、エンダードラゴン風に長い） ===
+  g.add(at(box(2.5*s, 2.5*s, 3.5*s, c), 0, 3.5*s, 5.5*s));
+  g.add(at(box(2*s, 2*s, 3*s, cDark), 0, 3*s, 8.5*s));
+  g.add(at(box(1.5*s, 1.5*s, 2.5*s, cDark), 0, 2.5*s, 11*s));
+  g.add(at(box(0.8*s, 0.8*s, 2*s, cDark), 0, 2*s, 13*s));
+
+  // === ブレスエフェクト（口元の光） ===
+  const breathColor = def.color;
+  g.add(at(emitBox(0.8*s, 0.6*s, 0.6*s, breathColor, breathColor, 0.6), 0, 6.5*s, -16.5*s));
+
+  return g;
+}
 
 // ドラゴンスポーンポイント（マップ外周4方向）
 const DRAGON_SPAWN_POINTS = [
@@ -9659,9 +9886,9 @@ const DRAGON_SPAWN_POINTS = [
 ];
 
 // ドラゴンをエンティティとしてスポーン
-function spawnDragon(type, x, z, aiPattern) {
+function spawnDragon(type, x, z, aiPattern, factionColor) {
   const def = DRAGON_DEFS[type];
-  const mesh = buildDragonMesh(type);
+  const mesh = buildDragonMesh(type, factionColor);
   const flyHeight = def.fly ? 80 : 0;
   mesh.position.set(x, flyHeight, z);
   scene.add(mesh);
@@ -9707,12 +9934,25 @@ function spawnDragon(type, x, z, aiPattern) {
   return entity;
 }
 
+// ウェーブ国籍: プレイヤー以外の2国を交互に割り当て
+let waveEnemyFactions = []; // 非プレイヤー国リスト
+let currentWaveFaction = null; // 今のウェーブの攻撃国
+
+function getWaveFaction(waveNum) {
+  if (waveEnemyFactions.length === 0) {
+    waveEnemyFactions = FACTION_IDS.filter(f => f !== selectedFaction);
+  }
+  return waveEnemyFactions[(waveNum - 1) % waveEnemyFactions.length];
+}
+
 function spawnWave(waveNum) {
+  // 今回の攻撃国を決定
+  currentWaveFaction = getWaveFaction(waveNum);
+  const factionData = FACTIONS[currentWaveFaction];
+
   const difficulty = waveConfig.startDifficulty * Math.pow(waveConfig.scaling, waveNum - 1);
-  // ウェーブ番号に応じてドラゴン種と数を決定
   let budget = Math.floor(5 + waveNum * 3 * difficulty);
   const costs = { dragonling: 1, firedrake: 2, frostdrake: 2, stonedrake: 4, elderdragon: 6 };
-  // 利用可能なドラゴン種（ウェーブが進むと強いのが出る）
   let available = ['dragonling'];
   if (waveNum >= 2) available.push('firedrake');
   if (waveNum >= 3) available.push('frostdrake');
@@ -9721,7 +9961,6 @@ function spawnWave(waveNum) {
 
   const toSpawn = [];
   while (budget > 0) {
-    // 予算内で出せるドラゴンをフィルタ
     const affordable = available.filter(d => costs[d] <= budget);
     if (affordable.length === 0) break;
     const pick = affordable[Math.floor(Math.random() * affordable.length)];
@@ -9729,18 +9968,19 @@ function spawnWave(waveNum) {
     budget -= costs[pick];
   }
 
-  // スポーンポイントに分散配置
+  // スポーンポイントに分散配置（国のテーマカラーでスポーン）
   toSpawn.forEach((type, i) => {
     const sp = DRAGON_SPAWN_POINTS[i % DRAGON_SPAWN_POINTS.length];
     const ox = (Math.random() - 0.5) * 60;
     const oz = (Math.random() - 0.5) * 60;
     const aiPattern = Math.random() < 0.6 ? 'rush' : 'siege';
-    spawnDragon(type, sp.x + ox, sp.z + oz, aiPattern);
+    spawnDragon(type, sp.x + ox, sp.z + oz, aiPattern, factionData.color);
   });
 
-  // ウェーブ情報UI更新
+  // ウェーブ開始実況
+  speakKabira(`${factionData.icon}${factionData.name}のドラゴン軍団が襲来！`);
+
   const waveInfo = document.getElementById('wave-info');
-  // ウェーブ表示はカウントダウン系のみ（wave-infoはBUILD/INTERVALで更新）
   if (waveInfo) waveInfo.style.display = 'none';
 }
 
@@ -10021,7 +10261,7 @@ function fireProjectile(from, to, dmg, splash, splashRadius, side) {
 
   projectiles.push({
     mesh, dmg, splash, splashRadius, side,
-    sourceEntity: from.cardId ? from : null,
+    sourceEntity: from || null,
     target: to,
     tx, ty, tz, speed: isDragonBreath ? 100 : 150,
     isDragonBreath: isDragonBreath
@@ -15674,11 +15914,12 @@ function updateGame(dt) {
     }
     // ウェーブクリア判定 — 終わりなし、ここで生きる
     waveEnemies = waveEnemies.filter(e => e.hp > 0);
-    if (waveEnemies.length === 0 && currentWave > 0) {
+    if (waveEnemies.length === 0 && currentWave > 0 && gameState === 'WAVE') {
       // 次ウェーブへのインターバル（無限継続）
       gameState = 'INTERVAL';
       intervalTimer = INTERVAL_DURATION;
-      speakKabira(`撃退成功！ 次の襲来まで${INTERVAL_DURATION}秒！`);
+      // 途中報告: ユニット別キル内訳
+      showWaveClearReport();
       return;
     }
 
@@ -15709,8 +15950,8 @@ function updateGame(dt) {
       // 次ウェーブ開始
       currentWave++;
       gameState = 'WAVE';
+      snapshotWaveKills();
       spawnWave(currentWave);
-      speakKabira(`ドラゴンの群れだ！ 迎え撃て！`);
     }
   }
 
