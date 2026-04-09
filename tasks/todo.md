@@ -1,33 +1,25 @@
-# フィールド発展＋防衛システム実装
+# 実装計画: ドラゴン改善 + ユニットシステム変更
 
-## Phase 1: 永続施設システム ★★★
-- [x] STRUCTURE_DEFS定義（農場・見張り塔・城壁・鍛冶場・祭壇）
-- [x] buildStructure() — GDP消費でフィールドに永続施設を建設
-- [x] 施設のプロシージャルメッシュ生成
-- [x] 施設効果の適用（エリクサー速度UP、攻撃力UP等）
-- [x] 施設HPと敵による破壊
-- [x] 施設建設UIカード（手札とは別の建設パネル）
+## Phase 1: ドラゴンメッシュ作り直し
+- [x] `buildDragonMesh()` を全面書き直し
+  - カラーバグ修正（mcBoxにMaterialを渡していた問題）
+  - サイズ: dragonling 4倍 / firedrake 6倍 / frostdrake 6倍 / stonedrake 8倍 / elderdragon 12倍
+  - 飛行型(dragonling/firedrake/frostdrake/elderdragon): 翼大きめ、高度25飛行
+  - 地上型(stonedrake): 翼なし、脚太い、四足獣
+- [x] `isFlying` → `fly` に修正（spawnDragon内）
+- [x] DRAGON_DEFS の scale値をサイズ倍率に合わせて更新
 
-## Phase 2: ボス強化 ★★★
-- [x] ボスの巨大化（1.8倍スケール）
-- [x] ボスオーラエフェクト（パーティクル＋リング＋光源）
-- [x] ボスHPバー特別演出（赤枠＋二つ名表示＋グロー）
-- [x] ボス撃破報酬（GDP+300＆カード配布）
+## Phase 2: ドラゴンの攻撃演出（火吐き）
+- [x] 飛行ドラゴンの攻撃時に火の玉プロジェクタイルを発射
+  - firedrake: 赤い炎
+  - frostdrake: 青い氷弾
+  - dragonling: 小さい火の玉
+  - elderdragon: 巨大な紫炎
+- [x] stonedrake は近接攻撃（体当たり）のまま
 
-## Phase 3: 領土拡張 ★★☆
-- [x] GDP閾値で自動拡張（500/1200/2500/5000）
-- [x] 拡張時の視覚フィードバック（国旗・道路追加）
-
-## Phase 4: ダイバー専用アクション ★★☆
-- [x] 施設修理コマンド（diverRepair）
-- [x] バフ投下コマンド（diverBuff: rage/heal/shield）
-- [x] 資源ギフトコマンド（diverGift）
-
-## Phase 5: 新チェスト種類 ★☆☆
-- [x] ゴールドチェスト（GDP+200）
-- [x] 設計図チェスト（施設建設カード — 無料で施設自動配置）
-- [x] 強化の書チェスト（施設HP+25%レベルアップ）
-
-## Phase 6: リファクタリング
-- [x] マジックナンバーを定数化（BOSS_*, DIVER_*, TERRITORY_*, CHEST定数）
-- [x] window.toggleStructurePanel修正（module scopeバグ修正）
+## Phase 3: プレイヤーは施設のみ配置可能に
+- [x] CHEST_TYPES から troop / spell を削除（structure / building のみ）
+- [x] getRandomCard() が施設・建物カードのみ返すように
+- [x] インベントリパネルからタブ削除（施設一覧のみ表示）
+- [x] handCards系の処理を施設カード専用に整理
+- [x] 初期ナイト2体（spawnInitialArmy）は維持
