@@ -12389,6 +12389,11 @@ function updateChests(dt) {
       c._declined = false;
     } else if (!c._prompted && !c._declined && !promptOpen && _chestPromptCooldown <= 0) {
       c._prompted = true;
+      // チュートリアル中は自動拾い（モーダルなし）
+      if (gameState === 'TUTORIAL') {
+        pickupChest(c, chests.indexOf(c));
+        break;
+      }
       showChestPrompt(c, i);
     }
   }
