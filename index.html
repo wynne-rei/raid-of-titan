@@ -6570,6 +6570,9 @@ function serializeBattleState() {
   // Eternal world
   data.worldTime = worldTime;
   data.factionGDP = { ...factionGDP };
+  // ウェーブ制
+  data.currentWave = currentWave;
+  data.intervalTimer = intervalTimer;
 
   // players配列（mesh/kingTower参照を除外）
   data.players = players.map(p => ({
@@ -6635,7 +6638,10 @@ function serializeBattleState() {
     px: e.mesh.position.x,
     py: e.mesh.position.y,
     pz: e.mesh.position.z,
-    targetRef: getTargetRef(e.target)
+    targetRef: getTargetRef(e.target),
+    isDragon: e.isDragon || false,
+    dragonType: e.dragonType || null,
+    aiPattern: e.aiPattern || null
   }));
 
   // projectiles配列（mesh除外）
@@ -6734,6 +6740,9 @@ function restoreBattleState(data) {
     // Eternal world
     if (typeof data.worldTime === 'number') worldTime = data.worldTime;
     if (data.factionGDP) factionGDP = { ...data.factionGDP };
+    // ウェーブ制
+    if (typeof data.currentWave === 'number') currentWave = data.currentWave;
+    if (typeof data.intervalTimer === 'number') intervalTimer = data.intervalTimer;
     selectedCardIndex = -1;
     placementMode = false;
     pendingCard = null;
@@ -6811,29 +6820,35 @@ function restoreBattleState(data) {
     }
 
     // 6. entities再生成（1体ずつ個別に生成、spawnEntityのcount問題を回避）
+    playerArmy = [];
+    waveEnemies = [];
     data.entities.forEach(ed => {
-      const def = CARD_DEFS[ed.cardId];
-      if (!def) return;
-
-      // メッシュ生成（マイクラ風はスケール不要）
-      const mesh = createUnitMesh(ed.cardId, def, def.color);
-      const unitScale = 1;
-
-      mesh.position.set(ed.px, ed.py, ed.pz);
-      mesh.castShadow = false;
-      scene.add(mesh);
+      let mesh;
+      // ドラゴンエンティティの復元
+      if (ed.isDragon && ed.dragonType) {
+        mesh = buildDragonMesh(ed.dragonType);
+        mesh.position.set(ed.px, ed.py, ed.pz);
+        scene.add(mesh);
+      } else {
+        const def = CARD_DEFS[ed.cardId];
+        if (!def) return;
+        mesh = createUnitMesh(ed.cardId, def, def.color);
+        mesh.position.set(ed.px, ed.py, ed.pz);
+        mesh.castShadow = false;
+        scene.add(mesh);
+      }
 
       // HPバー
       const hpContainer = document.createElement('div');
       hpContainer.className = 'hp-bar-container';
-      const eColor = (players[ed.side] && FACTIONS[players[ed.side].faction]) ? FACTIONS[players[ed.side].faction].color : 0x42a5f5;
+      const eColor = ed.side === 99 ? 0xff4040 : ((players[ed.side] && FACTIONS[players[ed.side].faction]) ? FACTIONS[players[ed.side].faction].color : 0x42a5f5);
       const eColorHex = '#' + eColor.toString(16).padStart(6, '0');
       const hpPct = Math.max(0, (ed.hp / ed.maxHp) * 100);
       hpContainer.innerHTML = `<div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${hpPct}%;background:${eColorHex}"></div></div>`;
       document.getElementById('hp-bars-container').appendChild(hpContainer);
 
       const entity = {
-        cardId: ed.cardId, mesh, side: ed.side, def,
+        cardId: ed.cardId, mesh, side: ed.side, def: ed.isDragon ? DRAGON_DEFS[ed.dragonType] : CARD_DEFS[ed.cardId],
         hp: ed.hp, maxHp: ed.maxHp, dmg: ed.dmg,
         speed: ed.speed, range: ed.range,
         attackSpeed: ed.attackSpeed, attackTimer: ed.attackTimer,
@@ -6845,11 +6860,17 @@ function restoreBattleState(data) {
         frozen: ed.frozen, raged: ed.raged, rageBoost: ed.rageBoost,
         lastHitBy: ed.lastHitBy, statKills: ed.statKills, statDmg: ed.statDmg,
         hpContainer,
+        isDragon: ed.isDragon || false,
+        dragonType: ed.dragonType || null,
+        aiPattern: ed.aiPattern || null,
         targetType: ed.targetType,
         infernoTimer: ed.infernoTimer,
         dmgBase: ed.dmgBase, dmgMax: ed.dmgMax
       };
       entities.push(entity);
+      // playerArmy / waveEnemies を再構築
+      if (entity.side === 0 && !entity.isDragon) playerArmy.push(entity);
+      if (entity.side === 99) waveEnemies.push(entity);
     });
 
     // 7. projectiles再生成
