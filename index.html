@@ -9723,6 +9723,8 @@ function spawnDragon(type, x, z, aiPattern) {
     spawnTime: matchTimer,
     hpContainer: null,
     dead: false,
+    statDmg: 0,
+    statKills: 0,
   };
 
   // HPバー
@@ -10776,10 +10778,17 @@ function updateTowers(dt) {
 function updateProjectiles(dt) {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
-    if (!p.target) { scene.remove(p.mesh); projectiles.splice(i, 1); continue; }
-    const tx = p.target.mesh ? p.target.mesh.position.x : (p.target.x || p.tx);
-    const ty = p.target.mesh ? p.target.mesh.position.y : (p.ty || 1);
-    const tz = p.target.mesh ? p.target.mesh.position.z : (p.target.z || p.tz);
+    // ターゲットが無効（null、dead、mesh消失）→ プロジェクタイル削除
+    if (!p.target || (p.target.hp !== undefined && p.target.hp <= 0 && !p.target.isKing) || (p.target.destroyed)) {
+      scene.remove(p.mesh);
+      if (p.mesh.geometry) p.mesh.geometry.dispose();
+      if (p.mesh.material) p.mesh.material.dispose();
+      projectiles.splice(i, 1);
+      continue;
+    }
+    const tx = (p.target.mesh && p.target.mesh.position) ? p.target.mesh.position.x : (p.target.x != null ? p.target.x : p.tx);
+    const ty = (p.target.mesh && p.target.mesh.position) ? p.target.mesh.position.y : (p.ty || 1);
+    const tz = (p.target.mesh && p.target.mesh.position) ? p.target.mesh.position.z : (p.target.z != null ? p.target.z : p.tz);
 
     const dx = tx - p.mesh.position.x;
     const dy = ty - p.mesh.position.y;
