@@ -9508,11 +9508,11 @@ function spawnInitialArmy() {
 
 // ドラゴン定義
 const DRAGON_DEFS = {
-  dragonling:  { hp: 200, dmg: 30, speed: 3.5, range: 1.5, color: 0x88cc44, scale: 4.0, fly: true, name: 'ドラゴンリング' },
-  firedrake:   { hp: 400, dmg: 60, speed: 2.8, range: 2.0, color: 0xff4422, scale: 6.0, fly: true, name: 'ファイアドレイク' },
-  frostdrake:  { hp: 350, dmg: 45, speed: 3.0, range: 3.0, color: 0x44aaff, scale: 6.0, fly: true, name: 'フロストドレイク' },
-  stonedrake:  { hp: 800, dmg: 80, speed: 1.5, range: 1.5, color: 0x886644, scale: 8.0, fly: false, name: 'ストーンドレイク' },
-  elderdragon: { hp: 1200, dmg: 120, speed: 2.0, range: 2.5, color: 0xaa22ff, scale: 12.0, fly: true, name: 'エルダードラゴン' },
+  dragonling:  { hp: 200, dmg: 30, speed: 3.5, range: 1.5, color: 0x88cc44, scale: 12.0, fly: true, name: 'ドラゴンリング' },
+  firedrake:   { hp: 400, dmg: 60, speed: 2.8, range: 2.0, color: 0xff4422, scale: 18.0, fly: true, name: 'ファイアドレイク' },
+  frostdrake:  { hp: 350, dmg: 45, speed: 3.0, range: 3.0, color: 0x44aaff, scale: 18.0, fly: true, name: 'フロストドレイク' },
+  stonedrake:  { hp: 800, dmg: 80, speed: 1.5, range: 1.5, color: 0x886644, scale: 24.0, fly: false, name: 'ストーンドレイク' },
+  elderdragon: { hp: 1200, dmg: 120, speed: 2.0, range: 2.5, color: 0xaa22ff, scale: 36.0, fly: true, name: 'エルダードラゴン' },
 };
 const DRAGON_IDS = Object.keys(DRAGON_DEFS);
 
@@ -9697,7 +9697,7 @@ const DRAGON_SPAWN_POINTS = [
 function spawnDragon(type, x, z, aiPattern) {
   const def = DRAGON_DEFS[type];
   const mesh = buildDragonMesh(type);
-  const flyHeight = def.fly ? 25 : 0;
+  const flyHeight = def.fly ? 80 : 0;
   mesh.position.set(x, flyHeight, z);
   scene.add(mesh);
 
@@ -10556,7 +10556,7 @@ function updateEntities(dt) {
     // Bobbing animation for troops + 地形追従
     {
       const terrainY = e.fly ? 0 : getTerrainHeight(e.mesh.position.x, e.mesh.position.z);
-      const baseY = e.fly ? 25 : (e.def && e.def.size ? (e.def.size[1] || e.def.size[0]) / 2 : 4);
+      const baseY = e.fly ? (e.flyHeight || 80) : (e.def && e.def.size ? (e.def.size[1] || e.def.size[0]) / 2 : 4);
       const bob = e.state === 'moving' ? Math.sin(clock.elapsedTime * 5) * 0.05 : 0;
       e.mesh.position.y = terrainY + baseY + bob;
     }
