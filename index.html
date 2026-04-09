@@ -3279,10 +3279,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
     <!-- GDP表示は画面下部のHUDに統合 -->
   </div>
   <div id="inv-tab-build" class="inv-tab-content active">
-    <div id="inventory-structures"></div>
-    <div id="inventory-cards-section" style="margin-top:8px;">
-      <div id="inventory-cards"></div>
-    </div>
+    <div id="inventory-cards"></div>
   </div>
 </div>
 
@@ -5173,8 +5170,18 @@ const CARD_DEFS = {
     structureId: 'wall',
     description: '敵の侵入を阻む壁'
   },
-  // struct_smithy: 一旦削除
-  // struct_altar: 一旦削除
+  struct_trap: {
+    name: 'トラップ', cost: 150, type: 'structure', category: 'attack', icon: '💥',
+    hp: 1, color: 0x666666, unlockLevel: 1, count: 1,
+    structureId: 'trap',
+    description: '敵が踏むと爆発！DMG300'
+  },
+  struct_healingTower: {
+    name: 'ヒーリングタワー', cost: 300, type: 'structure', category: 'support', icon: '💚',
+    hp: 400, color: 0x44ff88, unlockLevel: 1, count: 1,
+    structureId: 'healingTower',
+    description: '範囲内の味方をHP20/秒回復'
+  },
 };
 
 // ============================================================
@@ -12555,7 +12562,6 @@ window.toggleInventoryPanel = function() {
   if (panel) {
     if (inventoryPanelOpen) {
       panel.classList.add('visible');
-      renderInventoryStructures();
       renderHand();
     } else {
       panel.classList.remove('visible');
@@ -12564,8 +12570,8 @@ window.toggleInventoryPanel = function() {
 };
 
 window.switchInventoryTab = function(tab) {
-  inventoryActiveTab = 'build'; // 常に建設タブ
-  renderInventoryStructures();
+  inventoryActiveTab = 'build';
+  renderHand();
 };
 
 function renderInventoryStructures() {
