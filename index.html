@@ -6305,77 +6305,28 @@ function updateCommentary(dt) {
   if (commentaryTimer > 0) return;
   commentaryTimer = COMMENTARY_INTERVAL + Math.random() * 2;
 
-  const alive = getAlivePlayers();
-  const aliveFactions = getAliveFactions();
-  const totalAlive = alive.length;
+  if (!humanPlayer || humanPlayer.eliminated) return;
+  const pf = FACTIONS[humanPlayer.faction];
+  const dragons = entities.filter(e => e.side === 99 && !e.dead);
+  const armyCount = playerArmy.length;
 
-  // Milestone commentary
-  const milestones = [50, 32, 16, 10, 5, 3];
-  for (const m of milestones) {
-    if (totalAlive <= m && lastTotalAlive > m) {
-      const msgs = {
-        50: '⚡ 50人を切った！戦いが激化している！',
-        32: '🔥 残り半分！32人の生存者！',
-        16: '💀 残り16人！各国の精鋭が残る！',
-        10: '⚔️ 残り10人！最終決戦が近い！',
-        5: '🏆 残りわずか5人！勝利はすぐそこだ！',
-        3: '👑 残り3人！頂点を目指せ！'
-      };
-      if (msgs[m]) addCommentary(msgs[m], 'system');
-      break;
-    }
-  }
-  lastTotalAlive = totalAlive;
-
-  // Faction elimination
-  const deadFactions = FACTION_IDS.filter(f => !aliveFactions.includes(f));
-  deadFactions.forEach(f => {
-    if (!lastFactionEliminated.has(f)) {
-      lastFactionEliminated.add(f);
-      addCommentary(`💥 ${FACTIONS[f].icon} ${FACTIONS[f].name} が全滅！残り${aliveFactions.length}国の決戦！`, 'system');
-    }
-  });
-
-  // Random situation commentary
   const roll = Math.random();
-  if (roll < 0.25) {
-    const stats = FACTION_IDS.map(fid => {
-      const fp = players.filter(p => p.faction === fid);
-      return { fid, alive: fp.filter(p => !p.eliminated).length, units: entities.filter(e => fp.some(p => p.id === e.side)).length, kills: fp.reduce((s, p) => s + p.kills, 0) };
-    }).filter(s => s.alive > 0);
-    if (stats.length >= 2) {
-      const top = stats.sort((a, b) => b.kills - a.kills)[0];
-      const f = FACTIONS[top.fid];
-      addCommentary(`${f.icon} ${f.name}が${top.kills}キルでリード！`, top.fid);
+  if (roll < 0.3) {
+    // ドラゴン残数コメント
+    if (dragons.length > 0) {
+      addCommentary(`🐉 ドラゴン残り${dragons.length}体！殲滅せよ！`, 'system');
     }
-  } else if (roll < 0.4) {
+  } else if (roll < 0.5) {
+    // 自軍の戦果
+    if (humanPlayer.kills >= 5) addCommentary(`${pf.icon} ${humanPlayer.kills}体撃破！凄まじい戦果だ！`, humanPlayer.faction);
+  } else if (roll < 0.65) {
+    // フィールド状況
     const totalUnits = entities.length;
-    if (totalUnits > 80) addCommentary(`⚔️ フィールドに${totalUnits}体！大混戦だ！`, 'system');
-    else if (totalUnits > 30) addCommentary(`🗡️ ${totalUnits}体のユニットが戦場を駆け巡る！`, 'system');
-  } else if (roll < 0.55 && humanPlayer && !humanPlayer.eliminated) {
-    const pf = FACTIONS[humanPlayer.faction];
-    if (humanPlayer.kills >= 5) addCommentary(`${pf.icon} あなたが${humanPlayer.kills}キル！凄まじい戦果だ！`, humanPlayer.faction);
-    else if (humanPlayer.kingKills > 0) addCommentary(`${pf.icon} あなたがキング${humanPlayer.kingKills}体撃破！`, humanPlayer.faction);
-  } else if (roll < 0.7) {
-    const topKiller = players.filter(p => !p.eliminated).sort((a, b) => b.kills - a.kills)[0];
-    if (topKiller && topKiller.kills >= 3) {
-      const f = FACTIONS[topKiller.faction];
-      addCommentary(`👑 ${f.icon} ${topKiller.name}が${topKiller.kills}キルでトップ！`, topKiller.faction);
-    }
-  } else if (roll < 0.85) {
-    // Close battle between factions
-    const aStats = FACTION_IDS.map(fid => ({
-      fid, alive: players.filter(p => p.faction === fid && !p.eliminated).length
-    })).filter(s => s.alive > 0);
-    if (aStats.length >= 2) {
-      const sorted = aStats.sort((a, b) => b.alive - a.alive);
-      if (sorted[0].alive - sorted[sorted.length - 1].alive <= 2) {
-        addCommentary('⚖️ 各国の戦力が拮抗！勝負の行方は読めない！', 'system');
-      } else {
-        const lead = FACTIONS[sorted[0].fid];
-        addCommentary(`${lead.icon} ${lead.name}が${sorted[0].alive}人で生存数トップ！`, sorted[0].fid);
-      }
-    }
+    if (totalUnits > 30) addCommentary(`⚔️ フィールドに${totalUnits}体！激しい攻防だ！`, 'system');
+  } else if (roll < 0.8) {
+    // 自軍数
+    if (armyCount > 0) addCommentary(`🛡️ 自軍${armyCount}体が王国を守る！`, humanPlayer.faction);
+    else addCommentary(`⚠️ 自軍が全滅！王だけで耐えている！`, 'system');
   }
 }
 
@@ -15014,7 +14965,7 @@ window.startBattle = function() {
   resetFactionLevels();
   resetVoiceState(); // 音声フラグをリセット
   playBattleBGM();
-  addCommentary(`🏰 育成フェーズ開始！軍を整え、準備ができたら「開戦」を押せ！`, selectedFaction);
+  addCommentary(`🏰 育成フェーズ開始！チェストを集めて軍を整えよ！`, selectedFaction);
 
   // 初期騎士2体を配置
   spawnInitialArmy();
