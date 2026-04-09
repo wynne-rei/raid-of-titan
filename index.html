@@ -3216,24 +3216,26 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
 <!-- HUD -->
 <div id="hud">
   <div id="timer-bar" style="display:none"></div>
-  <div id="crown-display">
-    <div class="cd-timer" id="cd-timer">🌅 Day 1  00:00</div>
-    <div class="cd-divider"></div>
-    <div class="cd-kills">
-      <div class="cd-kills-num" id="cd-kills-num">0</div>
-      <div class="cd-kills-lbl">Kills</div>
-    </div>
-  </div>
-  <div id="overtime-banner">⚡ SUDDEN DEATH ⚡</div>
-  <!-- ウェーブ制: 開戦ボタン & ウェーブ情報 -->
-  <div id="wave-hud" style="position:absolute;top:60px;left:50%;transform:translateX(-50%);text-align:center;z-index:200;pointer-events:none;">
-    <div id="wave-info" style="display:none;padding:10px 24px;font-size:16px;font-weight:bold;color:#ffd700;background:rgba(0,0,0,0.7);border:2px solid rgba(255,215,0,0.4);border-radius:12px;text-shadow:0 2px 4px rgba(0,0,0,0.8);letter-spacing:1px;min-width:280px;">
-      <div id="wave-info-label" style="margin-bottom:6px;">🐉 ドラゴン襲来まで</div>
-      <div style="background:rgba(255,255,255,0.15);border-radius:6px;height:14px;overflow:hidden;position:relative;">
-        <div id="wave-progress-bar" style="height:100%;background:linear-gradient(90deg,#ff4422,#ffd700);border-radius:6px;transition:width 0.3s;width:0%;"></div>
+  <!-- 統合HUD: 上部中央にウェーブ情報・時間・キルをまとめる -->
+  <div id="wave-top-hud" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:200;pointer-events:none;display:flex;align-items:center;gap:12px;background:rgba(0,0,0,0.75);border:2px solid rgba(255,215,0,0.4);border-radius:14px;padding:8px 20px;min-width:320px;">
+    <div style="flex:1;text-align:center;">
+      <div id="cd-timer" style="color:#fff;font-size:14px;font-weight:bold;letter-spacing:1px;">🌅 Day 1  00:00</div>
+      <div id="wave-info" style="display:none;margin-top:6px;">
+        <div id="wave-info-label" style="color:#ffd700;font-size:13px;font-weight:bold;margin-bottom:4px;">🐉 ドラゴン襲来</div>
+        <div style="background:rgba(255,255,255,0.15);border-radius:6px;height:10px;overflow:hidden;">
+          <div id="wave-progress-bar" style="height:100%;background:linear-gradient(90deg,#ff4422,#ffd700);border-radius:6px;transition:width 0.3s;width:0%;"></div>
+        </div>
       </div>
+      <div id="wave-number" style="display:none;color:#ff6b6b;font-size:13px;font-weight:bold;margin-top:4px;"></div>
+    </div>
+    <div style="width:1px;height:30px;background:rgba(255,255,255,0.2);"></div>
+    <div style="text-align:center;min-width:50px;">
+      <div class="cd-kills-num" id="cd-kills-num" style="color:#ffd700;font-size:20px;font-weight:bold;">0</div>
+      <div style="color:rgba(255,255,255,0.6);font-size:10px;">Kills</div>
     </div>
   </div>
+  <div id="crown-display" style="display:none"></div>
+  <div id="overtime-banner">⚡ SUDDEN DEATH ⚡</div>
   <div id="faction-scoreboard"></div>
   <!-- 王国ステータス: 自軍情報 -->
   <div id="victory-progress">
@@ -4892,7 +4894,7 @@ function updateEntityAnimations(dt) {
   const now = performance.now() * 0.005; // ゆっくりスイング
   for (let i = 0; i < entities.length; i++) {
     const e = entities[i];
-    if (!e.mesh || e.hp <= 0) continue;
+    if (!e.mesh || e.hp <= 0 || e.dead) continue;
     const m = e.mesh;
     // 距離カリング
     const dx = m.position.x - camX, dz = m.position.z - camZ;
@@ -10145,24 +10147,38 @@ function getMovementTarget(entity) {
     if (nearest) return { x: nearest.x, z: nearest.z, target: nearest };
   }
 
-  // ナイト等: プレイヤー追従（敵が近くにいない場合、プレイヤーの近くにとどまる）
-  const followRange = 300; // この距離以上離れたらプレイヤーに戻る
+  // プレイヤー追従用
+  const followRange = 300;
   const playerPos = humanPlayer && humanPlayer.mesh ? humanPlayer.mesh.position : null;
 
-  // Find nearest enemy entity or tower (using spatial grid)
+  // Step 1: 空間グリッドから近くの敵を検索
   let nearest = null, minDist = Infinity;
-
   for (let ni = 0; ni < nearby.length; ni++) {
     const e = nearby[ni];
-    if (e.destroyed !== undefined || e.isKing) continue; // skip towers
-    if (e.dead) continue; // 死亡済みエンティティをスキップ
-    if (isAlly(e.side, side) || e.hp <= 0) continue;
-    if (entity.targetType === 'ground' && e.fly && e.side !== 99) continue; // ドラゴンは飛行でも攻撃可
+    if (e.destroyed !== undefined || e.isKing) continue;
+    if (e.dead || e.hp <= 0) continue;
+    if (isAlly(e.side, side)) continue;
+    if (entity.targetType === 'ground' && e.fly && e.side !== 99) continue;
     const d = Math.sqrt((e.mesh.position.x - x) ** 2 + (e.mesh.position.z - z) ** 2);
     if (d < minDist) { minDist = d; nearest = e; }
   }
 
-  // If no entity in range, go for nearest enemy tower
+  // Step 2: グリッド外のドラゴンも全entity検索（グリッド範囲が狭いため）
+  if (!nearest || minDist > 400) {
+    for (let ei = 0; ei < entities.length; ei++) {
+      const e = entities[ei];
+      if (e === entity) continue;
+      if (e.dead || e.hp <= 0) continue;
+      if (isAlly(e.side, side)) continue;
+      if (e.destroyed !== undefined || e.isKing) continue;
+      if (entity.targetType === 'ground' && e.fly && e.side !== 99) continue;
+      if (!e.mesh) continue;
+      const d = Math.sqrt((e.mesh.position.x - x) ** 2 + (e.mesh.position.z - z) ** 2);
+      if (d < minDist) { minDist = d; nearest = e; }
+    }
+  }
+
+  // Step 3: 敵タワーも検索
   if (!nearest || minDist > 800) {
     towers.forEach(t => {
       if (isAlly(t.side, side) || t.destroyed) return;
@@ -10171,29 +10187,21 @@ function getMovementTarget(entity) {
     });
   }
 
-  // 敵が見つからない＆プレイヤーから遠い → プレイヤーに追従
-  if ((!nearest || minDist > 500) && playerPos && side === 0) {
-    const distToPlayer = Math.sqrt((x - playerPos.x) ** 2 + (z - playerPos.z) ** 2);
-    if (distToPlayer > followRange) {
-      return { x: playerPos.x, z: playerPos.z, target: null };
-    }
-  }
-
   if (nearest) {
     const tx = nearest.mesh ? nearest.mesh.position.x : nearest.x;
     const tz = nearest.mesh ? nearest.mesh.position.z : nearest.z;
     return { x: tx, z: tz, target: nearest };
   }
 
-  // Default: walk toward nearest enemy tower
-  let nearestTower = null, ntDist = Infinity;
-  towers.forEach(t => {
-    if (isAlly(t.side, side) || t.destroyed) return;
-    const d = Math.sqrt((t.x - x) ** 2 + (t.z - z) ** 2);
-    if (d < ntDist) { ntDist = d; nearestTower = t; }
-  });
-  if (nearestTower) return { x: nearestTower.x, z: nearestTower.z, target: null };
-  return { x: x, z: z + 200, target: null };
+  // Step 4: 敵不在 → プレイヤーに追従（side=0の味方ユニットのみ）
+  if (playerPos && side === 0) {
+    const distToPlayer = Math.sqrt((x - playerPos.x) ** 2 + (z - playerPos.z) ** 2);
+    if (distToPlayer > followRange) {
+      return { x: playerPos.x, z: playerPos.z, target: null };
+    }
+  }
+
+  return { x: x, z: z, target: null }; // その場で待機
 }
 
 function needsBridge(entity) {
@@ -10646,7 +10654,9 @@ function updateHPBarPosition(entity) {
 
   // FBXモデルはfbxHeight分の高さがある → 頭上に表示
   const fbxH = (entity.mesh && entity.mesh.userData && entity.mesh.userData.fbxHeight) ? entity.mesh.userData.fbxHeight : 0;
-  _hpBarVec.set(ex, ey + (isPlayerTower ? 38 : isQueen ? 38 : (fbxH > 0 ? fbxH + 8 : 15)), ez);
+  const isDragon = entity.isDragon;
+  const hpBarYOffset = isPlayerTower ? 38 : isQueen ? 38 : isDragon ? 30 : (fbxH > 0 ? fbxH + 8 : 15);
+  _hpBarVec.set(ex, ey + hpBarYOffset, ez);
   _hpBarVec.project(camera);
 
   const x = (_hpBarVec.x * 0.5 + 0.5) * window.innerWidth;
@@ -10658,7 +10668,7 @@ function updateHPBarPosition(entity) {
   }
 
   entity.hpContainer.style.display = 'block';
-  const halfW = isPlayerTower ? 60 : isQueen ? 45 : 25;
+  const halfW = isPlayerTower ? 60 : isQueen ? 45 : isDragon ? 40 : 25;
   entity.hpContainer.style.left = (x - halfW) + 'px';
   entity.hpContainer.style.top = y + 'px';
 
@@ -10853,7 +10863,15 @@ function updateProjectiles(dt) {
 // ============================================================
 // UPDATE SPELL EFFECTS
 // ============================================================
+const MAX_SPELL_EFFECTS = 100; // パーティクル上限（フリーズ防止）
 function updateSpellEffects(dt) {
+  // 上限超えたら古いパーティクルを強制除去
+  while (spellEffects.length > MAX_SPELL_EFFECTS) {
+    const old = spellEffects.shift();
+    scene.remove(old.mesh);
+    if (old.mesh.geometry) old.mesh.geometry.dispose();
+    if (old.mesh.material) old.mesh.material.dispose();
+  }
   for (let i = spellEffects.length - 1; i >= 0; i--) {
     const e = spellEffects[i];
     e.timer -= dt;
@@ -15659,6 +15677,13 @@ function updateGame(dt) {
 
   // WAVE: ドラゴン襲来中
   if (gameState === 'WAVE' || gameState === 'INTERVAL') {
+    // ウェーブ番号表示
+    const waveNumEl = document.getElementById('wave-number');
+    const waveInfoEl = document.getElementById('wave-info');
+    if (gameState === 'WAVE') {
+      if (waveInfoEl) waveInfoEl.style.display = 'none';
+      if (waveNumEl) { waveNumEl.style.display = 'block'; waveNumEl.textContent = `🐉 残り ${waveEnemies.filter(e => e.hp > 0).length}体`; }
+    }
     // ウェーブクリア判定 — 終わりなし、ここで生きる
     waveEnemies = waveEnemies.filter(e => e.hp > 0);
     if (waveEnemies.length === 0 && currentWave > 0) {
@@ -15681,6 +15706,8 @@ function updateGame(dt) {
   if (gameState === 'INTERVAL') {
     intervalTimer -= dt;
     // インターバル中のUI更新
+    const waveNumEl2 = document.getElementById('wave-number');
+    if (waveNumEl2) waveNumEl2.style.display = 'none';
     const waveInfo = document.getElementById('wave-info');
     if (waveInfo) {
       waveInfo.style.display = 'block';
