@@ -1521,8 +1521,8 @@ canvas { display: block; }
 .inv-tab-content { display: none; }
 .inv-tab-content.active { display: block; }
 #inventory-cards {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
-  gap: 10px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
 }
 #inventory-structures {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -3227,7 +3227,12 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
   <div id="overtime-banner">⚡ SUDDEN DEATH ⚡</div>
   <!-- ウェーブ制: 開戦ボタン & ウェーブ情報 -->
   <div id="wave-hud" style="position:absolute;top:60px;left:50%;transform:translateX(-50%);text-align:center;z-index:200;pointer-events:none;">
-    <div id="wave-info" style="display:none;padding:10px 24px;font-size:18px;font-weight:bold;color:#ffd700;background:rgba(0,0,0,0.7);border:2px solid rgba(255,215,0,0.4);border-radius:12px;text-shadow:0 2px 4px rgba(0,0,0,0.8);letter-spacing:1px;"></div>
+    <div id="wave-info" style="display:none;padding:10px 24px;font-size:16px;font-weight:bold;color:#ffd700;background:rgba(0,0,0,0.7);border:2px solid rgba(255,215,0,0.4);border-radius:12px;text-shadow:0 2px 4px rgba(0,0,0,0.8);letter-spacing:1px;min-width:280px;">
+      <div id="wave-info-label" style="margin-bottom:6px;">🐉 ドラゴン襲来まで</div>
+      <div style="background:rgba(255,255,255,0.15);border-radius:6px;height:14px;overflow:hidden;position:relative;">
+        <div id="wave-progress-bar" style="height:100%;background:linear-gradient(90deg,#ff4422,#ffd700);border-radius:6px;transition:width 0.3s;width:0%;"></div>
+      </div>
+    </div>
   </div>
   <div id="faction-scoreboard"></div>
   <!-- 王国ステータス: 自軍情報 -->
@@ -3259,7 +3264,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
 <div id="inventory-panel">
   <div id="inventory-panel-header">
     <span>🎒 インベントリ</span>
-    <span id="inventory-gdp-display">💰 GDP: 0</span>
+    <!-- GDP表示は画面下部のHUDに統合 -->
   </div>
   <div id="inv-tab-build" class="inv-tab-content active">
     <div id="inventory-structures"></div>
@@ -5461,7 +5466,7 @@ let humanPlayer = null; // reference to players[0]
 let handCards = []; // alias for humanPlayer.handCards
 
 // Deck & Hand
-let playerDeck = ['knight', 'archer', 'giant', 'musketeer', 'goblins', 'miniPekka', 'hogRider', 'cannon'];
+let playerDeck = []; // ウェーブディフェンス: 初期デッキは空、宝箱から入手
 let deckQueue = [];
 let nextCard = null;
 
@@ -10151,12 +10156,17 @@ function getMovementTarget(entity) {
     if (nearest) return { x: nearest.x, z: nearest.z, target: nearest };
   }
 
+  // ナイト等: プレイヤー追従（敵が近くにいない場合、プレイヤーの近くにとどまる）
+  const followRange = 300; // この距離以上離れたらプレイヤーに戻る
+  const playerPos = humanPlayer && humanPlayer.mesh ? humanPlayer.mesh.position : null;
+
   // Find nearest enemy entity or tower (using spatial grid)
   let nearest = null, minDist = Infinity;
 
   for (let ni = 0; ni < nearby.length; ni++) {
     const e = nearby[ni];
     if (e.destroyed !== undefined || e.isKing) continue; // skip towers
+    if (e.dead) continue; // 死亡済みエンティティをスキップ
     if (isAlly(e.side, side) || e.hp <= 0) continue;
     if (entity.targetType === 'ground' && e.fly) continue;
     const d = Math.sqrt((e.mesh.position.x - x) ** 2 + (e.mesh.position.z - z) ** 2);
@@ -10170,6 +10180,14 @@ function getMovementTarget(entity) {
       const d = Math.sqrt((t.x - x) ** 2 + (t.z - z) ** 2);
       if (d < minDist) { minDist = d; nearest = t; }
     });
+  }
+
+  // 敵が見つからない＆プレイヤーから遠い → プレイヤーに追従
+  if ((!nearest || minDist > 500) && playerPos && side === 0) {
+    const distToPlayer = Math.sqrt((x - playerPos.x) ** 2 + (z - playerPos.z) ** 2);
+    if (distToPlayer > followRange) {
+      return { x: playerPos.x, z: playerPos.z, target: null };
+    }
   }
 
   if (nearest) {
@@ -10287,6 +10305,7 @@ function updateEntities(dt) {
           particle: true
         });
       }
+      e.dead = true; // プロジェクタイル参照用フラグ（mesh除去前に設定）
       removeEntityMixer(e.mesh);
       if (!returnToPool(e.mesh)) {
         scene.remove(e.mesh);
@@ -10574,7 +10593,7 @@ function updateBuildingAttack(e, dt, speedMult) {
 
   allTargets.forEach(t => {
     if (isAlly(t.side, e.side) || t.hp <= 0) return;
-    if (e.targetType === 'ground' && t.fly) return;
+    if (e.targetType === 'ground' && t.fly && t.side !== 99) return; // ドラゴンは飛行でも大砲で攻撃可能
     const tx = t.mesh ? t.mesh.position.x : t.x;
     const tz = t.mesh ? t.mesh.position.z : t.z;
     const d = Math.sqrt(
@@ -10779,7 +10798,15 @@ function updateProjectiles(dt) {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
     // ターゲットが無効（null、dead、mesh消失）→ プロジェクタイル削除
-    if (!p.target || (p.target.hp !== undefined && p.target.hp <= 0 && !p.target.isKing) || (p.target.destroyed)) {
+    if (!p.target || p.target.dead || (p.target.hp !== undefined && p.target.hp <= 0 && !p.target.isKing) || p.target.destroyed) {
+      scene.remove(p.mesh);
+      if (p.mesh.geometry) p.mesh.geometry.dispose();
+      if (p.mesh.material) p.mesh.material.dispose();
+      projectiles.splice(i, 1);
+      continue;
+    }
+    // mesh参照が無効な場合もクリーンアップ
+    if (p.target.mesh && !p.target.mesh.parent) {
       scene.remove(p.mesh);
       if (p.mesh.geometry) p.mesh.geometry.dispose();
       if (p.mesh.material) p.mesh.material.dispose();
@@ -11617,12 +11644,12 @@ function updateStreamMode(dt) {
     streamCommentTimer = 1.5 + Math.random() * 3; // 1.5〜4.5秒
   }
 
-  // スパチャ（たまに）
-  superChatTimer -= dt;
-  if (superChatTimer <= 0) {
-    showSuperChat();
-    superChatTimer = 25 + Math.random() * 40; // 25〜65秒
-  }
+  // スパチャ無効化（ウェーブディフェンスモードでは不要）
+  // superChatTimer -= dt;
+  // if (superChatTimer <= 0) {
+  //   showSuperChat();
+  //   superChatTimer = 25 + Math.random() * 40;
+  // }
 }
 
 // プレイヤー（視聴者）が入力したコメント送信
@@ -12359,9 +12386,7 @@ function renderHand() {
   const myFaction = humanPlayer ? humanPlayer.faction : 'fire';
   const myGdp = factionGDP[myFaction] || 0;
 
-  // Update GDP display in inventory header
-  const gdpDisp = document.getElementById('inventory-gdp-display');
-  if (gdpDisp) gdpDisp.textContent = '💰 GDP: ' + Math.floor(myGdp).toLocaleString();
+  // GDP表示はインベントリから削除済み（画面下部HUDに表示）
 
   const cardCells = handCards.map((cardId, i) => {
     const def = CARD_DEFS[cardId];
@@ -15625,7 +15650,11 @@ function updateGame(dt) {
     const waveInfo = document.getElementById('wave-info');
     if (waveInfo) {
       waveInfo.style.display = 'block';
-      waveInfo.textContent = `🐉 ドラゴン襲来まで ${Math.ceil(Math.max(0, dragonCountdownTimer))}秒`;
+      const label = document.getElementById('wave-info-label');
+      const bar = document.getElementById('wave-progress-bar');
+      const pct = Math.min(100, ((DRAGON_COUNTDOWN - dragonCountdownTimer) / DRAGON_COUNTDOWN) * 100);
+      if (label) label.textContent = `🐉 ドラゴン襲来まで ${Math.ceil(Math.max(0, dragonCountdownTimer))}秒`;
+      if (bar) bar.style.width = pct + '%';
     }
     if (dragonCountdownTimer <= 0) {
       startFirstWave();
@@ -15666,7 +15695,11 @@ function updateGame(dt) {
     const waveInfo = document.getElementById('wave-info');
     if (waveInfo) {
       waveInfo.style.display = 'block';
-      waveInfo.textContent = `🐉 次のドラゴン襲来まで ${Math.ceil(intervalTimer)}秒`;
+      const label = document.getElementById('wave-info-label');
+      const bar = document.getElementById('wave-progress-bar');
+      const pct = Math.min(100, ((10 - intervalTimer) / 10) * 100);
+      if (label) label.textContent = `🐉 次のドラゴン襲来まで ${Math.ceil(intervalTimer)}秒`;
+      if (bar) bar.style.width = pct + '%';
     }
     if (intervalTimer <= 0) {
       // 次ウェーブ開始
