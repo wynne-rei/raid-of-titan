@@ -12413,10 +12413,18 @@ function updateChests(dt) {
   const kx = playerKingTower.mesh.position.x;
   const kz = playerKingTower.mesh.position.z;
 
+  // ダイアログ表示中 or クールダウン中は新しいプロンプトを出さない
+  const promptOpen = !!document.getElementById('chest-prompt');
+  if (typeof _chestPromptCooldown === 'undefined') window._chestPromptCooldown = 0;
+  if (_chestPromptCooldown > 0) window._chestPromptCooldown -= dt;
   for (let i = chests.length - 1; i >= 0; i--) {
     const c = chests[i];
     const dist = Math.sqrt((c.x - kx) ** 2 + (c.z - kz) ** 2);
-    if (dist < CHEST_PICKUP_DIST && !c._prompted) {
+    if (dist >= CHEST_PICKUP_DIST) {
+      // 範囲外に出たらフラグリセット
+      c._prompted = false;
+      c._declined = false;
+    } else if (!c._prompted && !c._declined && !promptOpen && _chestPromptCooldown <= 0) {
       c._prompted = true;
       showChestPrompt(c, i);
     }
@@ -12449,7 +12457,7 @@ function showChestPrompt(chest, index) {
   `;
   document.body.appendChild(el);
   document.getElementById('chest-yes').onclick = () => { el.remove(); pickupChest(chest, chests.indexOf(chest)); };
-  document.getElementById('chest-no').onclick = () => { el.remove(); chest._prompted = false; };
+  document.getElementById('chest-no').onclick = () => { el.remove(); chest._declined = true; window._chestPromptCooldown = 3; };
 }
 
 function pickupChest(chest, index) {
