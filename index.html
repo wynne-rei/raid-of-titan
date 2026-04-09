@@ -5253,6 +5253,32 @@ window._getDebugInfo = () => {
     dragons: typeof entities !== 'undefined' ? entities.filter(e => e.isDragon).length : 0,
   };
 };
+window._lookAtDragon = (idx) => {
+  const dragons = entities.filter(e => e.isDragon && e.hp > 0);
+  if (dragons.length === 0) return 'no dragons';
+  const d = dragons[idx || 0];
+  const px = d.mesh.position.x, pz = d.mesh.position.z;
+  // デバッグ: NaNならspeedやtargetを調査
+  if (isNaN(px)) {
+    return JSON.stringify({
+      type: d.dragonType, speed: d.speed, range: d.range,
+      hp: d.hp, side: d.side, aiPattern: d.aiPattern,
+      posX: px, posZ: pz,
+      meshParent: d.mesh.parent ? 'in scene' : 'orphan'
+    });
+  }
+  camera.position.set(px + 20, 25, pz + 20);
+  camera.lookAt(d.mesh.position);
+  return d.dragonType + ' at ' + Math.round(px) + ',' + Math.round(pz);
+};
+window._dragonDebug = () => {
+  const dragons = entities.filter(e => e.isDragon);
+  return JSON.stringify(dragons.map(d => ({
+    type: d.dragonType, hp: d.hp,
+    x: d.mesh.position.x, z: d.mesh.position.z,
+    speed: d.speed, range: d.range
+  })));
+};
 // gameState: 'MENU' | 'BUILD' | 'WAVE' | 'INTERVAL' | 'RESULT' | 'TUTORIAL'
 let gameState = 'MENU';
 let matchTimer = 0; // 経過時間（秒、そのセッションの生存時間）
@@ -10082,7 +10108,7 @@ function updateEntities(dt) {
       if (e.raged <= 0) { e.raged = 0; e.rageBoost = 1.0; }
     }
 
-    const speedMult = e.rageBoost;
+    const speedMult = e.rageBoost || 1.0;
 
     // Buildings don't move
     if (e.isBuilding) {
