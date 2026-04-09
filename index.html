@@ -1862,6 +1862,12 @@ canvas { display: block; }
 .mm-dot.mm-unit { width: 3px; height: 3px; z-index: 2; opacity: 0.8; }
 .mm-dot.mm-ally { width: 3px; height: 3px; z-index: 2; }
 .mm-dot.mm-enemy { background: #ff4040; z-index: 3; }
+.mm-dot.mm-dragon {
+  background: transparent; width: auto; height: auto; border-radius: 0;
+  font-size: 8px; font-weight: bold; color: #ff4040;
+  line-height: 1; box-shadow: none;
+  text-shadow: 0 0 3px #ff0000, 0 0 6px rgba(255,0,0,0.6);
+}
 .mm-dot.mm-kill-flash {
   width: 10px; height: 10px;
   background: #fff;
@@ -15712,15 +15718,23 @@ function updateMinimap() {
     const owner = players.find(p => p.id === e.side);
     const isSelf = e.side === focusSide;
     const isAlly = owner && focusPlayer && owner.faction === focusPlayer.faction && !isSelf;
+    const isDragon = e.side === 99;
     if (isSelf) {
       dot.className = 'mm-dot mm-self';
+      dot.textContent = '';
     } else if (isAlly) {
       dot.className = 'mm-dot mm-ally';
       const c = owner ? FACTIONS[owner.faction].colorHex : '#6cf';
       dot.style.background = c; dot.style.color = c;
+      dot.textContent = '';
+    } else if (isDragon) {
+      dot.className = 'mm-dot mm-enemy mm-dragon';
+      dot.style.color = '#ff4040';
+      dot.textContent = 'D';
     } else {
       dot.className = 'mm-dot mm-enemy';
       dot.style.color = '#ff4040';
+      dot.textContent = '';
     }
     const { lx, ly } = toMM(e.mesh.position.x, e.mesh.position.z);
     dot.style.left = lx + '%';
