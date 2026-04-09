@@ -5795,11 +5795,12 @@ function onQueenLevelUp() {
   playLevelUpSound();
 
   // Commentary
-  addCommentary(`👑 クイーンがレベル${queenLevel}に！HP+${hpBoost} 攻撃力+${dmgBoost}！`, players[0].faction);
+  const _charName = (typeof CHAR_PREVIEW !== 'undefined' && CHAR_PREVIEW[selectedCharacter]) ? CHAR_PREVIEW[selectedCharacter].name : '王';
+  addCommentary(`👑 ${_charName}がレベル${queenLevel}に！HP+${hpBoost} 攻撃力+${dmgBoost}！`, players[0].faction);
 
   // 達成トースト
   if (typeof showAchievement === 'function') {
-    showAchievement('QUEEN LEVEL UP', `レベル ${queenLevel} に到達！`, '👑');
+    showAchievement('LEVEL UP', `レベル ${queenLevel} に到達！`, '👑');
   }
 }
 
@@ -8954,7 +8955,7 @@ function createTower(x, z, playerId, faction) {
     attackSpeed: 1.0, attackTimer: 0,
     x, z, hpContainer,
     destroyed: false,
-    activated: true,
+    activated: playerId !== 0,
     lastHitBy: -1,
     statKills: 0, statDmg: 0
   };
@@ -9279,7 +9280,7 @@ function reviveKingFor(playerId) {
   } else {
     tower.destroyed = false;
     tower.hp = tower.maxHp;
-    tower.activated = true;
+    tower.activated = playerId !== 0;
     tower.lastHitBy = -1;
     if (tower.mesh && !tower.mesh.parent) scene.add(tower.mesh);
     if (tower.hpContainer) tower.hpContainer.style.display = '';
@@ -10323,6 +10324,14 @@ function getMovementTarget(entity) {
   const followRange = 300;
   const playerPos = humanPlayer && humanPlayer.kingTower && humanPlayer.kingTower.mesh ? humanPlayer.kingTower.mesh.position : null;
 
+  // Step 0: プレイヤーから離れすぎた味方はプレイヤーに帰還（敵より優先）
+  if (playerPos && side === 0) {
+    const distToPlayer = Math.sqrt((x - playerPos.x) ** 2 + (z - playerPos.z) ** 2);
+    if (distToPlayer > 60) {
+      return { x: playerPos.x, z: playerPos.z, target: null };
+    }
+  }
+
   // Step 1: 空間グリッドから近くの敵を検索
   let nearest = null, minDist = Infinity;
   for (let ni = 0; ni < nearby.length; ni++) {
@@ -10368,9 +10377,12 @@ function getMovementTarget(entity) {
   // Step 4: 敵不在 → プレイヤーに追従（side=0の味方ユニットのみ）
   if (playerPos && side === 0) {
     const distToPlayer = Math.sqrt((x - playerPos.x) ** 2 + (z - playerPos.z) ** 2);
-    if (distToPlayer > followRange) {
+    if (distToPlayer > 8) {
+      // プレイヤーから離れすぎたら追従
       return { x: playerPos.x, z: playerPos.z, target: null };
     }
+    // プレイヤーの近くにいるならその場で待機
+    return { x: x, z: z, target: null };
   }
 
   return { x: x, z: z, target: null }; // その場で待機
@@ -13060,6 +13072,28 @@ window.resumeFromResult = function() {
     screen.style.display = 'none';
     screen.classList.remove('visible');
   }
+  // 敗北後の戦線復帰: プレイヤー復活＋ゲーム再開
+  if (gameState === 'RESULT') {
+    reviveKingFor(0);
+    // 残存ドラゴンがいればWAVE、いなければINTERVALへ
+    waveEnemies = waveEnemies.filter(e => e.hp > 0);
+    if (waveEnemies.length > 0) {
+      gameState = 'WAVE';
+    } else {
+      gameState = 'INTERVAL';
+      intervalTimer = INTERVAL_DURATION;
+    }
+    // HUD再描画
+    updateHUD();
+    if (typeof renderHand === 'function') renderHand();
+    // カメラをキング位置に戻す
+    const kt = humanPlayer ? humanPlayer.kingTower : null;
+    if (kt && camera) {
+      camera.position.set(kt.x, 60, kt.z + 80);
+      camera.lookAt(kt.x, 0, kt.z);
+    }
+    showDramaBanner('RESPAWN', '戦線復帰', 'rise', 1800);
+  }
 };
 
 function endMatch(won) {
@@ -15368,6 +15402,11 @@ function startTutorial() {
   tutorialGiant = null;
   tutorialChestSpawned = false;
   tutorialComplete = false;
+  _tutorialStructureCount = 0;
+  playerArmy = [];
+
+  // 初期ナイト2体（ドラゴン戦の味方）
+  spawnInitialArmy();
 
   // Set game state
   gameState = 'TUTORIAL';
@@ -15401,22 +15440,29 @@ function setTutorialStep(step) {
     } else if (step === 2) {
       iconEl.textContent = '📦';
       textEl.textContent = '宝箱を拾ってカードを入手しよう';
-      subEl.textContent = '宝箱に近づくと自動で拾えます';
+      subEl.textContent = '光る宝箱に近づいて拾え！';
       skipBtn.style.display = '';
     } else if (step === 3) {
-      iconEl.textContent = '⚔️';
-      textEl.textContent = 'ジャイアントが襲来！';
-      subEl.textContent = 'カードを選んで地面をクリックし、配置して迎え撃て！';
+      iconEl.textContent = '🏗️';
+      textEl.textContent = '施設を設置してみよう';
+      subEl.textContent = '画面下のカードを選んで地面をクリック！';
+      skipBtn.style.display = '';
+    } else if (step === 4) {
+      iconEl.textContent = '🐉';
+      textEl.textContent = 'ドラゴンが襲来！';
+      subEl.textContent = '施設とナイトで迎え撃て！';
       skipBtn.style.display = '';
     } else if (step === 99) {
       iconEl.textContent = '🎉';
       textEl.innerHTML = '<span class="tutorial-complete-text">チュートリアル完了！</span>';
-      subEl.textContent = '';
+      subEl.textContent = '王国を守り抜け！';
       skipBtn.style.display = 'none';
     }
     guideEl.classList.add('show');
   }, 100);
 }
+
+let _tutorialStructureCount = 0; // チュートリアル開始時の施設数を記録
 
 function updateTutorial(dt) {
   if (tutorialComplete) return;
@@ -15431,7 +15477,7 @@ function updateTutorial(dt) {
     }
     // Advance when moved 20 units or 8 seconds passed
     if (tutorialMoveDist >= 20 || tutorialTimer >= 8) {
-      advanceTutorialToStep2();
+      setTutorialStep(2);
     }
   } else if (tutorialStep === 2) {
     // Spawn chest if not yet
@@ -15441,37 +15487,36 @@ function updateTutorial(dt) {
     }
     // Check if player picked up a chest (handCards has cards)
     if (handCards.length > 0) {
-      advanceTutorialToStep3();
+      _tutorialStructureCount = structures.length;
+      setTutorialStep(3);
     }
-    // 自動カード補充は無効化（宝箱から入手する設計）
-    // if (tutorialTimer >= 15 && handCards.length === 0) {
-    //   handCards.push('cannon');
-    //   renderHand();
-    //   advanceTutorialToStep3();
-    // }
   } else if (tutorialStep === 3) {
-    // Spawn giant if not yet
-    if (!tutorialGiant) {
-      spawnTutorialGiant();
+    // 施設が1つでも新規配置されたら次へ
+    if (structures.length > _tutorialStructureCount) {
+      setTutorialStep(4);
     }
-    // Check if giant is dead
+    // 15秒経過でカードがなくなった場合、補充チェストを出す
+    if (tutorialTimer >= 15 && handCards.length === 0 && structures.length <= _tutorialStructureCount) {
+      tutorialChestSpawned = false; // 再スポーン許可
+    }
+    if (!tutorialChestSpawned && handCards.length === 0) {
+      spawnTutorialChest();
+      tutorialChestSpawned = true;
+    }
+  } else if (tutorialStep === 4) {
+    // Spawn dragon if not yet
+    if (!tutorialGiant) {
+      spawnTutorialDragon();
+    }
+    // Check if dragon is dead
     if (tutorialGiant && (tutorialGiant.hp <= 0 || tutorialGiant.dead)) {
       completeTutorial();
     }
-    // Auto-advance after 30 seconds (kill giant)
+    // Auto-advance after 30 seconds
     if (tutorialTimer >= 30 && tutorialGiant && tutorialGiant.hp > 0) {
       tutorialGiant.hp = 0;
-      // The entity update system will handle death
     }
   }
-}
-
-function advanceTutorialToStep2() {
-  setTutorialStep(2);
-}
-
-function advanceTutorialToStep3() {
-  setTutorialStep(3);
 }
 
 function spawnTutorialChest() {
@@ -15528,20 +15573,22 @@ function spawnTutorialChest() {
   chests.push({ mesh: group, x: cx, z: cz, type: 'building', tutorialChest: true });
 }
 
-function spawnTutorialGiant() {
-  // Spawn giant ~80 units away from player
+function spawnTutorialDragon() {
+  // Spawn a dragonling ~80 units away from player
   const kx = playerKingTower ? playerKingTower.mesh.position.x : 0;
   const kz = playerKingTower ? playerKingTower.mesh.position.z : 0;
   const gx = kx;
   const gz = kz + 80;
 
-  // Use spawnEntity with side=1 (enemy bot)
-  spawnEntity('giant', gx, gz, 1);
+  spawnDragon('dragonling', gx, gz, 'rush');
 
-  // Find the giant entity we just spawned
+  // Find the dragon entity we just spawned
   for (let i = entities.length - 1; i >= 0; i--) {
-    if (entities[i].cardId === 'giant' && entities[i].side === 1) {
+    if (entities[i].side === 99 && !entities[i].dead) {
       tutorialGiant = entities[i];
+      // チュートリアル用にHPを下げる（倒しやすく）
+      tutorialGiant.hp = Math.min(tutorialGiant.hp, 100);
+      tutorialGiant.maxHp = tutorialGiant.hp;
       break;
     }
   }
