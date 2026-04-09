@@ -6123,14 +6123,10 @@ function resetVoiceState() {
 let _waveKillsSnapshot = []; // ウェーブ開始時のstatKillsスナップショット
 
 function snapshotWaveKills() {
-  // ウェーブ開始時に全味方ユニットのキル数をスナップショット
+  // ウェーブ開始時に全味方ユニット（建物含む）のキル数をスナップショット
   _waveKillsSnapshot = [];
   entities.filter(e => e && !e.dead && e.side === 0).forEach(e => {
     _waveKillsSnapshot.push({ entity: e, startKills: e.statKills || 0 });
-  });
-  // キングタワーも
-  towers.filter(t => t.side === 0 && !t.destroyed).forEach(t => {
-    _waveKillsSnapshot.push({ entity: t, startKills: t.statKills || 0, isTower: true });
   });
 }
 
@@ -13105,7 +13101,15 @@ window.resumeFromResult = function() {
       gameState = 'INTERVAL';
       intervalTimer = INTERVAL_DURATION;
     }
-    // HUD再描画
+    // HUD要素を再表示（endMatchで非表示にしたものを全て復元）
+    document.getElementById('hud').style.display = 'block';
+    const _dock = document.getElementById('battle-dock'); if (_dock) _dock.style.display = '';
+    const _hand = document.getElementById('card-hand'); if (_hand) _hand.classList.add('visible');
+    const _cmt = document.getElementById('commentary-box'); if (_cmt) _cmt.style.display = '';
+    const _psp = document.getElementById('player-stats-panel'); if (_psp) _psp.style.display = '';
+    const _bsb = document.getElementById('bottom-status-bar'); if (_bsb) _bsb.style.display = '';
+    const _as2 = document.getElementById('action-status'); if (_as2) _as2.classList.add('visible');
+    const _mm2 = document.getElementById('minimap'); if (_mm2) _mm2.classList.add('visible');
     updateHUD();
     if (typeof renderHand === 'function') renderHand();
     // カメラをキング位置に戻す
