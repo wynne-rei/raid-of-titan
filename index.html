@@ -15493,16 +15493,17 @@ function updateTutorial(dt) {
     }
     // Check if player picked up a chest (handCards has cards)
     if (handCards.length > 0) {
-      _tutorialStructureCount = structures.length;
+      _tutorialStructureCount = structures.length + entities.filter(e => e.side === 0 && e.cardId !== 'knight' && !e.dead).length;
       setTutorialStep(3);
     }
   } else if (tutorialStep === 3) {
-    // 施設が1つでも新規配置されたら次へ
-    if (structures.length > _tutorialStructureCount) {
+    // 施設・建物が1つでも新規配置されたら次へ（structuresとentitiesの両方をチェック）
+    const totalBuilt = structures.length + entities.filter(e => e.side === 0 && e.cardId !== 'knight' && !e.dead).length;
+    if (totalBuilt > _tutorialStructureCount) {
       setTutorialStep(4);
     }
     // 15秒経過でカードがなくなった場合、補充チェストを出す
-    if (tutorialTimer >= 15 && handCards.length === 0 && structures.length <= _tutorialStructureCount) {
+    if (tutorialTimer >= 15 && handCards.length === 0 && totalBuilt <= _tutorialStructureCount) {
       tutorialChestSpawned = false; // 再スポーン許可
     }
     if (!tutorialChestSpawned && handCards.length === 0) {
