@@ -3016,7 +3016,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
           <button class="uf-chip active" data-filter="all" onclick="window.filterUnits('all')">すべて</button>
           <button class="uf-chip" data-filter="troop" onclick="window.filterUnits('troop')">🗡 兵士</button>
           <button class="uf-chip" data-filter="spell" onclick="window.filterUnits('spell')">✨ 呪文</button>
-          <button class="uf-chip" data-filter="building" onclick="window.filterUnits('building')">🏛 建物</button>
+          <button class="uf-chip" data-filter="building" onclick="window.filterUnits('building')">🏛 施設</button>
           <button class="uf-chip" data-filter="structure" onclick="window.filterUnits('structure')">🏗 施設</button>
         </div>
         <div class="unit-gallery" id="unit-gallery"></div>
@@ -6151,8 +6151,8 @@ function showWaveClearReport() {
     const currentKills = e.statKills || 0;
     const waveKills = Math.max(0, currentKills - snap.startKills);
     if (waveKills > 0) {
-      const name = snap.isTower ? '🏰 キングタワー' :
-                   (CARD_DEFS[e.cardId] ? CARD_DEFS[e.cardId].icon + ' ' + CARD_DEFS[e.cardId].name : e.cardId || '不明');
+      const def = CARD_DEFS[e.cardId];
+      const name = def ? def.icon + ' ' + def.name : (e.cardId || '不明');
       killReport.push({ name, kills: waveKills });
       totalWaveKills += waveKills;
     }
@@ -10603,7 +10603,7 @@ function updateEntities(dt) {
               if (nearestTwr.hp <= 0) {
                 e.bossStructuresDestroyed++;
                 if (e.bossStructuresDestroyed >= 3) {
-                  addCommentary(`🗿 ${e.raidName}が3つの建造物を破壊して去った！`, 'system');
+                  addCommentary(`🗿 ${e.raidName}が3つの施設を破壊して去った！`, 'system');
                   despawnBoss(e);
                 }
               }
@@ -12265,7 +12265,7 @@ function updateGhostPosition() {
 // ============================================================
 // チェスト種類定義
 const CHEST_TYPES = {
-  building:  { name: '建物チェスト',   icon: '🏗️', bodyColor: 0xFFD700, lidColor: 0xDAA520, ringColor: 0xFFEA70, trimColor: 0xB8860B, lockColor: 0xFFD700, cardType: 'building', weight: 55 },
+  building:  { name: '施設チェスト',   icon: '🏗️', bodyColor: 0xFFD700, lidColor: 0xDAA520, ringColor: 0xFFEA70, trimColor: 0xB8860B, lockColor: 0xFFD700, cardType: 'building', weight: 55 },
   structure: { name: '施設チェスト',   icon: '🏰', bodyColor: 0x2ECC71, lidColor: 0x1B8A4E, ringColor: 0x5DEFA0, trimColor: 0x0E6630, lockColor: 0x3DDB80, cardType: 'structure', weight: 45 }
 };
 
@@ -12760,17 +12760,17 @@ function renderHand() {
     if (def.target) stats.push({ l: 'TARGET', v: def.target });
     if (def.fly) stats.push({ l: 'FLY', v: '✓' });
 
-    const targetJP = { ground: '地上', air: '空中', both: '両方', building: '建物' };
+    const targetJP = { ground: '地上', air: '空中', both: '両方', building: '施設' };
     const descMap = {
       knight: '頼れる近接剣士。バランス型。',
       archer: '遠距離から援護する双子の射手。',
-      giant: '建物のみ狙う大型タンク。',
+      giant: '施設のみ狙う大型タンク。',
       musketeer: '高火力の単発遠距離ユニット。',
       goblins: '素早い3匹組、紙装甲。',
       miniPekka: '高DPS近接アタッカー。',
       babyDragon: '飛行＋スプラッシュ攻撃。',
       skeletonArmy: '8体の群れ、対集団キラー。',
-      hogRider: '建物直行の超高速騎兵。',
+      hogRider: '施設直行の超高速騎兵。',
       valkyrie: '回転斬りで周囲を一掃。',
       wizard: '遠距離スプラッシュ魔法使い。',
       fireball: '指定範囲に大ダメージの炎。',
@@ -13320,7 +13320,7 @@ function populateUnitGallery() {
     card.className = 'unit-card type-' + def.type + (isLocked ? ' locked' : '');
     card.setAttribute('data-type', def.type);
     card.setAttribute('data-unlock', def.unlockLevel || 1);
-    const typeLabel = def.type === 'troop' ? '兵士 / TROOP' : def.type === 'spell' ? '呪文 / SPELL' : def.type === 'structure' ? '施設 / STRUCTURE' : '建物 / BUILDING';
+    const typeLabel = def.type === 'troop' ? '兵士 / TROOP' : def.type === 'spell' ? '呪文 / SPELL' : def.type === 'structure' ? '施設 / STRUCTURE' : '施設 / BUILDING';
     // stats grid
     const stats = [];
     if (def.hp)          stats.push({ lbl: 'HP',  val: def.hp });
