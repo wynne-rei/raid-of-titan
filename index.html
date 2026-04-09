@@ -9720,11 +9720,14 @@ function spawnDragon(type, x, z, aiPattern) {
     statKills: 0,
   };
 
-  // HPバー
+  // HPバー（ドラゴン用: サイズ拡大、赤色）
   const hpC = document.createElement('div');
   hpC.className = 'hp-bar-container';
-  hpC.innerHTML = '<div class="hp-bar-fill enemy"></div>';
-  document.getElementById('hud').appendChild(hpC);
+  const dragonBarWidth = Math.max(60, def.scale * 3); // ドラゴンサイズに比例
+  hpC.style.width = dragonBarWidth + 'px';
+  hpC.innerHTML = '<div class="hp-bar-bg" style="height:6px;"><div class="hp-bar-fill" style="width:100%;background:#ef5350;"></div></div>';
+  const hpBarsEl = document.getElementById('hp-bars-container') || document.getElementById('hud');
+  hpBarsEl.appendChild(hpC);
   entity.hpContainer = hpC;
 
   entities.push(entity);
@@ -10532,22 +10535,18 @@ function updateEntities(dt) {
         }
       }
     } else {
-      // Walk toward nearest enemy king tower
+      // target=nullだがx,zが指定されている場合（プレイヤー追従等）→ その座標へ移動
       e.state = 'moving';
-      let nearestDist = Infinity, nearestTower = null;
-      towers.forEach(t => {
-        if (isAlly(t.side, e.side) || t.destroyed) return;
-        const d = Math.sqrt((t.x - e.mesh.position.x) ** 2 + (t.z - e.mesh.position.z) ** 2);
-        if (d < nearestDist) { nearestDist = d; nearestTower = t; }
-      });
-      if (nearestTower) {
-        const dx = nearestTower.x - e.mesh.position.x;
-        const dz = nearestTower.z - e.mesh.position.z;
+      const fallbackX = moveTarget.x;
+      const fallbackZ = moveTarget.z;
+      if (fallbackX != null && fallbackZ != null) {
+        const dx = fallbackX - e.mesh.position.x;
+        const dz = fallbackZ - e.mesh.position.z;
         const len = Math.sqrt(dx * dx + dz * dz);
-        if (len > 0.1) {
+        if (len > 5) { // 5ユニット以内なら停止
           e.mesh.position.x += (dx / len) * e.speed * speedMult * dt;
           e.mesh.position.z += (dz / len) * e.speed * speedMult * dt;
-          e.mesh.lookAt(nearestTower.x, e.mesh.position.y, nearestTower.z);
+          e.mesh.lookAt(fallbackX, e.mesh.position.y, fallbackZ);
         }
       }
     }
@@ -12199,8 +12198,9 @@ function updateChests(dt) {
   for (let i = chests.length - 1; i >= 0; i--) {
     const c = chests[i];
     const dist = Math.sqrt((c.x - kx) ** 2 + (c.z - kz) ** 2);
-    if (dist < CHEST_PICKUP_DIST) {
-      pickupChest(c, i);
+    if (dist < CHEST_PICKUP_DIST && !c._prompted) {
+      c._prompted = true;
+      showChestPrompt(c, i);
     }
   }
 }
@@ -12216,6 +12216,22 @@ function getRandomCard(cardType) {
   });
   if (pool.length === 0) return 'cannon'; // 施設フォールバック
   return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function showChestPrompt(chest, index) {
+  const ct = CHEST_TYPES[chest.type || 'building'];
+  const el = document.createElement('div');
+  el.id = 'chest-prompt';
+  el.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:rgba(0,0,0,0.85);border:2px solid #ffd700;border-radius:16px;padding:20px 32px;text-align:center;color:#fff;font-size:16px;pointer-events:auto;';
+  el.innerHTML = `
+    <div style="font-size:28px;margin-bottom:8px;">${ct.icon}</div>
+    <div style="margin-bottom:12px;font-weight:bold;">${ct.name}を拾いますか？</div>
+    <button id="chest-yes" style="padding:8px 24px;margin:0 8px;font-size:15px;font-weight:bold;background:#4caf50;color:#fff;border:none;border-radius:8px;cursor:pointer;">YES</button>
+    <button id="chest-no" style="padding:8px 24px;margin:0 8px;font-size:15px;font-weight:bold;background:#f44336;color:#fff;border:none;border-radius:8px;cursor:pointer;">NO</button>
+  `;
+  document.body.appendChild(el);
+  document.getElementById('chest-yes').onclick = () => { el.remove(); pickupChest(chest, chests.indexOf(chest)); };
+  document.getElementById('chest-no').onclick = () => { el.remove(); chest._prompted = false; };
 }
 
 function pickupChest(chest, index) {
@@ -12625,8 +12641,8 @@ const CARD_FACTIONS = {
 };
 
 // Buildings = player-placeable, others = auto-spawn from faction
-const BUILDING_CARDS = ['cannon', 'infernoTower', 'struct_farm', 'struct_watchtower', 'struct_wall', 'struct_smithy', 'struct_altar', 'struct_trap', 'struct_healingTower'];
-const STRUCTURE_CARDS = ['struct_farm', 'struct_watchtower', 'struct_wall', 'struct_smithy', 'struct_altar', 'struct_trap', 'struct_healingTower'];
+const BUILDING_CARDS = ['cannon', 'infernoTower', 'struct_watchtower', 'struct_wall', 'struct_trap', 'struct_healingTower'];
+const STRUCTURE_CARDS = ['struct_watchtower', 'struct_wall', 'struct_trap', 'struct_healingTower'];
 const AUTO_SPAWN_CARDS = {
   fire: ['knight', 'miniPekka', 'valkyrie', 'wizard'],
   ice: ['archer', 'musketeer', 'skeletonArmy', 'babyDragon'],
@@ -15637,20 +15653,20 @@ function updateGame(dt) {
   // BUILD: 自軍育成フェーズ — カウントダウン後にドラゴン襲来
   if (gameState === 'BUILD') {
     frameCount++;
-    updateEntities(dt);
-    updateEntityAnimations(dt);
-    updateTowers(dt);
-    updateProjectiles(dt);
-    updateSpellEffects(dt);
+    try { updateEntities(dt); } catch(e) { console.error('updateEntities:', e.message); }
+    try { updateEntityAnimations(dt); } catch(e) {}
+    try { updateTowers(dt); } catch(e) {}
+    try { updateProjectiles(dt); } catch(e) { console.error('updateProjectiles:', e.message); }
+    try { updateSpellEffects(dt); } catch(e) {}
     updateStreamMode(dt);
     if (isSpectator) updateSpectatorMode(dt);
     updateKingMovement(dt);
     updateGhostPosition();
-    updateChests(dt);
-    updateStructures(dt);
+    try { updateChests(dt); } catch(e) {}
+    try { updateStructures(dt); } catch(e) {}
     if (frameCount % 3 === 0) { updateHUD(); updateMinimap(); }
     updateCommentary(dt);
-    updateQueenAuraAnimation(dt);
+    try { updateQueenAuraAnimation(dt); } catch(e) {}
     if (frameCount % 15 === 0) renderHand();
     // ドラゴン襲来カウントダウン
     dragonCountdownTimer -= dt;
@@ -15737,24 +15753,24 @@ function updateGame(dt) {
     return;
   }
 
-  // Update systems (BUILD以外の共通処理)
+  // Update systems (BUILD以外の共通処理) — 各サブシステムを個別try-catchで保護（フリーズ防止）
   frameCount++;
-  updateEntities(dt);
-  updateEntityAnimations(dt);
-  updateTowers(dt);
-  updateProjectiles(dt);
-  updateSpellEffects(dt);
+  try { updateEntities(dt); } catch(e) { console.error('updateEntities:', e.message); }
+  try { updateEntityAnimations(dt); } catch(e) {}
+  try { updateTowers(dt); } catch(e) {}
+  try { updateProjectiles(dt); } catch(e) { console.error('updateProjectiles:', e.message); }
+  try { updateSpellEffects(dt); } catch(e) {}
   updateStreamMode(dt);
   if (isSpectator) updateSpectatorMode(dt);
   updateKingMovement(dt);
   updateGhostPosition();
-  updateChests(dt);
-  updateStructures(dt);
+  try { updateChests(dt); } catch(e) {}
+  try { updateStructures(dt); } catch(e) {}
   if (frameCount % 3 === 0) { updateHUD(); updateMinimap(); }
   if (structurePanelOpen && frameCount % 10 === 0) renderStructurePanel();
   updateCommentary(dt);
   if (frameCount % 3 === 0) updatePlayerStats(dt);
-  updateQueenAuraAnimation(dt);
+  try { updateQueenAuraAnimation(dt); } catch(e) {}
   if (frameCount % 3 === 0) updateActionStatus();
 
   // Re-render hand (for GDP cost checking) — every ~0.5 seconds
