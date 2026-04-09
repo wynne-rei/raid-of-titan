@@ -12870,9 +12870,9 @@ function endMatch(won) {
   if (_rwbEnd) _rwbEnd.style.display = 'none';
 
   // won が未指定の場合は旧ロジックでフォールバック
+  const humanAlive = humanPlayer && !humanPlayer.eliminated;
+  const aliveFactions = typeof getAliveFactions === 'function' ? getAliveFactions() : [];
   if (won === undefined) {
-    const aliveFactions = getAliveFactions();
-    const humanAlive = humanPlayer && !humanPlayer.eliminated;
     const playerFaction = humanPlayer ? humanPlayer.faction : null;
     won = humanAlive && aliveFactions.length === 1 && aliveFactions[0] === playerFaction;
   }
