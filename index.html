@@ -4307,7 +4307,7 @@ body.ui-stream #now-live-overlay { display: none !important; }
     <div class="pg-subtitle" id="pg-subtitle"></div>
     <div class="pg-stats-row">
       <div class="pg-stat-card"><span class="psc-icon">⚔️</span><span class="psc-val" id="pg-stat-kills" data-target="0">0</span><span class="psc-lbl">Eliminations</span></div>
-      <div class="pg-stat-card"><span class="psc-icon">👑</span><span class="psc-val" id="pg-stat-kings" data-target="0">0</span><span class="psc-lbl">King Slain</span></div>
+      <div class="pg-stat-card"><span class="psc-icon">🐉</span><span class="psc-val" id="pg-stat-kings" data-target="0">0</span><span class="psc-lbl">Wave Cleared</span></div>
       <div class="pg-stat-card"><span class="psc-icon">⏱️</span><span class="psc-val" id="pg-stat-time">0:00</span><span class="psc-lbl">Survived</span></div>
       <div class="pg-stat-card"><span class="psc-icon">💰</span><span class="psc-val" id="pg-stat-elixir" data-target="0">0</span><span class="psc-lbl">GDP Used</span></div>
     </div>
@@ -13048,14 +13048,11 @@ function showResultSnapshot() {
   const subtitle = document.getElementById('pg-subtitle');
   if (bannerEn) bannerEn.textContent = 'RESULT';
   if (bannerJp) bannerJp.textContent = '戦 績';
-  // 現時点の GDP 順位を subtitle に
-  const sorted = FACTION_IDS.map(f => ({f, g: Math.round(factionGDP[f])})).sort((a,b)=>b.g-a.g);
   if (subtitle) {
-    subtitle.textContent = sorted.map((s,i)=>`${i+1}位 ${FACTIONS[s.f].icon}${FACTIONS[s.f].name} ${s.g.toLocaleString()}`).join('　');
+    subtitle.textContent = `Wave ${currentWave} ｜ 自軍 ${playerArmy.length}体`;
   }
 
   const kills = humanPlayer ? (humanPlayer.kills || 0) : 0;
-  const kingKills = humanPlayer ? (humanPlayer.kingKills || 0) : 0;
   const mins = Math.floor(matchTimer / 60);
   const secs = Math.floor(matchTimer % 60);
   const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -13065,7 +13062,7 @@ function showResultSnapshot() {
   const elTime  = document.getElementById('pg-stat-time');
   const elElix  = document.getElementById('pg-stat-elixir');
   if (elKills) elKills.textContent = kills;
-  if (elKings) elKings.textContent = kingKills;
+  if (elKings) elKings.textContent = Math.max(0, currentWave - 1);
   if (elTime)  elTime.textContent  = timeStr;
   if (elElix)  elElix.textContent  = Math.round(matchGDPSpent);
 }
@@ -13152,7 +13149,7 @@ function endMatch(won) {
   // ── 統計 ──
   const kills = humanPlayer ? (humanPlayer.kills || 0) : 0;
   const unitKills = humanPlayer ? (humanPlayer.unitKills || 0) : 0;
-  const kingKills = humanPlayer ? (humanPlayer.kingKills || 0) : 0;
+  const wavesCleared = Math.max(0, currentWave - 1);
   const mins = Math.floor(matchTimer / 60);
   const secs = Math.floor(matchTimer % 60);
   const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -13169,7 +13166,7 @@ function endMatch(won) {
   // カウントアップ（バナーアニメーション後に開始）
   setTimeout(() => {
     animateCountUp(elKills, kills + unitKills, 1000);
-    animateCountUp(elKings, kingKills, 1000);
+    animateCountUp(elKings, wavesCleared, 1000);
     animateCountUp(elElix, Math.round(matchGDPSpent), 1200);
     // タイマー表示はフォーマット固定なので段階表示
     let tStart = performance.now();
@@ -13186,7 +13183,7 @@ function endMatch(won) {
   }, 700);
 
   // ── XP ──
-  const xpGain = won ? 100 : (humanAlive ? 80 : 50) + kills * 3 + kingKills * 10;
+  const xpGain = won ? 100 : (humanAlive ? 80 : 50) + kills * 3 + wavesCleared * 10;
   const beforeLevel = playerLevel;
   const beforeXP = playerXP;
   const beforeXPToLevel = xpToLevel;
@@ -13226,31 +13223,9 @@ function endMatch(won) {
   }, 1200);
 
   // ── 3国カード ──
+  // nations-row: ウェーブ制では不要（3国PvP残骸を削除済み）
   const nationsRow = document.getElementById('pg-nations-row');
-  if (nationsRow) {
-    nationsRow.innerHTML = '';
-    FACTION_IDS.forEach(fid => {
-      const fData = FACTIONS[fid];
-      const fPlayers = players.filter(p => p.faction === fid);
-      const alive = fPlayers.filter(p => !p.eliminated).length;
-      const total = fPlayers.length;
-      const fKills = fPlayers.reduce((s, p) => s + (p.kills || 0) + (p.unitKills || 0), 0);
-      const isWinner = aliveFactions.length === 1 && aliveFactions[0] === fid;
-      const isDead = alive === 0;
-      const card = document.createElement('div');
-      card.className = 'pg-nation-card' + (isWinner ? ' winner' : '') + (isDead ? ' dead' : '');
-      card.setAttribute('data-fac', fid);
-      card.innerHTML = `
-        <div class="pn-icon">${fData.icon}</div>
-        <div class="pn-name">${fData.name}</div>
-        <div class="pn-stats">
-          <div class="pn-stat"><div class="pn-val">${alive}/${total}</div><div class="pn-lbl">Alive</div></div>
-          <div class="pn-stat"><div class="pn-val">${fKills}</div><div class="pn-lbl">Kills</div></div>
-        </div>
-      `;
-      nationsRow.appendChild(card);
-    });
-  }
+  if (nationsRow) nationsRow.innerHTML = '';
 
   // ── 生涯統計更新 ──
   totalBattles++;
