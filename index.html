@@ -3934,6 +3934,10 @@ body.continuous-world.ui-spec #hp-bars-container {
   pointer-events: none;
   z-index: 150;
 }
+/* プレイヤー側でも常時稼働モードでは旧ダイバーランクパネルは非表示 */
+body.continuous-world #diver-rank-panel {
+  display: none !important;
+}
 
 /* ダイバーHUD本体 (continuous-world × ui-spec 限定で表示) */
 #diver-hud { display: none; }
