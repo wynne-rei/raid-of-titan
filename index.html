@@ -3302,6 +3302,52 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
 <!-- Viewer Badges Container (BOT頭上の視聴者数) -->
 <div id="viewer-badges-container"></div>
 
+<!-- ============================================================
+     DIVER HUD — 常時稼働ワールド × ダイバーモード専用の最小UI
+     ============================================================ -->
+<div id="diver-hud">
+  <div id="diver-live-badge">LIVE</div>
+  <div id="diver-warning-banner">🐉 ドラゴン接近中</div>
+  <div id="diver-avatar-zone">
+    <div id="diver-avatar-circle" onclick="window.openDiverCharSelect && window.openDiverCharSelect()">🧙</div>
+    <div id="diver-avatar-name">魔法使い</div>
+  </div>
+  <div id="diver-card-zone">
+    <div class="diver-card" id="diver-card-cannon" data-ability="cannon" onclick="window.selectDiverCard && window.selectDiverCard('cannon')">
+      <div class="dc-lv">Lv.1</div>
+      <div class="dc-icon">🔫</div>
+      <div class="dc-name">砲台設置</div>
+      <div class="dc-cd-overlay"></div>
+      <div class="dc-cd-text"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Diver キャラ選択モーダル -->
+<div id="diver-char-select">
+  <div class="dcs-panel">
+    <div class="dcs-title">✦ DIVER SELECT ✦</div>
+    <div class="dcs-options">
+      <div class="dcs-opt" onclick="window.selectDiverChar && window.selectDiverChar('mage')">
+        <div class="dcs-icon">🧙</div>
+        <div class="dcs-name">魔法使い</div>
+        <div class="dcs-desc">攻めっ気の介入が得意</div>
+      </div>
+      <div class="dcs-opt" onclick="window.selectDiverChar && window.selectDiverChar('sage')">
+        <div class="dcs-icon">🧓</div>
+        <div class="dcs-name">賢者</div>
+        <div class="dcs-desc">支援系の介入が得意</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SAVED BY テロップ -->
+<div id="saved-by-banner">
+  <div class="sbb-main">SAVED</div>
+  <div class="sbb-sub">by —</div>
+</div>
+
 <!-- Spectator Mode: Streamer List -->
 <div id="spectator-list" style="display:none;">
   <div id="spectator-list-header">配信者一覧</div>
@@ -3841,6 +3887,324 @@ body.ui-spec #minimap { display: block !important; }
 body.ui-spec .hp-bar-container.player-hp .hp-bar-label,
 body.ui-spec .hp-bar-container.player-hp .queen-level {
   display: none !important;
+}
+
+/* ============================================================
+   CONTINUOUS WORLD MODE — Wave/Day HUD を完全撤廃
+   ============================================================ */
+body.continuous-world #wave-top-hud,
+body.continuous-world #wave-info,
+body.continuous-world #wave-number,
+body.continuous-world #cd-timer,
+body.continuous-world #timer-bar,
+body.continuous-world #postgame-screen {
+  display: none !important;
+}
+/* リザルトバナー・リザルト系もすべて隠す */
+body.continuous-world #postgame-screen.visible {
+  display: none !important;
+}
+
+/* ============================================================
+   DIVER HUD — continuous-world × ui-spec の組み合わせ専用
+   ミニマム構成: LIVEバッジ / アバター / カード1枚 / 警告
+   ============================================================ */
+/* 既存の情報パネルを全部隠す（ダイバーは読まない） */
+body.continuous-world.ui-spec #victory-progress,
+body.continuous-world.ui-spec #crown-display,
+body.continuous-world.ui-spec #faction-scoreboard,
+body.continuous-world.ui-spec #spectator-list,
+body.continuous-world.ui-spec #now-live-overlay,
+body.continuous-world.ui-spec #super-chat-container,
+body.continuous-world.ui-spec #stream-chat-panel,
+body.continuous-world.ui-spec #viewer-badges-container,
+body.continuous-world.ui-spec #gift-panel,
+body.continuous-world.ui-spec #inventory-toggle-btn,
+body.continuous-world.ui-spec #minimap,
+body.continuous-world.ui-spec #diver-rank-panel,
+body.continuous-world.ui-spec #raid-warning-banner,
+body.continuous-world.ui-spec #hud {
+  display: none !important;
+}
+/* HPバー（エンティティの頭上）だけは残す */
+body.continuous-world.ui-spec #hp-bars-container {
+  display: block !important;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 150;
+}
+
+/* ダイバーHUD本体 (continuous-world × ui-spec 限定で表示) */
+#diver-hud { display: none; }
+body.continuous-world.ui-spec #diver-hud { display: block; }
+
+#diver-hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 300;
+  font-family: -apple-system, 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  color: #fff;
+}
+
+/* LIVEバッジ */
+#diver-live-badge {
+  position: fixed;
+  top: 18px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20,0,0,0.9);
+  border: 2px solid #ff3333;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 12px;
+  letter-spacing: 3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+#diver-live-badge::before {
+  content: '';
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #ff3333;
+  box-shadow: 0 0 8px #ff3333;
+  animation: diverLivePulse 1.2s infinite;
+}
+@keyframes diverLivePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ダイバーアバター（中央下） */
+#diver-avatar-zone {
+  position: fixed;
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+#diver-avatar-circle {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #4a3a6e 0%, #2a1a4e 60%, #0a0a2a 100%);
+  border: 3px solid #ffd700;
+  box-shadow:
+    0 0 30px rgba(255,215,0,0.6),
+    inset 0 4px 12px rgba(255,215,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 60px;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+#diver-avatar-circle:hover { transform: scale(1.05); }
+#diver-avatar-name {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #ffd700;
+  font-weight: bold;
+  text-shadow: 0 2px 4px #000;
+  background: rgba(0,0,0,0.7);
+  padding: 4px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,215,0,0.5);
+}
+
+/* カードゾーン (アバター右側) */
+#diver-card-zone {
+  position: fixed;
+  left: 50%;
+  bottom: 50px;
+  margin-left: 80px; /* アバターから右へオフセット */
+  display: flex;
+  gap: 12px;
+  pointer-events: auto;
+}
+.diver-card {
+  width: 92px;
+  height: 128px;
+  background: linear-gradient(135deg, #2a2a3e, #1a1a2e);
+  border: 2px solid rgba(255,215,0,0.6);
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.7);
+  overflow: hidden;
+  user-select: none;
+}
+.diver-card:hover {
+  transform: translateY(-10px) scale(1.04);
+  border-color: #ffd700;
+  box-shadow: 0 10px 24px rgba(255,215,0,0.4);
+}
+.diver-card.selected {
+  border-color: #ff8c00;
+  box-shadow: 0 0 22px rgba(255,140,0,0.85);
+  transform: translateY(-10px);
+}
+.diver-card.cooling { cursor: not-allowed; }
+.diver-card.cooling:hover { transform: none; box-shadow: 0 4px 14px rgba(0,0,0,0.7); border-color: rgba(255,215,0,0.6); }
+.dc-icon { font-size: 42px; }
+.dc-name { font-size: 10px; color: #fff; margin-top: 4px; }
+.dc-lv {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #000;
+  color: #ffd700;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid #ffd700;
+  font-weight: bold;
+}
+.dc-cd-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.diver-card.cooling .dc-cd-overlay { opacity: 1; }
+.dc-cd-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 2px 4px #000;
+  pointer-events: none;
+}
+.diver-card:not(.cooling) .dc-cd-text { display: none; }
+
+/* 警告バナー (ドラゴン接近時) */
+#diver-warning-banner {
+  position: fixed;
+  top: 72px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(40,0,0,0.85);
+  border: 2px solid #ff4444;
+  color: #ffbbbb;
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  display: none;
+  box-shadow: 0 0 24px rgba(255,80,80,0.5);
+  pointer-events: none;
+  z-index: 310;
+}
+#diver-warning-banner.visible {
+  display: block;
+  animation: diverWarnPulse 1s infinite;
+}
+@keyframes diverWarnPulse {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.03); }
+}
+
+/* キャラ選択モーダル */
+#diver-char-select {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+#diver-char-select.visible { display: flex; }
+.dcs-panel {
+  background: #1a1a2e;
+  border: 2px solid #ffd700;
+  border-radius: 16px;
+  padding: 30px 40px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+}
+.dcs-title {
+  font-size: 20px;
+  color: #ffd700;
+  margin-bottom: 20px;
+  letter-spacing: 3px;
+}
+.dcs-options {
+  display: flex;
+  gap: 20px;
+}
+.dcs-opt {
+  width: 160px;
+  background: rgba(0,0,0,0.4);
+  border: 2px solid rgba(255,215,0,0.3);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.dcs-opt:hover {
+  border-color: #ffd700;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(255,215,0,0.3);
+}
+.dcs-icon { font-size: 68px; }
+.dcs-name { font-size: 16px; color: #fff; margin-top: 8px; font-weight: bold; }
+.dcs-desc { font-size: 11px; color: #aaa; margin-top: 6px; line-height: 1.4; }
+
+/* SAVED BY テロップ */
+#saved-by-banner {
+  position: fixed;
+  left: 50%; top: 38%;
+  transform: translate(-50%, -50%);
+  z-index: 500;
+  pointer-events: none;
+  display: none;
+  text-align: center;
+}
+#saved-by-banner.visible {
+  display: block;
+  animation: savedByIn 2.6s ease-out forwards;
+}
+#saved-by-banner .sbb-main {
+  font-size: 54px;
+  font-weight: 900;
+  background: linear-gradient(90deg, #ffd700, #ff8c00, #ffd700);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: 4px;
+  text-shadow: 0 0 30px rgba(255,215,0,0.8);
+}
+#saved-by-banner .sbb-sub {
+  font-size: 22px;
+  color: #fff;
+  margin-top: 4px;
+  text-shadow: 0 2px 8px #000;
+}
+@keyframes savedByIn {
+  0%   { opacity: 0; transform: translate(-50%, -30%) scale(0.6); }
+  15%  { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  25%  { transform: translate(-50%, -50%) scale(1); }
+  80%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -60%) scale(1); }
 }
 
 /* spectator-list は左側フル活用（victory-progress の下に配置） */
@@ -4997,6 +5361,14 @@ let gameState = 'MENU';
 let matchTimer = 0; // 経過時間（秒、そのセッションの生存時間）
 let matchGDPSpent = 0; // 試合で使ったGDP合計
 let isOvertime = false;
+
+// ============================================================
+// CONTINUOUS WORLD MODE — 配信撤廃・24h稼働ワールド
+// ============================================================
+// true にすると：Wave/Day の HUD を隠し、リザルト画面なし、
+// ドラゴンは絶え間なく襲来し続け、キング死亡でもゲームは終わらない。
+// ダイブ思想の実証用ショーケース。
+const CONTINUOUS_WORLD_MODE = true;
 
 // ============================================================
 // WAVE DEFENSE SYSTEM — ウェーブ制タワーディフェンス
@@ -9549,20 +9921,397 @@ function spawnWave(waveNum) {
     budget -= costs[pick];
   }
 
+  // 一番強いドラゴンを先頭に（リーダー = 登場演出の主役）
+  toSpawn.sort((a, b) => (costs[b] || 0) - (costs[a] || 0));
+
   // スポーンポイントに分散配置（国のテーマカラーでスポーン）
+  const spawned = [];
   toSpawn.forEach((type, i) => {
     const sp = DRAGON_SPAWN_POINTS[i % DRAGON_SPAWN_POINTS.length];
     const ox = (Math.random() - 0.5) * 60;
     const oz = (Math.random() - 0.5) * 60;
     const aiPattern = Math.random() < 0.6 ? 'rush' : 'siege';
-    spawnDragon(type, sp.x + ox, sp.z + oz, aiPattern, factionData.color);
+    const d = spawnDragon(type, sp.x + ox, sp.z + oz, aiPattern, factionData.color);
+    if (d) spawned.push(d);
   });
 
-  // ウェーブ開始実況
-  speakKabira(`${factionData.icon}${factionData.name}のドラゴン軍団が襲来！`);
+  // 呂布登場演出: リーダードラゴンに強制カメラ＋画面揺れ＋バナー（常時稼働モード時）
+  if (CONTINUOUS_WORLD_MODE && spawned.length > 0) {
+    playDragonEntrance(spawned[0], factionData);
+  } else {
+    // ウェーブ開始実況（従来モード）
+    speakKabira(`${factionData.icon}${factionData.name}のドラゴン軍団が襲来！`);
+  }
 
   const waveInfo = document.getElementById('wave-info');
   if (waveInfo) waveInfo.style.display = 'none';
+}
+
+// ============================================================
+// DRAGON ENTRANCE — 呂布登場演出
+// ============================================================
+// 常時稼働ワールドで「絶望の予兆」を物理的に伝えるための演出
+// - 強制的にカメラでドラゴンを捉える（何してても）
+// - 画面揺れ
+// - ドラゴンの称号バナー
+// - 低音SE
+let _dragonEntrance = null; // { dragon, elapsed, duration, savedCam }
+
+function playDragonEntrance(dragon, factionData) {
+  if (!dragon || !dragon.mesh) return;
+  // すでに演出中なら上書きしない（連鎖防止）
+  if (_dragonEntrance) return;
+
+  const def = DRAGON_DEFS[dragon.dragonType] || {};
+  const titleMap = {
+    dragonling:  { title: '飛来',       sub: '小竜の群れ' },
+    firedrake:   { title: '業火',       sub: 'ファイアドレイク' },
+    frostdrake:  { title: '氷嵐',       sub: 'フロストドレイク' },
+    stonedrake:  { title: '大地の咆哮', sub: 'ストーンドレイク' },
+    elderdragon: { title: '破壊の化身', sub: 'エルダードラゴン' },
+  };
+  const t = titleMap[dragon.dragonType] || { title: '襲来', sub: def.name || 'Dragon' };
+  const facLabel = factionData ? `${factionData.icon}${factionData.name}` : '';
+
+  _dragonEntrance = {
+    dragon: dragon,
+    elapsed: 0,
+    duration: 2.0, // 秒
+    mainText: t.title,
+    subText: `${facLabel} ${t.sub}`,
+  };
+
+  // 画面揺れ（登場の瞬間）
+  try { shakeScreen(); } catch(_) {}
+
+  // ドラマバナー
+  try {
+    showDramaBanner(t.title, `${facLabel} ${t.sub}`, 'doom', 2000);
+  } catch(_) {}
+
+  // 低音SE（ブラウザ WebAudio で生成）
+  try { playDragonRoarSfx(); } catch(_) {}
+
+  // 実況
+  try { speakKabira(`${facLabel}のドラゴン、${t.sub}が襲来！`); } catch(_) {}
+}
+
+// updateDragonEntrance: カメラをドラゴンへ誘導＋残り時間を減算
+function updateDragonEntrance(dt) {
+  if (!_dragonEntrance) return false;
+  const e = _dragonEntrance;
+  e.elapsed += dt;
+  // ドラゴンが死んでたら中断
+  if (!e.dragon || e.dragon.dead || !e.dragon.mesh) {
+    _dragonEntrance = null;
+    return false;
+  }
+  // カメラ制御: ドラゴンを舐めるような低角度ショット
+  const dm = e.dragon.mesh.position;
+  const progress = e.elapsed / e.duration;
+  // 時間と共にゆっくりオービットする
+  const orbitAngle = progress * Math.PI * 0.4;
+  const dist = 90 + (1 - progress) * 40;
+  const camX = dm.x + Math.cos(orbitAngle) * dist;
+  const camY = dm.y + 45 + Math.sin(progress * Math.PI) * 15;
+  const camZ = dm.z + Math.sin(orbitAngle) * dist;
+  if (typeof camera !== 'undefined' && camera) {
+    camera.position.set(camX, camY, camZ);
+    camera.lookAt(dm.x, dm.y + 15, dm.z);
+  }
+  // 終了
+  if (e.elapsed >= e.duration) {
+    _dragonEntrance = null;
+    return false;
+  }
+  return true; // 演出中
+}
+
+// ============================================================
+// DIVER CARD SYSTEM — ダイバーの介入カード
+// ============================================================
+// 最小実装: 砲台設置（cannon）のみ
+// フロー: カードクリック → ゴースト出現 → マウス位置追従 → クリックで設置
+let _diverPlacementActive = false;
+let _diverPlacementAbility = null;
+const _diverCardCooldowns = { cannon: 0 };
+const _diverCardCDMax = { cannon: 15 }; // 秒
+let _diverChar = 'mage'; // 'mage' or 'sage'
+let _diverCharSelected = false;
+
+window.selectDiverCard = function(ability) {
+  if (!CONTINUOUS_WORLD_MODE || !isSpectator) return;
+  if (_diverPlacementActive && _diverPlacementAbility === ability) {
+    // Toggle off
+    cancelDiverPlacement();
+    return;
+  }
+  // Cooldown check
+  if ((_diverCardCooldowns[ability] || 0) > 0) return;
+  // 既存のゴースト破棄
+  if (typeof ghostMesh !== 'undefined' && ghostMesh) {
+    try { scene.remove(ghostMesh); } catch(_) {}
+    ghostMesh = null;
+  }
+  // 既存の構造物配置モード・通常配置モードをキャンセル
+  if (typeof structurePlacementMode !== 'undefined') structurePlacementMode = null;
+  if (window._structureGhost) {
+    try { scene.remove(window._structureGhost); } catch(_) {}
+    window._structureGhost = null;
+  }
+  placementMode = false;
+  // 砲台のゴーストを生成
+  const cardId = (ability === 'cannon') ? 'cannon' : 'cannon';
+  try {
+    ghostMesh = createGhostMesh(cardId);
+    if (ghostMesh) {
+      // マップ中央に一旦置く（updateGhostPositionでマウス追従に上書き）
+      ghostMesh.position.set(0, 0, 0);
+      scene.add(ghostMesh);
+    }
+  } catch(e) { console.error('diver ghost fail', e); return; }
+  _diverPlacementActive = true;
+  _diverPlacementAbility = ability;
+  // カードUI selected
+  document.querySelectorAll('.diver-card').forEach(el => el.classList.remove('selected'));
+  const cardEl = document.getElementById(`diver-card-${ability}`);
+  if (cardEl) cardEl.classList.add('selected');
+};
+
+window.cancelDiverPlacement = function() {
+  _diverPlacementActive = false;
+  _diverPlacementAbility = null;
+  if (typeof ghostMesh !== 'undefined' && ghostMesh) {
+    try { scene.remove(ghostMesh); } catch(_) {}
+    ghostMesh = null;
+  }
+  document.querySelectorAll('.diver-card').forEach(el => el.classList.remove('selected'));
+};
+
+window.confirmDiverPlacement = function(worldX, worldZ) {
+  if (!_diverPlacementActive || !_diverPlacementAbility) return false;
+  const ability = _diverPlacementAbility;
+  // spectatedPlayer を支援する立場でユニットを出す
+  let targetSide = 0;
+  if (typeof spectatedPlayerId !== 'undefined' && spectatedPlayerId >= 0) {
+    targetSide = spectatedPlayerId;
+  } else if (humanPlayer) {
+    targetSide = humanPlayer.id;
+  }
+  if (ability === 'cannon') {
+    try {
+      const beforeLen = entities.length;
+      spawnEntity('cannon', worldX, worldZ, targetSide);
+      // 建設エフェクト
+      const fac = players && players[targetSide] ? players[targetSide].faction : 'fire';
+      const col = FACTIONS[fac] ? FACTIONS[fac].color : 0xffd700;
+      createBuildEffect(worldX, worldZ, col);
+      // 設置ログ
+      const diverName = _diverChar === 'sage' ? '賢者' : '魔法使い';
+      addCommentary(`🔫 ダイバー（${diverName}）が砲台を設置！`, fac);
+    } catch(e) { console.error('diver cannon placement failed', e); }
+  }
+  // クールダウン開始
+  _diverCardCooldowns[ability] = _diverCardCDMax[ability] || 15;
+  // クリーンアップ
+  if (typeof ghostMesh !== 'undefined' && ghostMesh) {
+    try { scene.remove(ghostMesh); } catch(_) {}
+    ghostMesh = null;
+  }
+  _diverPlacementActive = false;
+  _diverPlacementAbility = null;
+  document.querySelectorAll('.diver-card').forEach(el => el.classList.remove('selected'));
+  return true;
+};
+
+// ダイバーゴーストをマウスに追従（tickから呼ぶ）
+function updateDiverGhost() {
+  if (!_diverPlacementActive || !ghostMesh || !isSpectator) return;
+  try {
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObject(groundPlane);
+    if (hits.length > 0) {
+      const p = hits[0].point;
+      ghostMesh.position.set(p.x, 0, p.z);
+      // 半透明パルス
+      const pulse = 0.45 + Math.sin(Date.now() * 0.006) * 0.2;
+      ghostMesh.traverse(c => {
+        if (c.material && c.material.transparent) c.material.opacity = pulse;
+      });
+    }
+  } catch(_) {}
+}
+
+// クールダウンタイマーを減算し、UIに反映
+function updateDiverCooldowns(dt) {
+  for (const k in _diverCardCooldowns) {
+    if (_diverCardCooldowns[k] > 0) {
+      _diverCardCooldowns[k] = Math.max(0, _diverCardCooldowns[k] - dt);
+      const el = document.getElementById(`diver-card-${k}`);
+      if (el) {
+        if (_diverCardCooldowns[k] > 0) {
+          el.classList.add('cooling');
+          const tx = el.querySelector('.dc-cd-text');
+          if (tx) tx.textContent = Math.ceil(_diverCardCooldowns[k]);
+        } else {
+          el.classList.remove('cooling');
+          const tx = el.querySelector('.dc-cd-text');
+          if (tx) tx.textContent = '';
+        }
+      }
+    }
+  }
+}
+
+// キャラ選択モーダル制御
+window.openDiverCharSelect = function() {
+  const m = document.getElementById('diver-char-select');
+  if (m) m.classList.add('visible');
+};
+window.selectDiverChar = function(charType) {
+  _diverChar = charType;
+  _diverCharSelected = true;
+  const nameEl = document.getElementById('diver-avatar-name');
+  const iconEl = document.getElementById('diver-avatar-circle');
+  if (charType === 'mage') {
+    if (nameEl) nameEl.textContent = '魔法使い';
+    if (iconEl) iconEl.textContent = '🧙';
+  } else if (charType === 'sage') {
+    if (nameEl) nameEl.textContent = '賢者';
+    if (iconEl) iconEl.textContent = '🧓';
+  }
+  const m = document.getElementById('diver-char-select');
+  if (m) m.classList.remove('visible');
+  try { localStorage.setItem('rot_diver_char', charType); } catch(_) {}
+};
+// 起動時に前回のキャラを読み込み
+try {
+  const saved = localStorage.getItem('rot_diver_char');
+  if (saved) { _diverChar = saved; _diverCharSelected = true; }
+} catch(_) {}
+
+// 警告バナー制御: どこかのキングに近いドラゴンが居る場合に表示
+function updateDiverWarningBanner() {
+  const banner = document.getElementById('diver-warning-banner');
+  if (!banner) return;
+  // 生存中のドラゴンが存在するかチェック
+  let anyDragon = false;
+  let closestDist = Infinity;
+  if (typeof entities !== 'undefined' && entities) {
+    for (let i = 0; i < entities.length; i++) {
+      const e = entities[i];
+      if (!e || e.dead || !e.isDragon) continue;
+      anyDragon = true;
+      // 観戦中のキングからの距離を取る
+      if (typeof spectatedPlayerId !== 'undefined' && spectatedPlayerId >= 0 && players[spectatedPlayerId]) {
+        const kt = players[spectatedPlayerId].kingTower;
+        if (kt && kt.mesh) {
+          const dx = e.mesh.position.x - kt.mesh.position.x;
+          const dz = e.mesh.position.z - kt.mesh.position.z;
+          const d = Math.sqrt(dx*dx + dz*dz);
+          if (d < closestDist) closestDist = d;
+        }
+      }
+    }
+  }
+  // 1200 未満に近づいたら警告表示
+  if (anyDragon && closestDist < 1200) {
+    banner.classList.add('visible');
+  } else {
+    banner.classList.remove('visible');
+  }
+}
+
+// ============================================================
+// SAVED BY BANNER — ドラゴン撃破時の救済演出
+// ============================================================
+// ドラゴンを落とした貢献者の名前を大きく表示
+// （人間プレイヤー = "YOU" / ダイバー = キャラ名 / BOT = 配信者名）
+let _savedByBannerTimer = 0;
+function showSavedByBanner(dragon) {
+  if (!dragon) return;
+  const killerId = dragon.lastHitBy;
+  let killerName = '—';
+  let subText = dragon.dragonType || 'Dragon';
+  try {
+    if (killerId === 0 && isSpectator) {
+      // ダイバー自身がキル（spectator = diver）
+      killerName = (_diverChar === 'sage' ? '賢者' : '魔法使い') + ' DIVER';
+    } else if (killerId === 0) {
+      killerName = 'YOU';
+    } else if (killerId > 0 && typeof players !== 'undefined' && players[killerId]) {
+      const p = players[killerId];
+      killerName = p.streamerName || p.name || `Player ${killerId}`;
+    } else if (killerId === -2) {
+      // 施設キル（砲台など）
+      killerName = 'STRUCTURE';
+    }
+    const def = DRAGON_DEFS[dragon.dragonType];
+    if (def && def.name) subText = def.name;
+  } catch(_) {}
+
+  const banner = document.getElementById('saved-by-banner');
+  if (banner) {
+    const main = banner.querySelector('.sbb-main');
+    const sub = banner.querySelector('.sbb-sub');
+    if (main) main.textContent = 'SAVED';
+    if (sub) sub.textContent = `by ${killerName}   —   ${subText} DOWN`;
+    banner.classList.remove('visible');
+    void banner.offsetWidth; // reflow
+    banner.classList.add('visible');
+    if (_savedByBannerTimer) clearTimeout(_savedByBannerTimer);
+    _savedByBannerTimer = setTimeout(() => {
+      banner.classList.remove('visible');
+    }, 2700);
+  }
+
+  // 画面揺れ（軽め）
+  try { shakeScreen(); } catch(_) {}
+
+  // カメラ ズームパンチ（一瞬寄る）
+  try {
+    if (typeof camera !== 'undefined' && camera && dragon.mesh) {
+      const dx = dragon.mesh.position.x - camera.position.x;
+      const dy = dragon.mesh.position.y - camera.position.y;
+      const dz = dragon.mesh.position.z - camera.position.z;
+      // 10% 寄せる
+      camera.position.x += dx * 0.1;
+      camera.position.y += dy * 0.1;
+      camera.position.z += dz * 0.1;
+    }
+  } catch(_) {}
+}
+
+// 低音 Dragon Roar SE (WebAudio 生成)
+let _dragonAudioCtx = null;
+function playDragonRoarSfx() {
+  try {
+    if (!_dragonAudioCtx) _dragonAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _dragonAudioCtx;
+    const now = ctx.currentTime;
+    // 低周波の咆哮風
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(70, now);
+    osc1.frequency.exponentialRampToValueAtTime(40, now + 1.2);
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'square';
+    osc2.frequency.setValueAtTime(45, now);
+    osc2.frequency.exponentialRampToValueAtTime(30, now + 1.2);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0, now);
+    gain.gain.linearRampToValueAtTime(0.35, now + 0.08);
+    gain.gain.linearRampToValueAtTime(0.0, now + 1.3);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(220, now);
+    osc1.connect(filter);
+    osc2.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    osc1.start(now); osc2.start(now);
+    osc1.stop(now + 1.35); osc2.stop(now + 1.35);
+  } catch(_) {}
 }
 
 // ============================================================
@@ -10029,6 +10778,11 @@ function updateEntities(dt) {
 
     // Dead check
     if (e.hp <= 0) {
+      // 常時稼働モード × ドラゴン: SAVED BY テロップ演出
+      if (CONTINUOUS_WORLD_MODE && e.isDragon && !e._savedByShown) {
+        e._savedByShown = true;
+        try { showSavedByBanner(e); } catch(_) {}
+      }
       // Raid boss death: 報酬 & 演出
       if (e.raidName) {
         const killerFac = e.lastHitBy >= 0 && players[e.lastHitBy] ? players[e.lastHitBy].faction : null;
@@ -13081,7 +13835,14 @@ function enterSpectatorMode() {
   // ホスト用ルームコード表示はダイバーモードでは非表示
   const _hostOv = document.getElementById('net-host-overlay'); if (_hostOv) _hostOv.style.display = 'none';
   focusSpectatedPlayer();
-  addCommentary('🎮 ダイバーモード開始！ 滞在時間でランクアップ、能力が解放されるぞ！', 'system');
+  addCommentary('🎮 ダイバー、戦場にダイブ！', 'system');
+  // 常時稼働モード: 初回のみキャラ選択モーダルを出す
+  if (CONTINUOUS_WORLD_MODE && !_diverCharSelected) {
+    setTimeout(() => { try { window.openDiverCharSelect(); } catch(_) {} }, 400);
+  } else if (CONTINUOUS_WORLD_MODE && _diverCharSelected) {
+    // 前回の選択を UI に反映
+    try { window.selectDiverChar(_diverChar); } catch(_) {}
+  }
 }
 
 // 配信者リストをレンダリング
@@ -14141,13 +14902,19 @@ window.startBattle = function() {
   initPlayerDeck();
   updateHUD();
 
+  // 常時稼働ワールドモード: body にクラスを付与して Wave/Day HUD を非表示化
+  if (CONTINUOUS_WORLD_MODE) {
+    document.body.classList.add('continuous-world');
+  }
+
   // ウェーブ制: BUILD（育成）フェーズから開始
   gameState = 'BUILD';
   currentWave = 0;
   waveEnemies = [];
   playerArmy = [];
   intervalTimer = 0;
-  dragonCountdownTimer = DRAGON_COUNTDOWN;
+  // 常時稼働モード: 最初のドラゴンは短い猶予後に到来（見せ場は登場演出に任せる）
+  dragonCountdownTimer = CONTINUOUS_WORLD_MODE ? 8 : DRAGON_COUNTDOWN;
   battleSaveTimer = 30; // 自動セーブタイマーリセット
   resetQueenLevel();
   resetFactionLevels();
@@ -14190,6 +14957,8 @@ window.backToMenu = function() {
   { const _pg = document.getElementById('postgame-screen'); _pg.style.display = 'none'; _pg.classList.remove('visible', 'win', 'lose'); }
   { const _to = document.getElementById('tutorial-overlay'); if (_to) _to.classList.remove('visible'); }
   { const _tg = document.getElementById('tutorial-guide'); if (_tg) _tg.classList.remove('show'); }
+  // 常時稼働モードのクラスを外してタイトルに戻す
+  document.body.classList.remove('continuous-world');
   document.getElementById('title-screen').style.display = 'flex';
   document.getElementById('card-hand').classList.remove('visible');
   document.getElementById('battle-dock').style.display = 'none';
@@ -14262,6 +15031,15 @@ function setupInput() {
 
   renderer.domElement.addEventListener('click', (e) => {
     if (gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL' && gameState !== 'TUTORIAL') return;
+    // ダイバー介入配置モード（最優先）
+    if (_diverPlacementActive) {
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObject(groundPlane);
+      if (hits.length > 0) {
+        window.confirmDiverPlacement(hits[0].point.x, hits[0].point.z);
+      }
+      return;
+    }
     // 施設配置モード
     if (structurePlacementMode) {
       raycaster.setFromCamera(mouse, camera);
@@ -14308,7 +15086,7 @@ function setupInput() {
         else playCard(idx);
       }
     }
-    if (e.key === 'Escape') { cancelPlacement(); cancelGiftPlacement(); cancelStructurePlacement(); }
+    if (e.key === 'Escape') { cancelPlacement(); cancelGiftPlacement(); cancelStructurePlacement(); if (typeof cancelDiverPlacement === 'function') cancelDiverPlacement(); }
     if (e.key.toLowerCase() === 'e' && placementMode) confirmPlacement();
     if (e.key.toLowerCase() === 'e' && giftPlacementMode) confirmGiftPlacement();
     // P キー: ポーズ（現時点のリザルトを表示）
@@ -14330,6 +15108,13 @@ function setupInput() {
 
 // King tower movement + camera follow
 function updateKingMovement(dt) {
+  // ドラゴン登場演出中は強制カメラ (呂布登場) — プレイヤー視点・観戦視点どちらも乗っ取る
+  if (_dragonEntrance) {
+    const stillPlaying = updateDragonEntrance(dt);
+    if (stillPlaying) return;
+    // 演出終了: カメラは次フレーム以降、通常制御へ戻る
+  }
+
   // 観戦モード: 見下ろしカメラ（Trials of Midgard風）
   if (isSpectator) {
     const target = players.find(p => p.id === spectatedPlayerId);
@@ -15052,6 +15837,12 @@ function updateGame(dt) {
     if (isSpectator) updateSpectatorMode(dt);
     updateKingMovement(dt);
     updateGhostPosition();
+    // ダイバー介入: BUILD中もゴースト追従を有効に
+    if (CONTINUOUS_WORLD_MODE && isSpectator) {
+      try { updateDiverGhost(); } catch(_) {}
+      try { updateDiverCooldowns(dt); } catch(_) {}
+      try { updateDiverWarningBanner(); } catch(_) {}
+    }
     try { updateChests(dt); } catch(e) {}
     try { updateStructures(dt); } catch(e) {}
     if (frameCount % 3 === 0) { updateHUD(); updateMinimap(); }
@@ -15060,14 +15851,16 @@ function updateGame(dt) {
     if (frameCount % 15 === 0) renderHand();
     // ドラゴン襲来カウントダウン
     dragonCountdownTimer -= dt;
-    const waveInfo = document.getElementById('wave-info');
-    if (waveInfo) {
-      waveInfo.style.display = 'block';
-      const label = document.getElementById('wave-info-label');
-      const bar = document.getElementById('wave-progress-bar');
-      const pct = Math.min(100, ((DRAGON_COUNTDOWN - dragonCountdownTimer) / DRAGON_COUNTDOWN) * 100);
-      if (label) label.textContent = `🐉 ドラゴン襲来`;
-      if (bar) bar.style.width = pct + '%';
+    if (!CONTINUOUS_WORLD_MODE) {
+      const waveInfo = document.getElementById('wave-info');
+      if (waveInfo) {
+        waveInfo.style.display = 'block';
+        const label = document.getElementById('wave-info-label');
+        const bar = document.getElementById('wave-progress-bar');
+        const pct = Math.min(100, ((DRAGON_COUNTDOWN - dragonCountdownTimer) / DRAGON_COUNTDOWN) * 100);
+        if (label) label.textContent = `🐉 ドラゴン襲来`;
+        if (bar) bar.style.width = pct + '%';
+      }
     }
     if (dragonCountdownTimer <= 0) {
       startFirstWave();
@@ -15083,46 +15876,60 @@ function updateGame(dt) {
 
   // WAVE: ドラゴン襲来中
   if (gameState === 'WAVE' || gameState === 'INTERVAL') {
-    // ウェーブ番号表示
-    const waveNumEl = document.getElementById('wave-number');
-    const waveInfoEl = document.getElementById('wave-info');
-    if (gameState === 'WAVE') {
-      if (waveInfoEl) waveInfoEl.style.display = 'none';
-      if (waveNumEl) { waveNumEl.style.display = 'block'; waveNumEl.textContent = `🐉 残り ${waveEnemies.filter(e => e.hp > 0).length}体`; }
+    // ウェーブ番号表示（常時稼働モードでは抑制）
+    if (!CONTINUOUS_WORLD_MODE) {
+      const waveNumEl = document.getElementById('wave-number');
+      const waveInfoEl = document.getElementById('wave-info');
+      if (gameState === 'WAVE') {
+        if (waveInfoEl) waveInfoEl.style.display = 'none';
+        if (waveNumEl) { waveNumEl.style.display = 'block'; waveNumEl.textContent = `🐉 残り ${waveEnemies.filter(e => e.hp > 0).length}体`; }
+      }
     }
     // ウェーブクリア判定 — 終わりなし、ここで生きる
     waveEnemies = waveEnemies.filter(e => e.hp > 0);
     if (waveEnemies.length === 0 && currentWave > 0 && gameState === 'WAVE') {
       // 次ウェーブへのインターバル（無限継続）
       gameState = 'INTERVAL';
-      intervalTimer = INTERVAL_DURATION;
-      // 途中報告: ユニット別キル内訳
-      showWaveClearReport();
+      // 常時稼働モードでは間を極短に（切れ目を感じさせない）
+      intervalTimer = CONTINUOUS_WORLD_MODE ? 3 : INTERVAL_DURATION;
+      // 常時稼働モード中は総括ポップアップを出さない（体験を切らない）
+      if (!CONTINUOUS_WORLD_MODE) {
+        showWaveClearReport();
+      }
       return;
     }
 
     // キングタワー全滅チェック
     if (humanPlayer && humanPlayer.eliminated) {
-      gameState = 'RESULT';
-      endMatch(false); // 敗北
-      return;
+      if (CONTINUOUS_WORLD_MODE) {
+        // 常時稼働モード: RESULT 画面を出さず、リスポーンシーケンスに任せる
+        if (playerRespawnTimer <= 0) {
+          handlePlayerDeath();
+        }
+      } else {
+        gameState = 'RESULT';
+        endMatch(false); // 敗北
+        return;
+      }
     }
   }
 
   // INTERVAL: ウェーブ間休憩
   if (gameState === 'INTERVAL') {
     intervalTimer -= dt;
-    // インターバル中のUI更新
-    const waveNumEl2 = document.getElementById('wave-number');
-    if (waveNumEl2) waveNumEl2.style.display = 'none';
-    const waveInfo = document.getElementById('wave-info');
-    if (waveInfo) {
-      waveInfo.style.display = 'block';
-      const label = document.getElementById('wave-info-label');
-      const bar = document.getElementById('wave-progress-bar');
-      const pct = Math.min(100, ((10 - intervalTimer) / 10) * 100);
-      if (label) label.textContent = `🐉 次のドラゴン襲来`;
-      if (bar) bar.style.width = pct + '%';
+    // インターバル中のUI更新（常時稼働モードでは抑制）
+    if (!CONTINUOUS_WORLD_MODE) {
+      const waveNumEl2 = document.getElementById('wave-number');
+      if (waveNumEl2) waveNumEl2.style.display = 'none';
+      const waveInfo = document.getElementById('wave-info');
+      if (waveInfo) {
+        waveInfo.style.display = 'block';
+        const label = document.getElementById('wave-info-label');
+        const bar = document.getElementById('wave-progress-bar');
+        const pct = Math.min(100, ((10 - intervalTimer) / 10) * 100);
+        if (label) label.textContent = `🐉 次のドラゴン襲来`;
+        if (bar) bar.style.width = pct + '%';
+      }
     }
     if (intervalTimer <= 0) {
       // 次ウェーブ開始
@@ -15155,6 +15962,12 @@ function updateGame(dt) {
   if (isSpectator) updateSpectatorMode(dt);
   updateKingMovement(dt);
   updateGhostPosition();
+  // ダイバー介入: ゴースト追従 + クールダウン + 警告バナー
+  if (CONTINUOUS_WORLD_MODE && isSpectator) {
+    try { updateDiverGhost(); } catch(_) {}
+    try { updateDiverCooldowns(dt); } catch(_) {}
+    try { updateDiverWarningBanner(); } catch(_) {}
+  }
   try { updateChests(dt); } catch(e) {}
   try { updateStructures(dt); } catch(e) {}
   if (frameCount % 3 === 0) { updateHUD(); updateMinimap(); }
