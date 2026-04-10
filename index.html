@@ -13065,21 +13065,6 @@ function renderLobbyFactionSelection() {
   });
 }
 
-function renderLobbyGiftDeck() {
-  const row = document.getElementById('lobby-gift-deck-row');
-  if (!row) return;
-  row.innerHTML = '';
-  spectatorGiftDeck.forEach(cardId => {
-    const def = CARD_DEFS[cardId];
-    if (!def) return;
-    const slot = document.createElement('div');
-    slot.className = 'gift-deck-slot';
-    slot.innerHTML = `<div class="gs-icon">${def.icon}</div><div class="gs-name">${def.name}</div><div class="gs-price">￥0</div>`;
-    slot.onclick = () => window.openGiftDeckEditor();
-    row.appendChild(slot);
-  });
-}
-
 window.closeSpectatorLobby = function() {
   document.getElementById('spectator-lobby').classList.remove('visible');
 };
