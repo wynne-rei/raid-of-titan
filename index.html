@@ -2960,7 +2960,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
         <div class="char-card">
           <div class="char-icon">👸</div>
           <div class="char-info">
-            <h3>クイーン — Queen of the Realm</h3>
+            <h3>デナーリス — 女王</h3>
             <p>各国を率いる女王。優雅にして強靭、杖の魔法で敵を薙ぎ払う。高い魔法攻撃とサポート力を併せ持つ万能型。</p>
             <div class="ch-perks">
               <div class="ch-perk">HP 70</div>
@@ -2973,7 +2973,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
         <div class="char-card">
           <div class="char-icon">🤴</div>
           <div class="char-info">
-            <h3>ナイトプリンス — Knight Prince</h3>
+            <h3>ジェイミー — 騎士</h3>
             <p>鎧に身を包む騎士。剣術に長け、前線で輝く。バランス型で初心者にもおすすめ。</p>
             <div class="ch-perks">
               <div class="ch-perk">HP 80</div>
@@ -2986,7 +2986,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
         <div class="char-card">
           <div class="char-icon">⛏️</div>
           <div class="char-info">
-            <h3>女ドワーフ — Dwarf Lady</h3>
+            <h3>アリア — 少女</h3>
             <p>小柄だが怪力。巨大なハンマーを軽々と振り回す。瞬間火力に優れた攻撃特化型。</p>
             <div class="ch-perks">
               <div class="ch-perk">HP 65</div>
@@ -2999,7 +2999,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
         <div class="char-card">
           <div class="char-icon">🪓</div>
           <div class="char-info">
-            <h3>男ドワーフ — Dwarf Lord</h3>
+            <h3>ティリオン — ドワーフ</h3>
             <p>歴戦のベテラン。豊かなヒゲと斧が彼の誇り。高HPで前線を支える重戦士タイプ。</p>
             <div class="ch-perks">
               <div class="ch-perk">HP 95</div>
@@ -3154,19 +3154,19 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
     <div class="cs-cards">
       <div class="cs-card" data-char="queen" onclick="window.selectCharCard('queen')">
         <span class="cs-icon">👸</span>
-        <div class="cs-name">美女</div>
+        <div class="cs-name">デナーリス</div>
       </div>
       <div class="cs-card" data-char="knight" onclick="window.selectCharCard('knight')">
         <span class="cs-icon">🤴</span>
-        <div class="cs-name">イケメン</div>
+        <div class="cs-name">ジェイミー</div>
       </div>
       <div class="cs-card" data-char="dwarfFemale" onclick="window.selectCharCard('dwarfFemale')">
         <span class="cs-icon">⛏️</span>
-        <div class="cs-name">女ドワーフ</div>
+        <div class="cs-name">アリア</div>
       </div>
       <div class="cs-card" data-char="dwarfMale" onclick="window.selectCharCard('dwarfMale')">
         <span class="cs-icon">🪓</span>
-        <div class="cs-name">男ドワーフ</div>
+        <div class="cs-name">ティリオン</div>
       </div>
     </div>
     <div class="cs-preview" id="cs-preview">
@@ -14847,10 +14847,10 @@ window.confirmFaction = function() {
 
 // キャラごとのプレビューデータ
 const CHAR_PREVIEW = {
-  queen:       { icon: '👸', name: '美女',       type: 'Queen',         catch: '"杖の一振りが戦場を変える"', desc: '中世の女王。優雅にして強靭、杖の魔法で敵を薙ぎ払う。高い魔法攻撃とサポート力を併せ持つ万能型。', hp: 70, atk: 85, spd: 60 },
-  knight:      { icon: '🤴', name: 'イケメン',   type: 'Knight Prince', catch: '"剣こそが言葉に勝る"',        desc: '鎧に身を包む騎士。剣術に長け、前線で輝く。バランス型で初心者にもおすすめ。',               hp: 80, atk: 80, spd: 75 },
-  dwarfFemale: { icon: '⛏️', name: '女ドワーフ', type: 'Dwarf Lady',    catch: '"一撃で全てを砕く"',          desc: '小柄だが怪力。巨大なハンマーを軽々と振り回す。瞬間火力に優れた攻撃特化型。',             hp: 65, atk: 95, spd: 55 },
-  dwarfMale:   { icon: '🪓', name: '男ドワーフ', type: 'Dwarf Lord',    catch: '"歴戦の勇士、ここにあり"',    desc: '歴戦のベテラン。豊かなヒゲと斧が彼の誇り。高HPで前線を支える重戦士タイプ。',             hp: 95, atk: 75, spd: 50 }
+  queen:       { icon: '👸', name: 'デナーリス',   type: 'Queen',         catch: '"杖の一振りが戦場を変える"', desc: '中世の女王。優雅にして強靭、杖の魔法で敵を薙ぎ払う。高い魔法攻撃とサポート力を併せ持つ万能型。', hp: 70, atk: 85, spd: 60 },
+  knight:      { icon: '🤴', name: 'ジェイミー', type: 'Knight Prince', catch: '"剣こそが言葉に勝る"',        desc: '鎧に身を包む騎士。剣術に長け、前線で輝く。バランス型で初心者にもおすすめ。',               hp: 80, atk: 80, spd: 75 },
+  dwarfFemale: { icon: '⛏️', name: 'アリア',     type: 'Dwarf Lady',    catch: '"一撃で全てを砕く"',          desc: '小柄だが怪力。巨大なハンマーを軽々と振り回す。瞬間火力に優れた攻撃特化型。',             hp: 65, atk: 95, spd: 55 },
+  dwarfMale:   { icon: '🪓', name: 'ティリオン', type: 'Dwarf Lord',    catch: '"歴戦の勇士、ここにあり"',    desc: '歴戦のベテラン。豊かなヒゲと斧が彼の誇り。高HPで前線を支える重戦士タイプ。',             hp: 95, atk: 75, spd: 50 }
 };
 
 window.showCharSelect = function() {
