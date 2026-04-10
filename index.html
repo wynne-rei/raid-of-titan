@@ -3291,23 +3291,9 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
 </div>
 
 <!-- ダイバーランクパネル -->
-<div id="diver-rank-panel" style="display:none;position:fixed;bottom:120px;right:16px;background:rgba(0,0,0,0.85);border:1px solid #ffd700;border-radius:10px;padding:10px 14px;min-width:220px;z-index:500;"></div>
+<div id="diver-rank-panel" style="display:none;position:fixed;bottom:120px;left:16px;background:rgba(0,0,0,0.85);border:1px solid rgba(255,215,0,0.4);border-radius:10px;padding:10px 14px;min-width:200px;z-index:500;pointer-events:none;"></div>
 
-<!-- Live Stream Mode: Chat Panel -->
-<div id="stream-chat-panel" style="display:none;">
-  <div id="stream-chat-header">
-    <span style="color:#ff4444;">● LIVE</span>
-    <span id="stream-viewer-count">👁 1,234人視聴中</span>
-  </div>
-  <div id="stream-chat-messages"></div>
-  <div id="stream-chat-input-wrap" style="display:none;">
-    <input id="stream-chat-input" type="text" maxlength="60" placeholder="コメントを書く..." />
-    <button id="stream-chat-send">送信</button>
-  </div>
-</div>
-
-<!-- Super Chat Popup Container -->
-<div id="super-chat-container"></div>
+<!-- チャット・スパチャは Phase6 で削除済み -->
 
 
 <!-- Stream Toast Container (右下ポップアップ通知) -->
@@ -3352,13 +3338,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
     <div style="font-size:11px; color:#999; text-align:center; margin-top:8px;">※ ギフトは自国の配信者の味方として送られます（バトル中も変更OK）</div>
   </div>
 
-  <div class="lobby-section">
-    <div class="lobby-section-title">② ギフトデッキ（6枚）</div>
-    <div class="gift-deck-row" id="lobby-gift-deck-row"></div>
-    <div class="lobby-btn-row" style="margin-top:12px;">
-      <button class="lobby-btn secondary" onclick="window.openGiftDeckEditor()">✏️ デッキを編集</button>
-    </div>
-  </div>
+  <!-- ギフトデッキはPhase6で削除済み -->
 
   <div class="lobby-btn-row">
     <button class="lobby-btn secondary" onclick="window.closeSpectatorLobby()">← 戻る</button>
@@ -3366,159 +3346,10 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
   </div>
 </div>
 
-<!-- Gift Deck Editor Modal -->
-<div id="gift-deck-editor">
-  <div class="gde-panel">
-    <h3>🎁 ギフトデッキ編集</h3>
-    <div class="gde-current-label">現在のデッキ（タップで外す）：</div>
-    <div class="gde-grid" id="gde-current-grid"></div>
-    <div class="gde-all-label">追加できるカード（タップで追加）：</div>
-    <div class="gde-grid" id="gde-all-grid"></div>
-    <div class="lobby-btn-row" style="margin-top:16px;">
-      <button class="lobby-btn" onclick="window.closeGiftDeckEditor()">完了</button>
-    </div>
-  </div>
-</div>
-
-<!-- Gift Placement Banner (配置モード時の案内) -->
-<div id="gift-placement-banner" style="display:none;">
-  <div class="gpb-main">
-    <span id="gpb-icon">🎁</span>
-    <span id="gpb-text">配置する場所をクリック</span>
-  </div>
-  <div class="gpb-sub">ESCでキャンセル</div>
-</div>
-
-<!-- Gift Send Panel (バトル中の投げ銭ユニット選択) -->
-<div id="gift-panel">
-  <div class="gp-title">
-    🎁 ギフトユニットを送る
-    <span class="gp-faction-swap" id="gp-faction-swap" onclick="window.cycleSpectatorFaction()">🔥 火の国 ▶</span>
-    <span class="gp-faction-swap" onclick="window.openGiftDeckEditor()">✏️ デッキ</span>
-  </div>
-  <div class="gp-cards" id="gift-panel-cards"></div>
-</div>
+<!-- ギフト関連UIはPhase6で削除済み -->
 
 <style>
-/* Live Stream Chat Panel */
-#stream-chat-panel {
-  position: fixed;
-  left: 14px;
-  right: auto;
-  top: 508px;
-  width: 200px;
-  height: 200px;
-  bottom: auto;
-  background: rgba(18, 18, 24, 0.92);
-  border: 2px solid #444;
-  border-radius: 10px;
-  z-index: 450;
-  display: flex;
-  flex-direction: column;
-  font-family: 'Hiragino Sans', sans-serif;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
-}
-#stream-chat-header {
-  padding: 8px 12px;
-  border-bottom: 1px solid #333;
-  font-size: 12px;
-  color: #ddd;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: bold;
-}
-#stream-chat-header span:first-child {
-  animation: blink 1.2s infinite;
-}
-@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0.4; } }
-#stream-chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 10px;
-  font-size: 12px;
-  color: #eee;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-#stream-chat-messages::-webkit-scrollbar { width: 6px; }
-#stream-chat-messages::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
-.chat-msg {
-  animation: chat-fade-in 0.3s ease-out;
-  word-break: break-word;
-  line-height: 1.4;
-}
-@keyframes chat-fade-in {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-.chat-msg .chat-name { font-weight: bold; margin-right: 6px; }
-.chat-msg.own .chat-name { color: #ffdd44; }
-.chat-msg.own { background: rgba(255, 221, 68, 0.1); padding: 2px 6px; border-radius: 4px; border-left: 3px solid #ffdd44; }
-.chat-msg.troll .chat-name { color: #ff6666; }
-.chat-msg.newbie .chat-name { color: #66ddff; }
-
-#stream-chat-input-wrap {
-  padding: 8px;
-  border-top: 1px solid #333;
-  display: flex;
-  gap: 6px;
-}
-#stream-chat-input {
-  flex: 1;
-  background: #222;
-  border: 1px solid #555;
-  color: #fff;
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  outline: none;
-}
-#stream-chat-input:focus { border-color: #c8a850; }
-#stream-chat-send {
-  background: #c8a850;
-  color: #000;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 11px;
-}
-
-/* Super Chat */
-#super-chat-container {
-  position: fixed;
-  right: 330px;
-  top: 120px;
-  z-index: 460;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  pointer-events: none;
-}
-.super-chat {
-  background: linear-gradient(180deg, #ffce54, #ff9f2e);
-  color: #1a1a1a;
-  padding: 10px 14px;
-  border-radius: 8px;
-  min-width: 240px;
-  font-weight: bold;
-  box-shadow: 0 4px 20px rgba(255, 150, 50, 0.6);
-  animation: super-chat-in 0.5s ease-out;
-  border: 2px solid #fff;
-}
-.super-chat .sc-name { font-size: 12px; color: #5a3a00; }
-.super-chat .sc-amount { font-size: 18px; margin: 2px 0; color: #8a2a00; }
-.super-chat .sc-msg { font-size: 13px; color: #222; }
-@keyframes super-chat-in {
-  from { transform: translateX(400px) scale(0.8); opacity: 0; }
-  60% { transform: translateX(-20px) scale(1.05); opacity: 1; }
-  to { transform: translateX(0) scale(1); opacity: 1; }
-}
-.super-chat.fading { animation: super-chat-out 0.5s ease-in forwards; }
-@keyframes super-chat-out { to { transform: translateX(400px); opacity: 0; } }
+/* チャット・スパチャCSS — Phase6で削除済み */
 
 /* Spectator List — 配信者サイドバー */
 #spectator-list {
@@ -3967,153 +3798,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
 }
 .lobby-btn.big { padding: 16px 48px; font-size: 15px; letter-spacing: 4px; }
 
-/* ============ Gift Deck Editor Modal ============ */
-#gift-deck-editor {
-  display: none;
-  position: fixed; inset: 0;
-  z-index: 950;
-  background: rgba(0,0,0,0.85);
-  justify-content: center; align-items: center;
-  padding: 20px;
-}
-#gift-deck-editor.visible { display: flex; }
-.gde-panel {
-  background: #15101c;
-  border: 2px solid #666;
-  border-radius: 12px;
-  padding: 20px 24px;
-  max-width: 780px; width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  color: #fff;
-}
-.gde-panel h3 { margin: 0 0 12px; color: #ffdd44; font-size: 18px; }
-.gde-current-label { font-size: 12px; color: #bbb; margin: 4px 0 6px; }
-.gde-all-label { font-size: 12px; color: #bbb; margin: 16px 0 6px; }
-.gde-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; }
-.gde-card {
-  background: #2a2235;
-  border: 2px solid #555;
-  border-radius: 6px;
-  padding: 8px 4px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.gde-card:hover { border-color: #ffdd44; transform: translateY(-2px); }
-.gde-card.in-deck { border-color: #ffdd44; background: rgba(255,221,68,0.18); }
-.gde-card .c-icon { font-size: 22px; }
-.gde-card .c-name { font-size: 10px; color: #eee; margin-top: 3px; }
-
-/* ============ Gift Send Panel (battle) ============ */
-#gift-panel {
-  display: none;
-  position: fixed;
-  left: 50%;
-  bottom: 18px;
-  transform: translateX(-50%);
-  z-index: 460;
-  background: linear-gradient(180deg, rgba(22,14,34,0.96) 0%, rgba(10,6,18,0.96) 100%);
-  border: 1px solid rgba(255,221,68,0.5);
-  border-radius: 10px;
-  padding: 12px 18px 10px;
-  box-shadow: 0 6px 26px rgba(0,0,0,0.7), 0 0 24px rgba(255,221,68,0.15);
-  backdrop-filter: blur(6px);
-}
-#gift-panel.visible { display: block; animation: nlFadeIn 0.4s ease-out; }
-.gp-title {
-  color: #ffdd44;
-  font-size: 11px;
-  font-weight: bold;
-  margin-bottom: 8px;
-  text-align: center;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-}
-.gp-title .gp-faction-swap {
-  display: inline-flex; align-items: center;
-  background: linear-gradient(180deg, rgba(60,50,80,0.9), rgba(30,24,42,0.9));
-  color: #eee;
-  border: 1px solid rgba(160,96,255,0.4);
-  border-radius: 4px;
-  padding: 3px 8px;
-  font-size: 10px;
-  cursor: pointer;
-  letter-spacing: 1px;
-  transition: all 0.2s;
-}
-.gp-title .gp-faction-swap:hover {
-  border-color: #ffdd44;
-  color: #ffdd44;
-  transform: translateY(-1px);
-}
-.gp-cards { display: flex; gap: 8px; }
-.gp-card {
-  width: 72px; height: 96px;
-  background: linear-gradient(180deg, #2a2040 0%, #14091e 100%);
-  border: 1px solid rgba(160,96,255,0.4);
-  border-radius: 6px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.22,1,0.36,1);
-  color: #eee;
-  position: relative;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
-}
-.gp-card:hover {
-  transform: translateY(-4px);
-  border-color: #ffdd44;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.8), 0 0 20px rgba(255,221,68,0.5);
-}
-.gp-card:active { transform: translateY(-1px); }
-.gp-card .gp-icon { font-size: 28px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.8)); }
-.gp-card .gp-name { font-size: 9px; margin-top: 4px; text-align: center; font-weight: bold; letter-spacing: 0.5px; }
-.gp-card .gp-price {
-  font-size: 11px; color: #ffdd44; font-weight: bold; margin-top: 3px;
-  text-shadow: 0 0 6px rgba(255,221,68,0.4);
-}
-
-/* ============ Gift Placement Banner ============ */
-#gift-placement-banner {
-  position: fixed;
-  top: 70px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 480;
-  background: linear-gradient(180deg, rgba(40, 30, 8, 0.95), rgba(20, 15, 4, 0.95));
-  border: 2px solid #ffdd44;
-  border-radius: 10px;
-  padding: 10px 22px;
-  color: #fff;
-  font-family: 'Hiragino Sans', sans-serif;
-  text-align: center;
-  box-shadow: 0 0 30px rgba(255, 221, 68, 0.6);
-  animation: gpb-pulse 1.4s ease-in-out infinite;
-  pointer-events: none;
-}
-#gift-placement-banner.visible { display: block !important; }
-.gpb-main { font-size: 16px; font-weight: bold; color: #ffdd44; letter-spacing: 1px; }
-.gpb-main #gpb-icon { font-size: 20px; margin-right: 8px; }
-.gpb-sub { font-size: 11px; color: #bbb; margin-top: 3px; }
-@keyframes gpb-pulse {
-  0%, 100% { box-shadow: 0 0 30px rgba(255, 221, 68, 0.5); }
-  50% { box-shadow: 0 0 45px rgba(255, 221, 68, 0.9); }
-}
-
-/* Gold aura flash on gift spawn */
-@keyframes gift-flash {
-  0% { opacity: 0; transform: scale(0.5); }
-  30% { opacity: 1; }
-  100% { opacity: 0; transform: scale(2.2); }
-}
-.gift-flash-overlay {
-  position: fixed; inset: 0;
-  pointer-events: none;
-  background: radial-gradient(circle at var(--fx, 50%) var(--fy, 50%), rgba(255,220,80,0.4) 0%, transparent 30%);
-  animation: gift-flash 0.7s ease-out forwards;
-  z-index: 440;
-}
+/* ギフト関連CSS — Phase6で削除済み */
 
 /* ============================================================
    UI MODES — 配信者(ui-stream) / 観戦者(ui-spec) モード専用レイアウト
@@ -5497,21 +5182,8 @@ let roomCode = '';             // 6文字ルームコード
 let netBroadcastTimer = 0;    // ホスト: ブロードキャスト間隔タイマー
 const NET_BROADCAST_INTERVAL = 0.5; // 500ms
 let spectatedPlayerId = -1; // 視聴者モードで観戦中のBOT id（-1なら未選択）
-// 視聴者の所属国 & ギフトデッキ（スパチャで送るユニット）
+// 視聴者の所属国（観戦モード用）
 let spectatorFaction = 'fire';
-let spectatorGiftDeck = ['knight', 'archer', 'giant', 'wizard', 'fireball', 'miniPekka'];
-let streamCommentTimer = 0; // 次コメントまでの秒数
-let superChatTimer = 0; // 次スパチャまでの秒数
-let viewerCount = 1200; // 表示用視聴者数
-let viewerCountTarget = 1200; // 滑らか更新用
-
-// 視聴者名プール（20種）
-const VIEWER_NAMES = [
-  'クラロワ太郎', '深夜勢ユキ', 'ガチ勢サトシ', 'エリクサー警察', '新人ファンまお',
-  '大会優勝者', '無課金勢', '投げ銭マン', 'プロコーチ', '実況大好き',
-  'チャンピオン田中', '陰キャ観戦者', '初見さん', 'コメ職人', '攻略wiki主',
-  'ランク1位', '引退勢', 'ニキニキ', 'リスナーA', '沼プレイヤー'
-];
 
 // 配信者名プール（観戦モードでBOTに付与される名前）
 const STREAMER_NAMES = [
@@ -5525,48 +5197,7 @@ const STREAMER_NAMES = [
   'ヨウヘイ', 'タケヒロ', 'ケイタ', 'セイヤ', 'マサキ', 'ゴウ', 'タイチ', 'ノブ'
 ];
 
-// コメントテンプレート
-const COMMENT_POOL = {
-  // 定期応援
-  cheer: [
-    'がんばれー！', 'ナイス！', 'うまい！', 'さすがだ', '勝てる勝てる',
-    'いけるいける', 'しびれる〜', '熱い展開', 'ワクワクする', 'プロすぎる',
-    'ここから逆転見せて', '応援してます', '神プレイ', '今日も配信お疲れ！',
-    'はじめまして！', '毎日見てます', '推せる', 'まじ尊敬', 'この動きは天才',
-    '安定感すごい'
-  ],
-  // 煽り・ツッコミ
-  troll: [
-    '今の下手くそww', 'プロ名乗れる？', 'エリクサー溢れてるぞ',
-    '守り弱すぎ', 'そこじゃないだろ', 'タワー見てないw', 'それ悪手',
-    'ランカー名乗るな', '初心者？', 'センスない'
-  ],
-  // キル反応
-  kill: [
-    'うぉぉぉ！', 'ナイスキル！', 'やったあああ', 'きたあああ',
-    '良い判断！', 'これは強い', 'エグいww', '完璧すぎ'
-  ],
-  // タワー破壊反応
-  tower: [
-    'うぉぉタワー！', 'これは勝ち確', 'やべえええ', 'ナイスタワー',
-    '神すぎる', 'ここから押し切れ', '一気に決めろ', '熱い！'
-  ],
-  // 襲来反応
-  raid: [
-    'やばい来るぞ！', '守り固めて！', 'スペル温存しろ！', 'これヤバくね',
-    '警戒警戒！', '耐えて耐えて', 'ここ耐えたら勝ち', 'あああああ'
-  ],
-  // BOT視点切替を匂わせる（Cの機能体感用）
-  pov: [
-    '{name}視点で見てる！', '{name}ちゃん頑張れ！', '{name}の動きいいね',
-    '{name}視点だと分かりやすい', '今{name}見てる'
-  ],
-  // 新規視聴者
-  newbie: [
-    'はじめまして！', '初見です！', '今来ました',
-    'チャンネル登録した'
-  ]
-};
+// COMMENT_POOL — Phase6で削除済み
 
 // ============================================================
 // DIVER RANK SYSTEM — 滞在時間ベースのランクシステム
@@ -5614,7 +5245,8 @@ function loadDiverProgress() {
 }
 
 function updateDiverRank(dt) {
-  if (!isSpectator && !isNetSpectator) return;
+  // シングルプレイでもプレイ時間でランクアップ
+  if (gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL' && !isSpectator && !isNetSpectator) return;
   diverStayTime += dt;
   const newRank = getDiverRank(diverStayTime);
   if (newRank.rank > diverRank) {
@@ -5649,13 +5281,6 @@ function updateDiverUI() {
   panel.style.display = 'block';
 }
 
-// スパチャ金額プール（レガシー）
-const SUPER_CHAT_AMOUNTS = [100, 200, 500, 1000, 2000, 5000, 10000];
-const SUPER_CHAT_MESSAGES = [
-  'いつも応援してます！', '勝ってください！', '神プレイ期待！',
-  '今日も配信ありがとう', 'ずっと推してます！', '頑張って！',
-  '最高の配信', 'この1戦見逃せない', 'ランカー目指せ！', '投げ銭少ないけど…'
-];
 // 襲来予兆システム: {factionId, raid, spawner, countdown, beacon}
 let raidWarning = null;
 const RAID_WARNING_DURATION = 10; // 予兆から実スポーンまでの秒数
@@ -6276,10 +5901,6 @@ function resetDramaState() {
 let _factionAnnihilationShown = {};
 
 function addCommentary(text, factionId) {
-  // 配信モード連携：実況イベントを視聴者コメントに反応させる
-  if (streamMode !== 'off') {
-    reactToStreamEvent(text);
-  }
   // 実況ログの画面表示は廃止（音声ナレーションのみ残す）
 
   // John Kabira voice! (only during battle, deduplicate)
@@ -11586,89 +11207,26 @@ function updateRaidSystem(dt) {
 // ============================================================
 function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-function addStreamChatMessage(name, text, kind) {
-  const box = document.getElementById('stream-chat-messages');
-  if (!box) return;
-  const msg = document.createElement('div');
-  msg.className = 'chat-msg' + (kind ? ' ' + kind : '');
-  const nameSpan = document.createElement('span');
-  nameSpan.className = 'chat-name';
-  nameSpan.textContent = name + ':';
-  // ランダム色（固定hashで同一名同一色）
-  if (!kind) {
-    const hash = [...name].reduce((s, c) => s + c.charCodeAt(0), 0);
-    const hues = ['#7ec8ff', '#ff9cae', '#b7e88c', '#ffcc66', '#d0a8ff', '#ffaaff', '#66d9cc'];
-    nameSpan.style.color = hues[hash % hues.length];
-  }
-  msg.appendChild(nameSpan);
-  msg.appendChild(document.createTextNode(text));
-  box.appendChild(msg);
-  // 古いメッセージを削除
-  while (box.children.length > 50) box.removeChild(box.firstChild);
-  box.scrollTop = box.scrollHeight;
-}
-
-function generateViewerComment() {
-  // カテゴリをランダム選択（重み付け）
-  const roll = Math.random();
-  let category;
-  if (roll < 0.55) category = 'cheer';
-  else if (roll < 0.70) category = 'pov';
-  else if (roll < 0.80) category = 'troll';
-  else if (roll < 0.88) category = 'newbie';
-  else category = 'cheer';
-
-  let text = pickRandom(COMMENT_POOL[category]);
-  // POVコメントは配信者名を埋め込み
-  if (category === 'pov') {
-    const candidates = players.filter(p => !p.eliminated && p.streamerName);
-    if (candidates.length > 0) {
-      const pick = pickRandom(candidates);
-      text = text.replace('{name}', pick.streamerName);
-    } else {
-      text = text.replace('{name}', 'あの人');
-    }
-  }
-  const name = pickRandom(VIEWER_NAMES);
-  addStreamChatMessage(name, text, category === 'troll' ? 'troll' : category === 'newbie' ? 'newbie' : null);
-}
-
-// 実況イベント → 視聴者の反応コメント
-function reactToStreamEvent(eventText) {
-  let pool = null;
-  if (eventText.includes('撃破') || eventText.includes('討伐') || eventText.includes('キル')) pool = COMMENT_POOL.kill;
-  else if (eventText.includes('タワー')) pool = COMMENT_POOL.tower;
-  else if (eventText.includes('襲来') || eventText.includes('備え')) pool = COMMENT_POOL.raid;
-  if (!pool) return;
-  // 1〜2人の視聴者が反応
-  const num = 1 + Math.floor(Math.random() * 2);
-  for (let i = 0; i < num; i++) {
-    setTimeout(() => {
-      addStreamChatMessage(pickRandom(VIEWER_NAMES), pickRandom(pool));
-      // 視聴者数ちょい増加
-      viewerCountTarget += 5 + Math.floor(Math.random() * 15);
-    }, i * 250 + Math.random() * 300);
-  }
-}
-
-function showSuperChat() {
-  const container = document.getElementById('super-chat-container');
-  if (!container) return;
-  const name = pickRandom(VIEWER_NAMES);
-  const amount = pickRandom(SUPER_CHAT_AMOUNTS);
-  const msgText = pickRandom(SUPER_CHAT_MESSAGES);
-  const sc = document.createElement('div');
-  sc.className = 'super-chat';
-  sc.innerHTML = `<div class="sc-name">${name}</div><div class="sc-amount">¥${amount.toLocaleString()}</div><div class="sc-msg">${msgText}</div>`;
-  container.appendChild(sc);
-  // チャット欄にも追加
-  addStreamChatMessage(name, `¥${amount.toLocaleString()} ${msgText}`);
-  // 視聴者増加
-  viewerCountTarget += 20 + Math.floor(Math.random() * 50);
-  // 一定時間後にフェードアウト
-  setTimeout(() => sc.classList.add('fading'), 4500);
-  setTimeout(() => sc.remove(), 5100);
-}
+// チャット・スパチャ・ギフト関連スタブ — Phase6で本体削除済み
+function addStreamChatMessage() {}
+function generateViewerComment() {}
+function reactToStreamEvent() {}
+function showSuperChat() {}
+function showGiftPanel() {}
+function hideGiftPanel() {}
+function renderGiftPanel() {}
+function renderLobbyGiftDeck() {}
+function confirmGiftPlacement() {}
+function cancelGiftPlacement() {}
+function updateGiftGhostFromMouse() {}
+function giftFlashEffect() {}
+function showSuperChatFromUser() {}
+let spectatorGiftDeck = [];
+let streamCommentTimer = 0;
+let superChatTimer = 0;
+let viewerCount = 0;
+let viewerCountTarget = 0;
+const VIEWER_NAMES = [];
 
 // ============================================================
 // 視聴者の仮想分布: 総視聴者をBOT視点に分散割り振り
@@ -13536,356 +13094,9 @@ window.confirmSpectatorLobby = function() {
   setTimeout(() => enterSpectatorMode(), 200);
 };
 
-// ============================================================
-// GIFT DECK EDITOR
-// ============================================================
-window.openGiftDeckEditor = function() {
-  const modal = document.getElementById('gift-deck-editor');
-  if (!modal) return;
-  modal.classList.add('visible');
-  renderGiftDeckEditor();
-};
-window.closeGiftDeckEditor = function() {
-  document.getElementById('gift-deck-editor').classList.remove('visible');
-  localStorage.setItem('cr3d_gift_deck', JSON.stringify(spectatorGiftDeck));
-  renderLobbyGiftDeck();
-  renderGiftPanel();
-};
-
-function renderGiftDeckEditor() {
-  const cur = document.getElementById('gde-current-grid');
-  const all = document.getElementById('gde-all-grid');
-  if (!cur || !all) return;
-  cur.innerHTML = '';
-  all.innerHTML = '';
-  // 現在のデッキ
-  spectatorGiftDeck.forEach((cardId, idx) => {
-    const def = CARD_DEFS[cardId];
-    if (!def) return;
-    const el = document.createElement('div');
-    el.className = 'gde-card in-deck';
-    el.innerHTML = `<div class="c-icon">${def.icon}</div><div class="c-name">${def.name}</div>`;
-    el.onclick = () => {
-      if (spectatorGiftDeck.length <= 1) return; // 最低1枚
-      spectatorGiftDeck.splice(idx, 1);
-      renderGiftDeckEditor();
-    };
-    cur.appendChild(el);
-  });
-  // 全カード
-  Object.keys(CARD_DEFS).forEach(cardId => {
-    if (spectatorGiftDeck.includes(cardId)) return;
-    const def = CARD_DEFS[cardId];
-    const el = document.createElement('div');
-    el.className = 'gde-card';
-    el.innerHTML = `<div class="c-icon">${def.icon}</div><div class="c-name">${def.name}</div>`;
-    el.onclick = () => {
-      if (spectatorGiftDeck.length >= 6) {
-        // 満杯なら先頭を押し出し
-        spectatorGiftDeck.shift();
-      }
-      spectatorGiftDeck.push(cardId);
-      renderGiftDeckEditor();
-    };
-    all.appendChild(el);
-  });
-}
-
-// ============================================================
-// GIFT PANEL (バトル中の投げ銭ユニット送信)
-// ============================================================
-function showGiftPanel() {
-  const panel = document.getElementById('gift-panel');
-  if (!panel) return;
-  panel.classList.add('visible');
-  renderGiftPanel();
-}
-function hideGiftPanel() {
-  const panel = document.getElementById('gift-panel');
-  if (panel) panel.classList.remove('visible');
-}
-function renderGiftPanel() {
-  const container = document.getElementById('gift-panel-cards');
-  if (!container) return;
-  container.innerHTML = '';
-  spectatorGiftDeck.forEach(cardId => {
-    const def = CARD_DEFS[cardId];
-    if (!def) return;
-    const card = document.createElement('div');
-    card.className = 'gp-card';
-    card.innerHTML = `<div class="gp-icon">${def.icon}</div><div class="gp-name">${def.name}</div><div class="gp-price">￥0</div>`;
-    card.onclick = () => sendGift(cardId);
-    container.appendChild(card);
-  });
-  // 国表示更新
-  const sw = document.getElementById('gp-faction-swap');
-  if (sw) {
-    const f = FACTIONS[spectatorFaction];
-    sw.textContent = `${f.icon} ${f.name} ▶`;
-  }
-}
-
-// バトル中の国切替
-window.cycleSpectatorFaction = function() {
-  const idx = FACTION_IDS.indexOf(spectatorFaction);
-  spectatorFaction = FACTION_IDS[(idx + 1) % FACTION_IDS.length];
-  localStorage.setItem('cr3d_spec_faction', spectatorFaction);
-  renderGiftPanel();
-  const f = FACTIONS[spectatorFaction];
-  addStreamChatMessage('システム', `--- 所属国を ${f.icon} ${f.name} に変更 ---`, 'newbie');
-};
-
-// ギフト追跡リスト（実況コメント用）
-const activeGifts = []; // { entity, cardId, def, dead, announcedAttack, announcedTowerHit }
-
-// ギフト配置モード state
-let giftPlacementMode = false;
-let giftPlacementCardId = null;
-let giftGhostMesh = null;
-
-// ステップ1: カードを選ぶ → 配置モードに入る
-function sendGift(cardId) {
-  const def = CARD_DEFS[cardId];
-  if (!def) return;
-  // 自国に生存プレイヤーがいるか確認（いなければ送れない）
-  const hasAlly = players.some(p => !p.eliminated && p.faction === spectatorFaction && p.kingTower && !p.kingTower.destroyed);
-  if (!hasAlly) {
-    addStreamChatMessage('システム', `⚠ ${FACTIONS[spectatorFaction].name}の味方がいません`, 'troll');
-    return;
-  }
-  // 既に配置モードなら一度キャンセル
-  cancelGiftPlacement();
-  giftPlacementMode = true;
-  giftPlacementCardId = cardId;
-  // ゴーストメッシュ生成（既存のcreateGhostMeshを流用）
-  try {
-    giftGhostMesh = createGhostMesh(cardId);
-    if (giftGhostMesh && scene) {
-      // 初期位置：観戦中プレイヤーの近く
-      const cur = players.find(p => p.id === spectatedPlayerId);
-      if (cur && cur.kingTower) {
-        giftGhostMesh.position.set(cur.kingTower.mesh.position.x, def.type === 'spell' ? 1 : 50, cur.kingTower.mesh.position.z);
-      }
-      scene.add(giftGhostMesh);
-    }
-  } catch(e) {}
-  // バナー表示
-  const banner = document.getElementById('gift-placement-banner');
-  const iconEl = document.getElementById('gpb-icon');
-  const textEl = document.getElementById('gpb-text');
-  if (banner) {
-    banner.style.display = 'block';
-    if (iconEl) iconEl.textContent = def.icon;
-    if (textEl) textEl.textContent = `${def.name} を配置する場所をクリック`;
-  }
-}
-
-// マウスホバー追従：mousemoveから呼ばれる
-function updateGiftGhostFromMouse() {
-  if (!giftPlacementMode || !giftGhostMesh || !camera || !groundPlane) return;
-  raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObject(groundPlane);
-  if (hits.length > 0) {
-    const p = hits[0].point;
-    const def = CARD_DEFS[giftPlacementCardId];
-    const posY = (def && def.type === 'spell') ? 1 : 50;
-    const bob = Math.sin(Date.now() * 0.005) * 4;
-    giftGhostMesh.position.set(p.x, posY + bob, p.z);
-    // 不透明度パルス
-    giftGhostMesh.children.forEach(c => {
-      if (c.material && c.material.transparent) {
-        c.material.opacity = 0.4 + Math.sin(Date.now() * 0.006) * 0.2;
-      }
-    });
-  }
-}
-
-// ステップ2: クリック位置で決定 → スポーン
-function confirmGiftPlacement() {
-  if (!giftPlacementMode || !giftGhostMesh) return;
-  const cardId = giftPlacementCardId;
-  const def = CARD_DEFS[cardId];
-  if (!def) { cancelGiftPlacement(); return; }
-  const placeX = giftGhostMesh.position.x;
-  const placeZ = giftGhostMesh.position.z;
-
-  // ネットワーク観戦者の場合: ホストにコマンドを送信
-  if (isNetSpectator && hostConnection) {
-    try {
-      hostConnection.send({
-        _netMeta: { type: 'spawn' },
-        cardId: cardId,
-        x: Math.round(placeX * 10) / 10,
-        z: Math.round(placeZ * 10) / 10,
-        faction: spectatorFaction
-      });
-      addCommentary(`🎁 ${def.icon} ${def.name} を配置リクエスト送信！`, spectatorFaction);
-    } catch(e) {
-      console.error('[NET] Spawn command send error:', e);
-    }
-    cancelGiftPlacement();
-    return;
-  }
-
-  // 配置先の味方プレイヤーを決定：一番近い自国プレイヤー
-  const allies = players.filter(p => !p.eliminated && p.faction === spectatorFaction && p.kingTower && !p.kingTower.destroyed);
-  if (allies.length === 0) { cancelGiftPlacement(); return; }
-  let owner = allies[0], best = Infinity;
-  allies.forEach(p => {
-    const dx = p.kingTower.mesh.position.x - placeX;
-    const dz = p.kingTower.mesh.position.z - placeZ;
-    const d = dx * dx + dz * dz;
-    if (d < best) { best = d; owner = p; }
-  });
-
-  const beforeLen = entities.length;
-  if (def.type === 'spell') {
-    castSpell(cardId, placeX, placeZ, owner.id);
-  } else {
-    spawnEntity(cardId, placeX, placeZ, owner.id);
-    // スポーンしたentityを追跡登録＆キング直進モード化
-    for (let i = beforeLen; i < entities.length; i++) {
-      const ent = entities[i];
-      ent.isGift = true;
-      ent.giftOwner = 'あなた';
-      // キング狙い強制: 射程内の敵には反撃しつつ、最寄り敵キングへ直進
-      ent.forceKing = true;
-      activeGifts.push({
-        entity: ent, cardId, def,
-        ownerStreamer: owner.streamerName || ('Player' + owner.id),
-        dead: false, announcedAttack: false, announcedTowerHit: false
-      });
-    }
-  }
-
-  // 配置地点名を推定（位置から簡易表示）
-  const locName = describeLocation(placeX, placeZ, owner);
-
-  // 金色フラッシュ
-  giftFlashEffect(placeX, placeZ);
-
-  // チャット欄で実況
-  addStreamChatMessage('あなた', `🎁 ${def.icon} ${def.name} を ${locName} に投入！ (${owner.streamerName || 'Player'+owner.id}の援軍)`, 'own');
-  showSuperChatFromUser('あなた', def);
-  // 視聴者リアクション
-  setTimeout(() => {
-    const reactions = [`${def.name}きたー！`, 'ナイス投げ銭！', 'ここで援軍神！', 'うおおお', 'あなたさん熱いぜ'];
-    addStreamChatMessage(pickRandom(VIEWER_NAMES), pickRandom(reactions), 'cheer');
-  }, 500 + Math.random() * 700);
-
-  cancelGiftPlacement();
-}
-
-// 配置キャンセル（ESC、他カード選択、モード終了時）
-function cancelGiftPlacement() {
-  if (giftGhostMesh && scene) {
-    scene.remove(giftGhostMesh);
-  }
-  giftGhostMesh = null;
-  giftPlacementMode = false;
-  giftPlacementCardId = null;
-  const banner = document.getElementById('gift-placement-banner');
-  if (banner) banner.style.display = 'none';
-}
-
-// 位置から場所の名前を推定（簡易）
-function describeLocation(x, z, nearPlayer) {
-  if (nearPlayer && nearPlayer.kingTower) {
-    const dx = x - nearPlayer.kingTower.mesh.position.x;
-    const dz = z - nearPlayer.kingTower.mesh.position.z;
-    const dist = Math.sqrt(dx * dx + dz * dz);
-    if (dist < 80) return `${nearPlayer.streamerName || 'Player'+nearPlayer.id}の拠点付近`;
-    if (dist < 200) return `${nearPlayer.streamerName || 'Player'+nearPlayer.id}の前線`;
-    return '前線の中央エリア';
-  }
-  return 'マップ中央';
-}
-
-// 金色フラッシュ（画面上の該当座標へ）
-function giftFlashEffect(worldX, worldZ) {
-  if (!camera) return;
-  const vec = new THREE.Vector3(worldX, 10, worldZ);
-  vec.project(camera);
-  const sx = (vec.x * 0.5 + 0.5) * window.innerWidth;
-  const sy = (-vec.y * 0.5 + 0.5) * window.innerHeight;
-  const el = document.createElement('div');
-  el.className = 'gift-flash-overlay';
-  el.style.setProperty('--fx', sx + 'px');
-  el.style.setProperty('--fy', sy + 'px');
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 800);
-
-  // ワールド空間の金色オーラ（一瞬）
-  try {
-    const light = new THREE.PointLight(0xffd966, 3, 200);
-    light.position.set(worldX, 30, worldZ);
-    scene.add(light);
-    let t = 0;
-    const fade = () => {
-      t += 0.05;
-      light.intensity = 3 * (1 - t);
-      if (t < 1) requestAnimationFrame(fade);
-      else scene.remove(light);
-    };
-    fade();
-  } catch(e) {}
-}
-
-// ギフト状態を毎フレーム更新：チャット欄に進捗実況
-function updateGiftTracker(dt) {
-  if (activeGifts.length === 0) return;
-  for (let i = activeGifts.length - 1; i >= 0; i--) {
-    const g = activeGifts[i];
-    const ent = g.entity;
-    if (g.dead) {
-      // 10秒以上前に死亡したものはリストから削除
-      if (performance.now() - (g.deathTime || 0) > 10000) activeGifts.splice(i, 1);
-      continue;
-    }
-    if (!ent || ent.hp <= 0 || !entities.includes(ent)) {
-      g.dead = true;
-      g.deathTime = performance.now();
-      addStreamChatMessage('実況', `☠ あなたの ${g.def.icon} ${g.def.name} が撃破された...`, 'system-event');
-      // 視聴者反応
-      setTimeout(() => {
-        const react = ['おしかった！', 'まだまだ！', 'ドンマイあなたさん', '次いこ次', '😭'];
-        addStreamChatMessage(pickRandom(VIEWER_NAMES), pickRandom(react), 'cheer');
-      }, 400 + Math.random() * 600);
-      continue;
-    }
-    // 初回攻撃検知
-    if (!g.announcedAttack && ent.target) {
-      g.announcedAttack = true;
-      const tgt = ent.target;
-      let tname;
-      if (tgt.isKing) tname = '敵キングタワー';
-      else if (tgt.def) tname = `敵の${tgt.def.name}`;
-      else tname = '敵タワー';
-      addStreamChatMessage('実況', `⚔ あなたの ${g.def.icon} ${g.def.name} が ${tname} に接敵！`, 'system-event');
-    }
-    // HP瀕死の警告（1回だけ）
-    if (!g.announcedLowHp && ent.hp / ent.maxHp < 0.3) {
-      g.announcedLowHp = true;
-      addStreamChatMessage('実況', `⚠ ${g.def.icon} ${g.def.name} HP残り${Math.round(ent.hp/ent.maxHp*100)}%！`, 'system-event');
-    }
-  }
-}
-
-// スーパーチャット風ポップアップ（ユーザー送信版）
-function showSuperChatFromUser(userName, def) {
-  const container = document.getElementById('super-chat-container');
-  if (!container) return;
-  const el = document.createElement('div');
-  el.className = 'super-chat';
-  el.innerHTML = `
-    <div class="sc-name">${userName} さんから</div>
-    <div class="sc-amount">🎁 ${def.icon} ${def.name} ￥0</div>
-    <div class="sc-msg">応援してるよ！</div>
-  `;
-  container.appendChild(el);
-  setTimeout(() => el.classList.add('fading'), 5000);
-  setTimeout(() => el.remove(), 5600);
-}
+// ギフト関連関数 — Phase6で削除済み
+function updateGiftTracker() {} // スタブ
+let giftPlacementMode = false; // スタブ変数
 
 // 視聴者モードON
 function enterSpectatorMode() {
