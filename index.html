@@ -755,7 +755,6 @@ canvas { display: block; }
 }
 
 /* Top-Center: Match Timer / Alive Count — 存在感強化版 */
-#timer-bar { display: none; }
 #crown-display {
   position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 20px;
@@ -3210,25 +3209,8 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
 
 <!-- HUD -->
 <div id="hud">
-  <div id="timer-bar" style="display:none"></div>
-  <!-- 統合HUD: 上部中央にウェーブ情報・時間・キルをまとめる -->
-  <div id="wave-top-hud" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:200;pointer-events:none;display:flex;align-items:center;gap:12px;background:rgba(0,0,0,0.75);border:2px solid rgba(255,215,0,0.4);border-radius:14px;padding:8px 20px;min-width:320px;">
-    <div style="flex:1;text-align:center;">
-      <div id="cd-timer" style="color:#fff;font-size:14px;font-weight:bold;letter-spacing:1px;">🌅 Day 1  00:00</div>
-      <div id="wave-info" style="display:none;margin-top:6px;">
-        <div id="wave-info-label" style="color:#ffd700;font-size:13px;font-weight:bold;margin-bottom:4px;">🐉 ドラゴン襲来</div>
-        <div style="background:rgba(255,255,255,0.15);border-radius:6px;height:10px;overflow:hidden;">
-          <div id="wave-progress-bar" style="height:100%;background:linear-gradient(90deg,#ff4422,#ffd700);border-radius:6px;transition:width 0.3s;width:0%;"></div>
-        </div>
-      </div>
-      <div id="wave-number" style="display:none;color:#ff6b6b;font-size:13px;font-weight:bold;margin-top:4px;"></div>
-    </div>
-    <div style="width:1px;height:30px;background:rgba(255,255,255,0.2);"></div>
-    <div style="text-align:center;min-width:50px;">
-      <div class="cd-kills-num" id="cd-kills-num" style="color:#ffd700;font-size:20px;font-weight:bold;">0</div>
-      <div style="color:rgba(255,255,255,0.6);font-size:10px;">Kills</div>
-    </div>
-  </div>
+  <!-- (旧 #timer-bar / #wave-top-hud / #wave-info / #wave-number 削除済み 2026-04-10
+       常時稼働ワールドへの移行に伴い旧ウェーブ制HUDを撤去) -->
   <div id="crown-display" style="display:none"></div>
   <div id="overtime-banner">⚡ SUDDEN DEATH ⚡</div>
   <div id="faction-scoreboard"></div>
@@ -3890,17 +3872,11 @@ body.ui-spec .hp-bar-container.player-hp .queen-level {
 }
 
 /* ============================================================
-   CONTINUOUS WORLD MODE — Wave/Day HUD を完全撤廃
+   CONTINUOUS WORLD MODE — 旧Wave HUD関連要素はDOM削除済み
+   postgame-screenだけは勝敗時のコード経路に名残があるため
+   常時稼働ワールドでは非表示にしておく
    ============================================================ */
-body.continuous-world #wave-top-hud,
-body.continuous-world #wave-info,
-body.continuous-world #wave-number,
-body.continuous-world #cd-timer,
-body.continuous-world #timer-bar,
-body.continuous-world #postgame-screen {
-  display: none !important;
-}
-/* リザルトバナー・リザルト系もすべて隠す */
+body.continuous-world #postgame-screen,
 body.continuous-world #postgame-screen.visible {
   display: none !important;
 }
@@ -5367,15 +5343,31 @@ let matchGDPSpent = 0; // 試合で使ったGDP合計
 let isOvertime = false;
 
 // ============================================================
-// CONTINUOUS WORLD MODE — 配信撤廃・24h稼働ワールド
+// 🌍 CORE: CONTINUOUS WORLD — 常時稼働ワールド（現役・唯一のモード）
 // ============================================================
-// true にすると：Wave/Day の HUD を隠し、リザルト画面なし、
-// ドラゴンは絶え間なく襲来し続け、キング死亡でもゲームは終わらない。
-// ダイブ思想の実証用ショーケース。
-const CONTINUOUS_WORLD_MODE = true;
+// Wave/Day の HUD は出さず、リザルト画面なし、ドラゴンは絶え間なく
+// 襲来し続け、キング死亡でもゲームは終わらない。ダイバーはいつでも
+// 介入可能。
+//
+// 以前はこれをフラグで切り替えていたが、最終仕様として固定化した。
+//   (旧フラグ: CONTINUOUS_WORLD_MODE — 2026-04-10 削除)
+//
+// ── SYSTEM MAP ──
+//   🌍 CORE (現役)
+//     - Continuous World（このセクション）
+//     - Wave Spawn Timing（下）
+//     - Dragon Entrance（呂布登場演出、下方）
+//     - Diver Card System（ダイバーの介入、下方）
+//     - Saved By Banner（救済演出、下方）
+//     - Multi-Faction Bot AI（ボットAI、現役）
+//   💤 DORMANT (復活予定、フラグで休眠)
+//     - Raid Boss System        (RAID_SYSTEM_ENABLED = false)
+//     - Live Stream / Gift       (STREAM_MODE_ENABLED = false)
+// ============================================================
 
 // ============================================================
-// WAVE DEFENSE SYSTEM — ウェーブ制タワーディフェンス
+// WAVE SPAWN TIMING — 内部的にはWAVE/INTERVALを用いてドラゴンの
+// 襲来タイミングを制御している（UIは出さない）
 // ============================================================
 let currentWave = 0;
 let maxWaves = 10; // オプション画面で設定可能
@@ -5534,8 +5526,15 @@ let raidTimer = 20;
 let raidCount = 0;
 
 // ============================================================
-// LIVE STREAM MODE - 配信者モード & 視聴者モード
+// 💤 DORMANT: LIVE STREAM / SUPER CHAT / GIFT SYSTEM
 // ============================================================
+// 配信者モード・視聴者モード・スパチャ・ギフトの一連の仕組み。
+// 「投げ銭→物理介入」は将来復活予定だが、いったん休眠。
+// ドラマ性の演出だけ別途diverシステムに置き換えている。
+// 復活させるには STREAM_MODE_ENABLED = true にする。
+// ============================================================
+const STREAM_MODE_ENABLED = false;
+
 // streamMode: 'off' | 'streamer' (自分が配信者) | 'viewer' (自分が視聴者)
 let streamMode = 'off';
 let isSpectator = false; // 視聴者モードか
@@ -5647,6 +5646,17 @@ function updateDiverUI() {
   `;
   panel.style.display = 'block';
 }
+
+// ============================================================
+// 💤 DORMANT: RAID BOSS SYSTEM — 予兆→ボス襲来
+// ============================================================
+// 以前実装された「予兆ビーコン→10秒後にボスが出現」のシステム。
+// 現在はドラゴン襲来システムとの統合検討中のため休眠させている。
+// 復活させるには RAID_SYSTEM_ENABLED = true にするだけでよい。
+// （関連関数: startRaidWarning / finalizeRaidSpawn / executeBossAbility
+//   / updateRaidSystem / createRaidBeacon / removeRaidBeacon）
+// ============================================================
+const RAID_SYSTEM_ENABLED = false;
 
 // 襲来予兆システム: {factionId, raid, spawner, countdown, beacon}
 let raidWarning = null;
@@ -9368,15 +9378,7 @@ function updateHUD() {
   updateGDPDisplay();
 
   // crown-display: ワールド時間表示（Day N + HH:MM）
-  const cdTimerEl = document.getElementById('cd-timer');
-  if (cdTimerEl) {
-    const info = getWorldDayInfo();
-    const hh = String(info.hour).padStart(2, '0');
-    const mm = String(info.minute).padStart(2, '0');
-    cdTimerEl.textContent = `${info.icon} Day ${info.dayIdx}  ${hh}:${mm}`;
-  }
-  const cdKillsNum = document.getElementById('cd-kills-num');
-  if (cdKillsNum) cdKillsNum.textContent = humanPlayer ? humanPlayer.kills : 0;
+  // (旧ウェーブHUD: cd-timer / cd-kills-num への書き込みはDOM削除につき撤去)
   const otBanner = document.getElementById('overtime-banner');
   if (otBanner) otBanner.classList.toggle('visible', false);
 
@@ -9939,26 +9941,24 @@ function spawnWave(waveNum) {
     if (d) spawned.push(d);
   });
 
-  // 呂布登場演出: リーダードラゴンに強制カメラ＋画面揺れ＋バナー（常時稼働モード時）
-  if (CONTINUOUS_WORLD_MODE && spawned.length > 0) {
+  // 呂布登場演出: リーダードラゴンに強制カメラ＋画面揺れ＋バナー
+  if (spawned.length > 0) {
     playDragonEntrance(spawned[0], factionData);
   } else {
     // ウェーブ開始実況（従来モード）
     speakKabira(`${factionData.icon}${factionData.name}のドラゴン軍団が襲来！`);
   }
-
-  const waveInfo = document.getElementById('wave-info');
-  if (waveInfo) waveInfo.style.display = 'none';
 }
 
 // ============================================================
-// DRAGON ENTRANCE — 呂布登場演出
+// 🌍 CORE: DRAGON ENTRANCE — 呂布登場演出
 // ============================================================
 // 常時稼働ワールドで「絶望の予兆」を物理的に伝えるための演出
 // - 強制的にカメラでドラゴンを捉える（何してても）
+// - 3秒かけて360度オービット（引きで全体像を見せる）
 // - 画面揺れ
 // - ドラゴンの称号バナー
-// - 低音SE
+// - WebAudio製の低音SE
 let _dragonEntrance = null; // { dragon, elapsed, duration, savedCam }
 
 function playDragonEntrance(dragon, factionData) {
@@ -10036,10 +10036,11 @@ function updateDragonEntrance(dt) {
 }
 
 // ============================================================
-// DIVER CARD SYSTEM — ダイバーの介入カード
+// 🌍 CORE: DIVER CARD SYSTEM — ダイバーの介入カード
 // ============================================================
 // 最小実装: 砲台設置（cannon）のみ
 // フロー: カードクリック → ゴースト出現 → マウス位置追従 → クリックで設置
+// 関連UI: #diver-hud / #diver-card-zone / #diver-char-select
 let _diverPlacementActive = false;
 let _diverPlacementAbility = null;
 const _diverCardCooldowns = { cannon: 0 };
@@ -10048,7 +10049,7 @@ let _diverChar = 'mage'; // 'mage' or 'sage'
 let _diverCharSelected = false;
 
 window.selectDiverCard = function(ability) {
-  if (!CONTINUOUS_WORLD_MODE || !isSpectator) return;
+  if (!isSpectator) return;
   if (_diverPlacementActive && _diverPlacementAbility === ability) {
     // Toggle off
     cancelDiverPlacement();
@@ -10231,10 +10232,11 @@ function updateDiverWarningBanner() {
 }
 
 // ============================================================
-// SAVED BY BANNER — ドラゴン撃破時の救済演出
+// 🌍 CORE: SAVED BY BANNER — ドラゴン撃破時の救済演出
 // ============================================================
 // ドラゴンを落とした貢献者の名前を大きく表示
 // （人間プレイヤー = "YOU" / ダイバー = キャラ名 / BOT = 配信者名）
+// カメラパンチ（10%ズームイン）＋画面揺れ＋2.7秒表示
 let _savedByBannerTimer = 0;
 function showSavedByBanner(dragon) {
   if (!dragon) return;
@@ -10786,8 +10788,8 @@ function updateEntities(dt) {
 
     // Dead check
     if (e.hp <= 0) {
-      // 常時稼働モード × ドラゴン: SAVED BY テロップ演出
-      if (CONTINUOUS_WORLD_MODE && e.isDragon && !e._savedByShown) {
+      // ドラゴン撃破時: SAVED BY テロップ演出
+      if (e.isDragon && !e._savedByShown) {
         e._savedByShown = true;
         try { showSavedByBanner(e); } catch(_) {}
       }
@@ -11668,6 +11670,7 @@ function removeRaidBeacon(beacon) {
 
 // 予兆フェーズ開始：対象を抽選し、光柱と警告バナーを表示
 function startRaidWarning() {
+  if (!RAID_SYSTEM_ENABLED) return; // 💤 DORMANT
   // Pick a random alive faction to be attacked
   const aliveFactions = FACTION_IDS.filter(fid => {
     return players.some(p => p.faction === fid && !p.eliminated && p.kingTower && !p.kingTower.destroyed);
@@ -11925,6 +11928,9 @@ function despawnBoss(bossEntity) {
 }
 
 function updateRaidSystem(dt) {
+  // 💤 休眠中: 予兆→ボス襲来システムはドラゴン襲来システムと統合検討中。
+  // 復活させるには RAID_SYSTEM_ENABLED = true にする。
+  if (!RAID_SYSTEM_ENABLED) return;
   if (gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL') return;
 
   // 予兆中：カウントダウン
@@ -12131,8 +12137,11 @@ function updateStreamToasts(dt) {
 }
 
 function updateStreamMode(dt) {
-  // ダイバーランク更新（観戦者のみ）
+  // ダイバーランク更新（観戦者のみ）— 現役につき必ず呼ぶ
   updateDiverRank(dt);
+
+  // 💤 以降は配信者/視聴者モードの旧UI更新。将来復活予定。
+  if (!STREAM_MODE_ENABLED) return;
 
   if (streamMode === 'off') {
     updateViewerBadges(); // クリア用に呼ぶ
@@ -13844,10 +13853,10 @@ function enterSpectatorMode() {
   const _hostOv = document.getElementById('net-host-overlay'); if (_hostOv) _hostOv.style.display = 'none';
   focusSpectatedPlayer();
   addCommentary('🎮 ダイバー、戦場にダイブ！', 'system');
-  // 常時稼働モード: 初回のみキャラ選択モーダルを出す
-  if (CONTINUOUS_WORLD_MODE && !_diverCharSelected) {
+  // 初回のみキャラ選択モーダルを出す（以降はlocalStorage保持）
+  if (!_diverCharSelected) {
     setTimeout(() => { try { window.openDiverCharSelect(); } catch(_) {} }, 400);
-  } else if (CONTINUOUS_WORLD_MODE && _diverCharSelected) {
+  } else {
     // 前回の選択を UI に反映
     try { window.selectDiverChar(_diverChar); } catch(_) {}
   }
@@ -14910,19 +14919,17 @@ window.startBattle = function() {
   initPlayerDeck();
   updateHUD();
 
-  // 常時稼働ワールドモード: body にクラスを付与して Wave/Day HUD を非表示化
-  if (CONTINUOUS_WORLD_MODE) {
-    document.body.classList.add('continuous-world');
-  }
+  // 常時稼働ワールド: body にクラスを付与して旧HUDを非表示化
+  document.body.classList.add('continuous-world');
 
-  // ウェーブ制: BUILD（育成）フェーズから開始
+  // BUILD（育成）フェーズから開始
   gameState = 'BUILD';
   currentWave = 0;
   waveEnemies = [];
   playerArmy = [];
   intervalTimer = 0;
-  // 常時稼働モード: 最初のドラゴンは短い猶予後に到来（見せ場は登場演出に任せる）
-  dragonCountdownTimer = CONTINUOUS_WORLD_MODE ? 8 : DRAGON_COUNTDOWN;
+  // 最初のドラゴンは短い猶予後に到来（見せ場は登場演出に任せる）
+  dragonCountdownTimer = 8;
   battleSaveTimer = 30; // 自動セーブタイマーリセット
   resetQueenLevel();
   resetFactionLevels();
@@ -15846,7 +15853,7 @@ function updateGame(dt) {
     updateKingMovement(dt);
     updateGhostPosition();
     // ダイバー介入: BUILD中もゴースト追従を有効に
-    if (CONTINUOUS_WORLD_MODE && isSpectator) {
+    if (isSpectator) {
       try { updateDiverGhost(); } catch(_) {}
       try { updateDiverCooldowns(dt); } catch(_) {}
       try { updateDiverWarningBanner(); } catch(_) {}
@@ -15857,19 +15864,8 @@ function updateGame(dt) {
     updateCommentary(dt);
     try { updateQueenAuraAnimation(dt); } catch(e) {}
     if (frameCount % 15 === 0) renderHand();
-    // ドラゴン襲来カウントダウン
+    // ドラゴン襲来カウントダウン（UIは出さない、内部的に時間を進めるだけ）
     dragonCountdownTimer -= dt;
-    if (!CONTINUOUS_WORLD_MODE) {
-      const waveInfo = document.getElementById('wave-info');
-      if (waveInfo) {
-        waveInfo.style.display = 'block';
-        const label = document.getElementById('wave-info-label');
-        const bar = document.getElementById('wave-progress-bar');
-        const pct = Math.min(100, ((DRAGON_COUNTDOWN - dragonCountdownTimer) / DRAGON_COUNTDOWN) * 100);
-        if (label) label.textContent = `🐉 ドラゴン襲来`;
-        if (bar) bar.style.width = pct + '%';
-      }
-    }
     if (dragonCountdownTimer <= 0) {
       startFirstWave();
       return;
@@ -15882,42 +15878,21 @@ function updateGame(dt) {
     return;
   }
 
-  // WAVE: ドラゴン襲来中
+  // WAVE: ドラゴン襲来中（UIは出さず、内部的に襲来サイクルを回す）
   if (gameState === 'WAVE' || gameState === 'INTERVAL') {
-    // ウェーブ番号表示（常時稼働モードでは抑制）
-    if (!CONTINUOUS_WORLD_MODE) {
-      const waveNumEl = document.getElementById('wave-number');
-      const waveInfoEl = document.getElementById('wave-info');
-      if (gameState === 'WAVE') {
-        if (waveInfoEl) waveInfoEl.style.display = 'none';
-        if (waveNumEl) { waveNumEl.style.display = 'block'; waveNumEl.textContent = `🐉 残り ${waveEnemies.filter(e => e.hp > 0).length}体`; }
-      }
-    }
-    // ウェーブクリア判定 — 終わりなし、ここで生きる
+    // ウェーブクリア判定 — 終わりなし、切れ目なく次へ
     waveEnemies = waveEnemies.filter(e => e.hp > 0);
     if (waveEnemies.length === 0 && currentWave > 0 && gameState === 'WAVE') {
-      // 次ウェーブへのインターバル（無限継続）
+      // 次ウェーブへのインターバル（極短で切れ目を感じさせない）
       gameState = 'INTERVAL';
-      // 常時稼働モードでは間を極短に（切れ目を感じさせない）
-      intervalTimer = CONTINUOUS_WORLD_MODE ? 3 : INTERVAL_DURATION;
-      // 常時稼働モード中は総括ポップアップを出さない（体験を切らない）
-      if (!CONTINUOUS_WORLD_MODE) {
-        showWaveClearReport();
-      }
+      intervalTimer = 3;
       return;
     }
 
-    // キングタワー全滅チェック
+    // キングタワー全滅チェック: RESULT画面を出さずリスポーンシーケンスに任せる
     if (humanPlayer && humanPlayer.eliminated) {
-      if (CONTINUOUS_WORLD_MODE) {
-        // 常時稼働モード: RESULT 画面を出さず、リスポーンシーケンスに任せる
-        if (playerRespawnTimer <= 0) {
-          handlePlayerDeath();
-        }
-      } else {
-        gameState = 'RESULT';
-        endMatch(false); // 敗北
-        return;
+      if (playerRespawnTimer <= 0) {
+        handlePlayerDeath();
       }
     }
   }
@@ -15925,20 +15900,6 @@ function updateGame(dt) {
   // INTERVAL: ウェーブ間休憩
   if (gameState === 'INTERVAL') {
     intervalTimer -= dt;
-    // インターバル中のUI更新（常時稼働モードでは抑制）
-    if (!CONTINUOUS_WORLD_MODE) {
-      const waveNumEl2 = document.getElementById('wave-number');
-      if (waveNumEl2) waveNumEl2.style.display = 'none';
-      const waveInfo = document.getElementById('wave-info');
-      if (waveInfo) {
-        waveInfo.style.display = 'block';
-        const label = document.getElementById('wave-info-label');
-        const bar = document.getElementById('wave-progress-bar');
-        const pct = Math.min(100, ((10 - intervalTimer) / 10) * 100);
-        if (label) label.textContent = `🐉 次のドラゴン襲来`;
-        if (bar) bar.style.width = pct + '%';
-      }
-    }
     if (intervalTimer <= 0) {
       // 次ウェーブ開始
       currentWave++;
@@ -15971,7 +15932,7 @@ function updateGame(dt) {
   updateKingMovement(dt);
   updateGhostPosition();
   // ダイバー介入: ゴースト追従 + クールダウン + 警告バナー
-  if (CONTINUOUS_WORLD_MODE && isSpectator) {
+  if (isSpectator) {
     try { updateDiverGhost(); } catch(_) {}
     try { updateDiverCooldowns(dt); } catch(_) {}
     try { updateDiverWarningBanner(); } catch(_) {}
