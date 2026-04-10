@@ -3837,6 +3837,12 @@ body.ui-spec #placing-dim-overlay {
 /* 観戦時もミニマップを上部に強制表示 */
 body.ui-spec #minimap { display: block !important; }
 
+/* ダイバー視点: 自分のキング頭上の「あなた」ラベルとLv.1/XPバッジは隠す（HPバーは残す） */
+body.ui-spec .hp-bar-container.player-hp .hp-bar-label,
+body.ui-spec .hp-bar-container.player-hp .queen-level {
+  display: none !important;
+}
+
 /* spectator-list は左側フル活用（victory-progress の下に配置） */
 body.ui-spec #spectator-list {
   left: 14px;
@@ -5952,7 +5958,7 @@ let isRightMouseDown = false;
 // 観戦用見下ろしカメラ（Trials of Midgard風）
 let specCamX = 0;         // 注視点X
 let specCamZ = 0;         // 注視点Z
-let specCamHeight = 350;  // カメラ高さ
+let specCamHeight = 500;  // カメラ高さ（ダイバー俯瞰初期値）
 let specCamAngle = 0.95;  // 俯角（ラジアン, ~55度）
 let specCamYaw = 0;       // 水平回転
 const SPEC_CAM_HEIGHT_MIN = 150;
@@ -10452,7 +10458,9 @@ function updateHPBarPosition(entity) {
   // FBXモデルはfbxHeight分の高さがある → 頭上に表示
   const fbxH = (entity.mesh && entity.mesh.userData && entity.mesh.userData.fbxHeight) ? entity.mesh.userData.fbxHeight : 0;
   const isDragon = entity.isDragon;
-  const hpBarYOffset = isPlayerTower ? 38 : isQueen ? 38 : isDragon ? 30 : (fbxH > 0 ? fbxH + 8 : 15);
+  // ダイバーモードはカメラが遠い → プレイヤーキングHPバーを頭ぎりぎりに寄せて浮遊感を消す
+  const playerTowerOffset = isSpectator ? 22 : 38;
+  const hpBarYOffset = isPlayerTower ? playerTowerOffset : isQueen ? 38 : isDragon ? 30 : (fbxH > 0 ? fbxH + 8 : 15);
   _hpBarVec.set(ex, ey + hpBarYOffset, ez);
   _hpBarVec.project(camera);
 
@@ -14089,6 +14097,9 @@ window.startBattle = function() {
   document.getElementById('title-screen').style.display = 'none';
   document.getElementById('deck-screen').style.display = 'none';
   { const _pg = document.getElementById('postgame-screen'); _pg.style.display = 'none'; _pg.classList.remove('visible', 'win', 'lose'); }
+  // チュートリアルの残骸を消す（前セッションが途中だった場合のデグレ対策）
+  { const _to = document.getElementById('tutorial-overlay'); if (_to) _to.classList.remove('visible'); }
+  { const _tg = document.getElementById('tutorial-guide'); if (_tg) _tg.classList.remove('show'); }
 
   // Show HUD
   document.getElementById('hud').style.display = 'block';
@@ -14177,6 +14188,8 @@ function assignStreamerNames() {
 
 window.backToMenu = function() {
   { const _pg = document.getElementById('postgame-screen'); _pg.style.display = 'none'; _pg.classList.remove('visible', 'win', 'lose'); }
+  { const _to = document.getElementById('tutorial-overlay'); if (_to) _to.classList.remove('visible'); }
+  { const _tg = document.getElementById('tutorial-guide'); if (_tg) _tg.classList.remove('show'); }
   document.getElementById('title-screen').style.display = 'flex';
   document.getElementById('card-hand').classList.remove('visible');
   document.getElementById('battle-dock').style.display = 'none';
