@@ -9980,7 +9980,8 @@ function playDragonEntrance(dragon, factionData) {
   _dragonEntrance = {
     dragon: dragon,
     elapsed: 0,
-    duration: 2.0, // 秒
+    duration: 3.0, // 秒 — 360度ぐるっと回せる長さ
+    scale: def.scale || 1,
     mainText: t.title,
     subText: `${facLabel} ${t.sub}`,
   };
@@ -10010,18 +10011,21 @@ function updateDragonEntrance(dt) {
     _dragonEntrance = null;
     return false;
   }
-  // カメラ制御: ドラゴンを舐めるような低角度ショット
+  // カメラ制御: 引きで360度オービット、ドラゴン全体像を見せる
   const dm = e.dragon.mesh.position;
   const progress = e.elapsed / e.duration;
-  // 時間と共にゆっくりオービットする
-  const orbitAngle = progress * Math.PI * 0.4;
-  const dist = 90 + (1 - progress) * 40;
+  // 0 → 1 にかけてぐるっと一周（360度）
+  const orbitAngle = progress * Math.PI * 2;
+  // 巨大な個体ほど距離を取る（elder は 1.6倍 → 距離も広がる）
+  const dist = 180 * Math.max(1, e.scale || 1);
+  // 少し俯瞰気味で全身シルエットが分かる高さ
+  const camY = dm.y + 70;
   const camX = dm.x + Math.cos(orbitAngle) * dist;
-  const camY = dm.y + 45 + Math.sin(progress * Math.PI) * 15;
   const camZ = dm.z + Math.sin(orbitAngle) * dist;
   if (typeof camera !== 'undefined' && camera) {
     camera.position.set(camX, camY, camZ);
-    camera.lookAt(dm.x, dm.y + 15, dm.z);
+    // ドラゴン中心（胴体あたり）を見る
+    camera.lookAt(dm.x, dm.y + 10, dm.z);
   }
   // 終了
   if (e.elapsed >= e.duration) {
