@@ -3325,24 +3325,12 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
 
 <!-- Spectator Lobby (入室前の設定画面) -->
 <div id="spectator-lobby">
-  <h1>📺 観戦モード</h1>
-  <div class="sub">お気に入りの配信者を応援しよう。ユニットギフトで戦況を動かせる！</div>
-
-  <div class="lobby-section">
-    <div class="lobby-section-title">① あなたの所属国を選ぶ</div>
-    <div class="lobby-faction-row" id="lobby-faction-row">
-      <button class="lobby-faction-btn fire" data-faction="fire"><span class="fi">🔥</span>火の国</button>
-      <button class="lobby-faction-btn ice" data-faction="ice"><span class="fi">❄️</span>氷の国</button>
-      <button class="lobby-faction-btn earth" data-faction="earth"><span class="fi">🌿</span>土の国</button>
-    </div>
-    <div style="font-size:11px; color:#999; text-align:center; margin-top:8px;">※ ギフトは自国の配信者の味方として送られます（バトル中も変更OK）</div>
-  </div>
-
-  <!-- ギフトデッキはPhase6で削除済み -->
+  <h1>🎮 ダイバーモード</h1>
+  <div class="sub">戦場にダイブして王国を支援しよう。滞在時間でランクアップ！</div>
 
   <div class="lobby-btn-row">
     <button class="lobby-btn secondary" onclick="window.closeSpectatorLobby()">← 戻る</button>
-    <button class="lobby-btn big" onclick="window.confirmSpectatorLobby()">📺 観戦開始</button>
+    <button class="lobby-btn big" onclick="window.confirmSpectatorLobby()">🎮 ダイブ開始</button>
   </div>
 </div>
 
@@ -4102,8 +4090,8 @@ body.ui-stream #now-live-overlay { display: none !important; }
   justify-content:center; align-items:center;">
   <div style="background:rgba(20,20,40,0.95); border:1px solid rgba(160,96,255,0.4);
     border-radius:16px; padding:36px; text-align:center; max-width:440px; width:90%;">
-    <div style="font-size:32px; margin-bottom:8px;">📺</div>
-    <h2 style="color:#fff; margin:0 0 20px 0; font-size:22px;">観戦で参加</h2>
+    <div style="font-size:32px; margin-bottom:8px;">🎮</div>
+    <h2 style="color:#fff; margin:0 0 20px 0; font-size:22px;">ダイバーで参加</h2>
 
     <!-- モード選択タブ -->
     <div id="spec-mode-tabs" style="display:flex; gap:8px; margin-bottom:20px;">
@@ -4112,7 +4100,7 @@ body.ui-stream #now-live-overlay { display: none !important; }
         border-radius:8px; cursor:pointer; font-weight:bold;">🌐 ルームに接続</button>
       <button id="spec-tab-local" onclick="window.switchSpecTab('local')" style="flex:1; padding:10px 0; font-size:14px;
         background:rgba(255,255,255,0.1); color:#ccc; border:1px solid rgba(255,255,255,0.2);
-        border-radius:8px; cursor:pointer;">📺 AI対戦を観戦</button>
+        border-radius:8px; cursor:pointer;">🎮 シングルプレイにダイブ</button>
     </div>
 
     <!-- ネット観戦パネル -->
@@ -4130,20 +4118,17 @@ body.ui-stream #now-live-overlay { display: none !important; }
       </div>
     </div>
 
-    <!-- ローカル観戦パネル -->
+    <!-- ローカルダイブパネル -->
     <div id="spec-panel-local" style="display:none;">
-      <p style="color:#aaa; font-size:13px; margin:0 0 16px 0;">AI同士の3国対戦をリアルタイム観戦</p>
+      <p style="color:#aaa; font-size:13px; margin:0 0 16px 0;">シングルプレイの戦場にダイバーとして参加</p>
       <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin:16px 0;">
-        <span style="font-size:36px;">🔥</span>
-        <span style="color:#666; font-size:20px;">vs</span>
-        <span style="font-size:36px;">❄️</span>
-        <span style="color:#666; font-size:20px;">vs</span>
-        <span style="font-size:36px;">🌿</span>
+        <span style="font-size:36px;">🎮</span>
+        <span style="color:#aaa; font-size:14px;">ランクアップで能力が解放！</span>
       </div>
       <div style="margin-top:16px;">
         <button onclick="document.getElementById('net-join-dialog').style.display='none'; window.startSpectatorMode()" style="padding:12px 28px; font-size:16px;
           background:linear-gradient(135deg,#3b6b3b,#50aa50); color:#fff; border:none;
-          border-radius:8px; cursor:pointer; font-weight:bold;">観戦開始</button>
+          border-radius:8px; cursor:pointer; font-weight:bold;">ダイブ開始</button>
       </div>
     </div>
 
@@ -11227,6 +11212,7 @@ let superChatTimer = 0;
 let viewerCount = 0;
 let viewerCountTarget = 0;
 const VIEWER_NAMES = [];
+const activeGifts = []; // Phase6削除済みスタブ
 
 // ============================================================
 // 視聴者の仮想分布: 総視聴者をBOT視点に分散割り振り
@@ -11942,6 +11928,8 @@ function updateChests(dt) {
 
   // Pickup check
   if (!playerKingTower || playerKingTower.destroyed) return;
+  // ダイバーモード中はチェスト拾得プロンプトを出さない
+  if (isSpectator || isNetSpectator) return;
   const kx = playerKingTower.mesh.position.x;
   const kz = playerKingTower.mesh.position.z;
 
@@ -13034,35 +13022,12 @@ window.startAsStreamer = function() {
 };
 
 // ============================================================
-// SPECTATOR LOBBY (視聴者の国選択 & ギフトデッキ確認)
+// DIVER LOBBY (ダイバーモードのロビー)
 // ============================================================
 function openSpectatorLobby() {
   const lobby = document.getElementById('spectator-lobby');
   if (!lobby) return;
-  // 保存されたデッキを復元
-  try {
-    const saved = JSON.parse(localStorage.getItem('cr3d_gift_deck') || 'null');
-    if (Array.isArray(saved) && saved.length === 6) spectatorGiftDeck = saved.filter(c => CARD_DEFS[c]).slice(0, 6);
-    const savedFac = localStorage.getItem('cr3d_spec_faction');
-    if (savedFac && FACTIONS[savedFac]) spectatorFaction = savedFac;
-  } catch(e) {}
   lobby.classList.add('visible');
-  renderLobbyFactionSelection();
-  renderLobbyGiftDeck();
-  // faction btn click
-  document.querySelectorAll('#lobby-faction-row .lobby-faction-btn').forEach(btn => {
-    btn.onclick = () => {
-      spectatorFaction = btn.dataset.faction;
-      localStorage.setItem('cr3d_spec_faction', spectatorFaction);
-      renderLobbyFactionSelection();
-    };
-  });
-}
-
-function renderLobbyFactionSelection() {
-  document.querySelectorAll('#lobby-faction-row .lobby-faction-btn').forEach(btn => {
-    btn.classList.toggle('selected', btn.dataset.faction === spectatorFaction);
-  });
 }
 
 window.closeSpectatorLobby = function() {
@@ -13070,11 +13035,8 @@ window.closeSpectatorLobby = function() {
 };
 
 window.confirmSpectatorLobby = function() {
-  localStorage.setItem('cr3d_gift_deck', JSON.stringify(spectatorGiftDeck));
-  localStorage.setItem('cr3d_spec_faction', spectatorFaction);
   document.getElementById('spectator-lobby').classList.remove('visible');
-  // 選択した国でバトル開始
-  selectedFaction = spectatorFaction;
+  // プレイヤーと同じ国でバトル開始（selectedFactionはキャラ選択で決定済み）
   window.startBattle();
   setTimeout(() => enterSpectatorMode(), 200);
 };
@@ -13101,18 +13063,17 @@ function enterSpectatorMode() {
   if (!players[0] || !players[0].streamerName) assignStreamerNames();
   // 配信者 = humanPlayerだったプレイヤー（デフォルト観戦対象）
   spectatedPlayerId = humanPlayer ? humanPlayer.id : 0;
-  // チャット欄・配信者リスト表示
-  enableStreamerMode(); // チャット欄を流用
-  // 観戦モード用レイアウトに切り替え（ui-stream を ui-spec で上書き）
+  // ダイバーモード用レイアウト
   document.body.classList.remove('ui-stream');
   document.body.classList.add('ui-spec');
-  document.getElementById('spectator-list').style.display = 'flex';
-  // 入力欄は視聴者モードでも出す
-  document.getElementById('stream-chat-input-wrap').style.display = 'flex';
-  renderSpectatorList();
+  // プレイヤーUIを確実に非表示（startBattleが表示した後なので再度消す）
+  const _bd = document.getElementById('battle-dock'); if (_bd) _bd.style.display = 'none';
+  const _invBtn = document.getElementById('inventory-toggle-btn'); if (_invBtn) _invBtn.style.display = 'none';
+  const _invPnl = document.getElementById('inventory-panel'); if (_invPnl) _invPnl.style.display = 'none';
+  // ホスト用ルームコード表示はダイバーモードでは非表示
+  const _hostOv = document.getElementById('net-host-overlay'); if (_hostOv) _hostOv.style.display = 'none';
   focusSpectatedPlayer();
-  showGiftPanel();
-  addCommentary('📺 観戦モード開始！ 左側から配信者を選べます（←/→キーでも切替可）。下のカードでギフトが送れます', 'system');
+  addCommentary('🎮 ダイバーモード開始！ 滞在時間でランクアップ、能力が解放されるぞ！', 'system');
 }
 
 // 配信者リストをレンダリング
@@ -13258,7 +13219,10 @@ function initHostNetworking() {
     console.log('[NET] Host ready, peer ID:', id);
     isNetHost = true;
     document.getElementById('net-room-code').textContent = roomCode;
-    document.getElementById('net-host-overlay').style.display = 'block';
+    // ダイバーモード中はホストUI非表示
+    if (!isSpectator && !isNetSpectator) {
+      document.getElementById('net-host-overlay').style.display = 'block';
+    }
     updateNetViewerCount();
   });
   peerInstance.on('connection', (conn) => {
@@ -13542,24 +13506,13 @@ function receiveHostState(data) {
         const human = alive.find(p => p.isHuman);
         setSpectatedPlayer(human ? human.id : alive[0].id);
       }
-      // 観戦UIを表示（ギフトパネル・配信者リスト・チャット）
+      // ダイバーモードUI
       document.body.classList.add('ui-spec');
-      try { enableStreamerMode(); } catch(_){}
-      try { document.getElementById('spectator-list').style.display = 'flex'; } catch(_){}
-      try { document.getElementById('stream-chat-input-wrap').style.display = 'flex'; } catch(_){}
-      try { renderSpectatorList(); } catch(_){}
+      // プレイヤーUIを確実に非表示
+      try { const _bd = document.getElementById('battle-dock'); if (_bd) _bd.style.display = 'none'; } catch(_){}
+      try { const _invBtn = document.getElementById('inventory-toggle-btn'); if (_invBtn) _invBtn.style.display = 'none'; } catch(_){}
       focusSpectatedPlayer();
-      // ギフトパネル表示（カード配置UI）
-      try {
-        // localStorageからギフトデッキを復元
-        const saved = JSON.parse(localStorage.getItem('cr3d_gift_deck') || 'null');
-        if (Array.isArray(saved) && saved.length > 0) {
-          spectatorGiftDeck = saved.filter(c => CARD_DEFS[c]).slice(0, 6);
-        }
-        showGiftPanel();
-      } catch(_){}
-      // 観戦中テキスト表示
-      addCommentary('🌐 観戦モードで接続しました！ ←→キーでプレイヤー切替 / 下のカードでユニット配置', 'fire');
+      addCommentary('🌐 ダイバーモードで接続完了！ 滞在時間でランクアップ、能力が解放されるぞ！', 'fire');
     }
   } catch(e) {
     console.error('[NET] State restore error:', e);
