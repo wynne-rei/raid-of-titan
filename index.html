@@ -15720,11 +15720,22 @@ function init() {
     const menuHeroes = titleScreen.querySelector('.menu-heroes');
     if (menuHeroes) menuHeroes.appendChild(loadingMsg);
   }
-  preloadFBXModels().then(() => {
-    console.log('[INIT] FBX models preloaded');
+  let fbxLoadDone = false;
+  const enableMenuButtons = () => {
+    if (fbxLoadDone) return;
+    fbxLoadDone = true;
     menuBtns.forEach(b => { b.style.opacity = '1'; b.style.pointerEvents = 'auto'; });
     const msg = document.getElementById('fbx-loading-msg');
     if (msg) msg.remove();
+  };
+  // 5秒タイムアウト: FBXロードが遅い/失敗してもボタンを有効化
+  setTimeout(enableMenuButtons, 5000);
+  preloadFBXModels().then(() => {
+    console.log('[INIT] FBX models preloaded');
+    enableMenuButtons();
+  }).catch((err) => {
+    console.error('[INIT] FBX preload error:', err);
+    enableMenuButtons();
   });
   animate();
   // Fallback for background tabs where rAF pauses
