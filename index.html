@@ -3155,22 +3155,18 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
       <div class="cs-card" data-char="queen" onclick="window.selectCharCard('queen')">
         <span class="cs-icon">👸</span>
         <div class="cs-name">美女</div>
-        <div class="cs-type">Queen</div>
       </div>
       <div class="cs-card" data-char="knight" onclick="window.selectCharCard('knight')">
         <span class="cs-icon">🤴</span>
         <div class="cs-name">イケメン</div>
-        <div class="cs-type">Knight Prince</div>
       </div>
       <div class="cs-card" data-char="dwarfFemale" onclick="window.selectCharCard('dwarfFemale')">
         <span class="cs-icon">⛏️</span>
         <div class="cs-name">女ドワーフ</div>
-        <div class="cs-type">Dwarf Lady</div>
       </div>
       <div class="cs-card" data-char="dwarfMale" onclick="window.selectCharCard('dwarfMale')">
         <span class="cs-icon">🪓</span>
         <div class="cs-name">男ドワーフ</div>
-        <div class="cs-type">Dwarf Lord</div>
       </div>
     </div>
     <div class="cs-preview" id="cs-preview">
@@ -3181,14 +3177,7 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
       <div class="cs-preview-body">
         <div class="cs-preview-portrait"><span class="cs-preview-icon">👤</span></div>
         <div class="cs-preview-name"></div>
-        <div class="cs-preview-type"></div>
         <div class="cs-preview-catch"></div>
-        <div class="cs-preview-desc"></div>
-        <div class="cs-preview-stats">
-          <div class="cs-stat"><span class="cs-stat-lbl">HP</span><div class="cs-stat-bar"><div class="cs-stat-fill" data-stat="hp"></div></div></div>
-          <div class="cs-stat"><span class="cs-stat-lbl">ATK</span><div class="cs-stat-bar"><div class="cs-stat-fill" data-stat="atk"></div></div></div>
-          <div class="cs-stat"><span class="cs-stat-lbl">SPD</span><div class="cs-stat-bar"><div class="cs-stat-fill" data-stat="spd"></div></div></div>
-        </div>
         <button class="cs-preview-confirm" id="char-confirm-btn" disabled onclick="window.confirmCharacter()">この者と共に戦う</button>
       </div>
     </div>
@@ -14887,12 +14876,7 @@ window.selectCharCard = function(charType) {
     preview.classList.add('has-pick');
     preview.querySelector('.cs-preview-icon').textContent = data.icon;
     preview.querySelector('.cs-preview-name').textContent = data.name;
-    preview.querySelector('.cs-preview-type').textContent = data.type;
     preview.querySelector('.cs-preview-catch').textContent = data.catch;
-    preview.querySelector('.cs-preview-desc').textContent = data.desc;
-    preview.querySelector('[data-stat="hp"]').style.width  = data.hp + '%';
-    preview.querySelector('[data-stat="atk"]').style.width = data.atk + '%';
-    preview.querySelector('[data-stat="spd"]').style.width = data.spd + '%';
   }
   document.getElementById('char-confirm-btn').disabled = false;
 };
