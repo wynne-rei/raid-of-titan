@@ -6681,6 +6681,8 @@ function saveBattleState() {
 // バトル状態を復元（最重要関数）
 function restoreBattleState(data) {
   try {
+    // 0. 一時モーダル（チェスト拾取等）をクリーンアップ
+    if (typeof closeTransientModals === 'function') closeTransientModals();
     // 1. 既存オブジェクトのクリーンアップ
     entities.forEach(e => { removeEntityMixer(e.mesh); scene.remove(e.mesh); if (e.hpContainer) e.hpContainer.remove(); });
     entities = [];
@@ -9306,6 +9308,8 @@ function reviveKingFor(playerId) {
 
 function handlePlayerDeath() {
   playerRespawnTimer = PLAYER_RESPAWN_DELAY;
+  // 死亡時にチェスト拾取モーダル等の一時UIをクリーンアップ
+  if (typeof closeTransientModals === 'function') closeTransientModals();
   // 中央カウントダウン表示のみ（観戦モードは任意）
   showRespawnCountdown(PLAYER_RESPAWN_DELAY);
   // 軽量な自動観戦：ランダムな生存キングにカメラを向ける
@@ -12760,11 +12764,36 @@ function showChestPrompt(chest, index) {
     <button id="chest-no" style="padding:8px 24px;margin:0 8px;font-size:15px;font-weight:bold;background:#f44336;color:#fff;border:none;border-radius:8px;cursor:pointer;">NO</button>
   `;
   document.body.appendChild(el);
-  document.getElementById('chest-yes').onclick = () => { el.remove(); pickupChest(chest, chests.indexOf(chest)); };
-  document.getElementById('chest-no').onclick = () => { el.remove(); chest._declined = true; window._chestPromptCooldown = 3; };
+  // クロージャで参照を固定（クリック時点で配列がspliceされていても安全に処理）
+  const capturedChest = chest;
+  document.getElementById('chest-yes').onclick = () => {
+    el.remove();
+    // クリック時点の実インデックスを毎回取り直す
+    const idx = chests.indexOf(capturedChest);
+    if (idx >= 0) {
+      pickupChest(capturedChest, idx);
+    } else {
+      // すでに他の処理で除去済み → クールダウンだけリセット
+      window._chestPromptCooldown = 0;
+    }
+  };
+  document.getElementById('chest-no').onclick = () => {
+    el.remove();
+    capturedChest._declined = true;
+    window._chestPromptCooldown = 3;
+  };
 }
 
 function pickupChest(chest, index) {
+  // 防御的チェック: indexが現在のchests配列と一致しない場合は再取得
+  if (index < 0 || index >= chests.length || chests[index] !== chest) {
+    index = chests.indexOf(chest);
+    if (index < 0) {
+      // すでに除去済み → メッシュだけ念のため掃除して終了
+      if (chest.mesh && chest.mesh.parent) scene.remove(chest.mesh);
+      return;
+    }
+  }
   // Remove from scene
   scene.remove(chest.mesh);
   chests.splice(index, 1);
@@ -13446,6 +13475,8 @@ function endMatch(won) {
   gameState = 'RESULT';
   // バトル終了時にバトルセーブを削除
   clearBattleSave();
+  // 一時モーダル（チェスト拾取等）をクリーンアップ
+  if (typeof closeTransientModals === 'function') closeTransientModals();
   // 予兆中だった場合の後片付け
   if (raidWarning) {
     removeRaidBeacon(raidWarning.beacon);
@@ -13828,6 +13859,8 @@ let giftPlacementMode = false; // スタブ変数
 function enterSpectatorMode() {
   isSpectator = true;
   streamMode = 'viewer';
+  // プレイヤーUIから観戦UIへ切り替える前に、残っているモーダルを除去
+  if (typeof closeTransientModals === 'function') closeTransientModals();
   // プレイヤー関連UIを非表示
   document.getElementById('card-hand').classList.remove('visible');
   document.getElementById('battle-dock').style.display = 'none';
@@ -14823,6 +14856,8 @@ window.confirmCharacter = function() {
 };
 
 window.startBattle = function() {
+  // 一時モーダル（前セッション残骸）のクリーンアップ
+  if (typeof closeTransientModals === 'function') closeTransientModals();
   // Clean up previous match
   entities.forEach(e => { removeEntityMixer(e.mesh); scene.remove(e.mesh); e.hpContainer.remove(); });
   entities = [];
@@ -14968,7 +15003,47 @@ function assignStreamerNames() {
   if (humanPlayer) humanPlayer.viewers = 10000 + Math.floor(Math.random() * 30000);
 }
 
+// ============================================================
+// 🧹 TRANSIENT MODAL CLEANUP — ステート遷移時に取り残されたモーダルを全除去
+// ============================================================
+function closeTransientModals() {
+  // 動的生成系は DOM から除去
+  const removeIds = [
+    'chest-prompt',       // チェスト拾うかダイアログ
+    'wave-clear-report',  // ウェーブクリア報告
+  ];
+  removeIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.parentNode) el.remove();
+  });
+  // 静的要素は visible クラスを外す（要素自体は保持）
+  const hideByClass = [
+    { id: 'deck-edit-overlay', cls: 'visible' },
+    { id: 'drama-banner',      cls: 'visible' },
+    { id: 'tutorial-overlay',  cls: 'visible' },
+    { id: 'tutorial-guide',    cls: 'show' },
+    { id: 'diver-char-select', cls: 'visible' },
+  ];
+  hideByClass.forEach(({ id, cls }) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove(cls);
+  });
+  // リスポーンカウントダウン（動的生成だが再利用型）は display:none にする
+  const rc = document.getElementById('respawn-countdown');
+  if (rc) rc.style.display = 'none';
+  // チェストクールダウンもリセット
+  window._chestPromptCooldown = 0;
+  // デッキ編集関連フラグもリセット（モード遷移で取り残さない）
+  try { deckEditMode = false; } catch(_) {}
+  try { pendingCard = null; } catch(_) {}
+  // ドラマバナーのタイマーもクリア
+  if (typeof _dramaTimer !== 'undefined' && _dramaTimer) {
+    clearTimeout(_dramaTimer);
+  }
+}
+
 window.backToMenu = function() {
+  closeTransientModals();
   { const _pg = document.getElementById('postgame-screen'); _pg.style.display = 'none'; _pg.classList.remove('visible', 'win', 'lose'); }
   { const _to = document.getElementById('tutorial-overlay'); if (_to) _to.classList.remove('visible'); }
   { const _tg = document.getElementById('tutorial-guide'); if (_tg) _tg.classList.remove('show'); }
