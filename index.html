@@ -7129,6 +7129,16 @@ function fractalNoise(x, y, octaves = 4, scale = 0.005) {
 // 地形高さ取得（ゲームロジック用）
 let _terrainData = null; // {segX, segZ, arenaW, arenaL, heights}
 function getTerrainHeight(wx, wz) {
+  // 空島モード: プレイヤー/敵/建物のy座標は島の高さに合わせる
+  if (typeof skyIslands !== 'undefined' && skyIslands && skyIslands.length > 0) {
+    // 最も近い島の中なら、その島のheightを返す
+    for (const is of skyIslands) {
+      const dx = wx - is.x, dz = wz - is.z;
+      if (dx * dx + dz * dz < is.radius * is.radius) return is.height;
+    }
+    // 奈落（後で落下処理）— とりあえず 0 を返して既存ロジックを壊さない
+    return 0;
+  }
   if (!_terrainData) return 0;
   const { segX, segZ, arenaW, arenaL, heights } = _terrainData;
   // world coord → grid coord
@@ -7326,6 +7336,152 @@ function updateSkyGradient(dayProgress) {
 let cloudMeshes = [];
 
 // ============================================================
+// SKY ISLANDS — ティアキン風浮遊島マップ
+// ============================================================
+// 島定義: 中央大空島 + 周辺6島
+const SKY_ISLAND_DEFS = [
+  { id: 'center', x: 0,    z: 0,    radius: 180, height: 0,  isCenter: true },
+  { id: 'north',  x: 0,    z: -520, radius: 85,  height: 12 },
+  { id: 'ne',     x: 460,  z: -280, radius: 75,  height: -4 },
+  { id: 'se',     x: 480,  z: 300,  radius: 90,  height: 14 },
+  { id: 'south',  x: 0,    z: 540,  radius: 80,  height: 6 },
+  { id: 'sw',     x: -480, z: 300,  radius: 85,  height: -6 },
+  { id: 'nw',     x: -460, z: -280, radius: 75,  height: 9 },
+];
+// 島間接続（中央→各島 + 外周リング）
+const SKY_BRIDGE_DEFS = [
+  { from: 'center', to: 'north' },
+  { from: 'center', to: 'ne' },
+  { from: 'center', to: 'se' },
+  { from: 'center', to: 'south' },
+  { from: 'center', to: 'sw' },
+  { from: 'center', to: 'nw' },
+  { from: 'north',  to: 'ne' },
+  { from: 'ne',     to: 'se' },
+  { from: 'se',     to: 'south' },
+  { from: 'south',  to: 'sw' },
+  { from: 'sw',     to: 'nw' },
+  { from: 'nw',     to: 'north' },
+];
+
+let skyIslands = [];  // 各島: { id, x, z, radius, height, isCenter, mesh, liberated }
+let skyBridges = []; // 各橋: { from, to, repaired, stubs:[mesh,mesh], mesh }
+
+function buildSkyIslands() {
+  const addObj = (obj) => { scene.add(obj); arenaObjects.push(obj); };
+  skyIslands.length = 0;
+  skyBridges.length = 0;
+
+  const grassTex = generateTexture('grass', 512);
+  grassTex.repeat.set(6, 6);
+  const stoneTex = generateTexture('stone', 512);
+  stoneTex.repeat.set(3, 3);
+
+  const grassMat = new THREE.MeshToonMaterial({ map: grassTex, color: 0x6ba85a, gradientMap: TOON_GRADIENT });
+  const cliffMat = new THREE.MeshToonMaterial({ map: stoneTex, color: 0x7a5a44, gradientMap: TOON_GRADIENT });
+  const rockMat  = new THREE.MeshToonMaterial({ color: 0x5a4636, gradientMap: TOON_GRADIENT });
+
+  for (const def of SKY_ISLAND_DEFS) {
+    const grp = new THREE.Group();
+    grp.position.set(def.x, def.height, def.z);
+
+    // 上面（草の円盤）- 上面はy=0基準
+    const topH = 6;
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(def.radius, def.radius * 0.95, topH, 32), grassMat);
+    top.position.y = -topH / 2; // 上面がy=island.heightに一致
+    top.receiveShadow = true;
+    grp.add(top);
+
+    // 下部（岩が細くすぼむ）
+    const bottomH = 80;
+    const bottom = new THREE.Mesh(new THREE.CylinderGeometry(def.radius * 0.95, def.radius * 0.18, bottomH, 16), cliffMat);
+    bottom.position.y = -topH - bottomH / 2 + 2;
+    grp.add(bottom);
+
+    // 尖った底先端
+    const tipH = 30;
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(def.radius * 0.18, tipH, 12), cliffMat);
+    tip.position.y = -topH - bottomH - tipH / 2 + 4;
+    tip.rotation.x = Math.PI; // 逆さに
+    grp.add(tip);
+
+    // 縁の岩装飾
+    if (!def.isCenter) {
+      const nRocks = 5 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < nRocks; i++) {
+        const angle = (i / nRocks) * Math.PI * 2 + Math.random() * 0.3;
+        const r = def.radius * (0.82 + Math.random() * 0.12);
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(3.5, 0), rockMat);
+        rock.position.set(Math.cos(angle) * r, 2, Math.sin(angle) * r);
+        rock.scale.set(0.6 + Math.random() * 0.8, 0.4 + Math.random() * 0.5, 0.6 + Math.random() * 0.8);
+        rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        grp.add(rock);
+      }
+    }
+
+    scene.add(grp);
+    arenaObjects.push(grp);
+    skyIslands.push({
+      id: def.id, x: def.x, z: def.z, radius: def.radius, height: def.height,
+      isCenter: !!def.isCenter, mesh: grp, liberated: !!def.isCenter,
+    });
+  }
+
+  // ==== 壊れた橋プレースホルダ ====
+  const bridgeStubMat = new THREE.MeshToonMaterial({ map: stoneTex, color: 0x8a7860, gradientMap: TOON_GRADIENT });
+  for (const bdef of SKY_BRIDGE_DEFS) {
+    const fromIs = skyIslands.find(i => i.id === bdef.from);
+    const toIs = skyIslands.find(i => i.id === bdef.to);
+    if (!fromIs || !toIs) continue;
+    const dx = toIs.x - fromIs.x;
+    const dz = toIs.z - fromIs.z;
+    const angle = Math.atan2(dz, dx);
+    const dist = Math.sqrt(dx * dx + dz * dz) - fromIs.radius - toIs.radius;
+    const stubLen = Math.max(18, Math.min(40, dist * 0.25));
+
+    // from側の切れ端
+    const stub1 = new THREE.Mesh(new THREE.BoxGeometry(stubLen, 3, 10), bridgeStubMat);
+    stub1.position.set(
+      fromIs.x + Math.cos(angle) * (fromIs.radius + stubLen / 2),
+      fromIs.height - 0.5,
+      fromIs.z + Math.sin(angle) * (fromIs.radius + stubLen / 2),
+    );
+    stub1.rotation.y = -angle;
+    stub1.castShadow = true;
+    scene.add(stub1);
+    arenaObjects.push(stub1);
+
+    // to側の切れ端
+    const stub2 = new THREE.Mesh(new THREE.BoxGeometry(stubLen, 3, 10), bridgeStubMat);
+    stub2.position.set(
+      toIs.x - Math.cos(angle) * (toIs.radius + stubLen / 2),
+      toIs.height - 0.5,
+      toIs.z - Math.sin(angle) * (toIs.radius + stubLen / 2),
+    );
+    stub2.rotation.y = -angle;
+    stub2.castShadow = true;
+    scene.add(stub2);
+    arenaObjects.push(stub2);
+
+    skyBridges.push({
+      from: bdef.from, to: bdef.to, repaired: false,
+      stubs: [stub1, stub2], mesh: null,
+      fromPos: { x: fromIs.x, y: fromIs.height, z: fromIs.z },
+      toPos: { x: toIs.x, y: toIs.height, z: toIs.z },
+    });
+  }
+}
+
+// 島の上にあるかを判定（プレイヤー落下判定等で使用）
+function isOnSkyIsland(x, z) {
+  for (const is of skyIslands) {
+    const dx = x - is.x, dz = z - is.z;
+    if (dx * dx + dz * dz < is.radius * is.radius) return is;
+  }
+  return null;
+}
+
+// ============================================================
 // ARENA
 // ============================================================
 function cleanupArena() {
@@ -7333,9 +7489,44 @@ function cleanupArena() {
   arenaObjects = [];
   cloudMeshes = [];
   _terrainData = null;
+  skyIslands.length = 0;
+  skyBridges.length = 0;
 }
 
 function buildArena() {
+  cleanupArena();
+  arenaW = ARENA_W_BASE;
+
+  const addObj = (obj) => { scene.add(obj); arenaObjects.push(obj); };
+
+  // ============ 空島マップ生成 ============
+  buildSkyIslands();
+
+  // ============ Invisible ground for raycasting（中央大空島上面 y=0） ============
+  const planeGeo = new THREE.PlaneGeometry(arenaW * 2, ARENA_L * 2);
+  const planeMat = new THREE.MeshBasicMaterial({ visible: false });
+  groundPlane = new THREE.Mesh(planeGeo, planeMat);
+  groundPlane.rotation.x = -Math.PI / 2;
+  groundPlane.position.y = 0;
+  addObj(groundPlane);
+
+  // 起伏なし（地形高さは各島のheightを使う）
+  _terrainData = null;
+
+  // ============ プレイヤー城（中央大空島の上） ============
+  buildPlayerCastle();
+
+  // ============ 雲ビルボード ============
+  buildClouds();
+
+  // NOTE: 3国敵拠点 (buildFactionBases) は RAID OF TITAN v4 で撤去済み
+  // NOTE: 遠景の山・木・岩は空島マップの視認性を保つため非表示
+}
+
+// ============================================================
+// ARENA (LEGACY — 平地版、参照用に保持) — 使用されない
+// ============================================================
+function _legacy_buildArena_flat() {
   cleanupArena();
 
   // Territory expands arena width horizontally
