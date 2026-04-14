@@ -5294,9 +5294,9 @@ window._spawnTestDragons = () => {
   const pz = pm ? pm.position.z : 0;
   // プレイヤーの向いている方向（カメラの前方）に配置
   // 3人称カメラはプレイヤーの後ろから見るので、pz - offset（前方）
-  const types = ['dragonling', 'firedrake', 'frostdrake', 'stonedrake', 'elderdragon'];
+  const types = TITAN_ORDER.slice(0, 5); // grunt〜frostjaw
   types.forEach((t, i) => spawnDragon(t, px - 80 + i * 45, pz - 120, 'rush'));
-  return 'Spawned 5 dragons in front of player';
+  return 'Spawned 5 titans in front of player';
 };
 window._forceWave = () => {
   gameState = 'WAVE';
@@ -11257,12 +11257,21 @@ function fireProjectile(from, to, dmg, splash, splashRadius, side) {
   let mesh;
   if (isDragonBreath) {
     const breathDefs = {
+      // v4 タイタン
+      grunt:        { color: 0xff8800, emissive: 0xff6600, size: 1.8 },
+      warrior:      { color: 0xff4422, emissive: 0xff2200, size: 2.4 },
+      stonebreaker: { color: 0xaaaaaa, emissive: 0xeeeeee, size: 3.0 },
+      ashking:      { color: 0xff2200, emissive: 0xff0000, size: 3.0 },
+      frostjaw:     { color: 0x44ddff, emissive: 0x00aaff, size: 3.0 },
+      voidwalker:   { color: 0xaa00ff, emissive: 0x8800cc, size: 3.4 },
+      titan_lord:   { color: 0xff4400, emissive: 0xff2200, size: 4.0 },
+      // 後方互換 (旧ドラゴン名)
       dragonling:  { color: 0xff8800, emissive: 0xff6600, size: 1.5 },
       firedrake:   { color: 0xff2200, emissive: 0xff0000, size: 2.5 },
       frostdrake:  { color: 0x44ddff, emissive: 0x00aaff, size: 2.5 },
       elderdragon: { color: 0xaa00ff, emissive: 0x8800cc, size: 4.0 },
     };
-    const bd = breathDefs[from.dragonType] || breathDefs.dragonling;
+    const bd = breathDefs[from.dragonType] || breathDefs.grunt;
     const geo = new THREE.SphereGeometry(bd.size, 6, 6);
     const mat = new THREE.MeshStandardMaterial({
       color: bd.color, emissive: bd.emissive, emissiveIntensity: 1.2,
@@ -11831,7 +11840,9 @@ function updateEntities(dt) {
           e.attackTimer = e.attackSpeed;
           const target = moveTarget.target;
           // ストーンドレイクは近接攻撃（体当たり）、他のドラゴンはブレス攻撃
-          const useRanged = (e.isDragon && e.dragonType === 'stonedrake') ? false : (e.range > 2);
+          // v4: grunt/warrior/stonebreaker は近接、他は遠距離ブレス
+          const meleeTitans = ['grunt', 'warrior', 'stonebreaker', 'stonedrake'];
+          const useRanged = (e.isDragon && meleeTitans.includes(e.dragonType)) ? false : (e.range > 2);
           if (useRanged) {
             if (!target.dead) fireProjectile(e, target, e.dmg, e.splash, e.splashRadius, e.side);
           } else {
@@ -16537,7 +16548,7 @@ function spawnTutorialDragon() {
   const gx = kx;
   const gz = kz + 80;
 
-  spawnDragon('dragonling', gx, gz, 'rush');
+  spawnDragon('grunt', gx, gz, 'rush');
 
   // Find the dragon entity we just spawned
   for (let i = entities.length - 1; i >= 0; i--) {
