@@ -3230,6 +3230,15 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
   </div>
 </div>
 
+<!-- Crystal HP Bar -->
+<div id="crystal-hp-bar" style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:900;display:none;">
+  <div style="text-align:center;color:#00ddff;font-size:12px;font-weight:bold;text-shadow:0 1px 4px rgba(0,0,0,0.8);margin-bottom:2px;">💎 CRYSTAL</div>
+  <div style="width:200px;height:10px;background:rgba(0,0,0,0.6);border-radius:5px;border:1px solid rgba(0,220,255,0.4);overflow:hidden;">
+    <div id="crystal-hp-fill" style="width:100%;height:100%;background:linear-gradient(90deg,#00aaff,#00ffdd);transition:width 0.3s;"></div>
+  </div>
+  <div id="crystal-hp-text" style="text-align:center;color:#aaddff;font-size:10px;margin-top:1px;">5000 / 5000</div>
+</div>
+
 <!-- Battle Dock: エリクサー + 手札の統合UI -->
 <div id="battle-dock">
   <div id="elixir-container">
@@ -5518,6 +5527,13 @@ let territoryShift = 0;
 // 永続施設
 let structures = []; // { type, faction, x, z, hp, maxHp, mesh, hpContainer, destroyed, attackTimer }
 
+// Crystal / Castle system
+let crystalHP = 5000;
+let crystalMaxHP = 5000;
+let playerCrystal = null;
+let crystalLight = null;
+let castleWalls = []; // { mesh, hp, maxHp, destroyed, position, isGate }
+
 // Auto-spawn system
 let factionSpawnTimers = initFactionMap(5);
 
@@ -7533,8 +7549,270 @@ function buildArena() {
   // ============ 各国拠点建造物 ============
   buildFactionBases();
 
+  // ============ プレイヤー城 ============
+  buildPlayerCastle();
+
   // ============ 雲ビルボード ============
   buildClouds();
+}
+
+// ============================================================
+// PLAYER CASTLE — 城壁・砲台・クリスタル
+// ============================================================
+function buildPlayerCastle() {
+  const addObj = (obj) => { scene.add(obj); arenaObjects.push(obj); };
+
+  // Reset state
+  castleWalls = [];
+  crystalHP = crystalMaxHP;
+  if (playerCrystal) { scene.remove(playerCrystal); playerCrystal = null; }
+  if (crystalLight) { scene.remove(crystalLight); crystalLight = null; }
+
+  // --- Player base position (center = 0,0,0) ---
+  const cx = 0, cz = 0;
+  const halfSize = 65;
+  const wallH = 18;
+  const wallThick = 4;
+  const gateWidth = 20;
+  const stoneMat = () => new THREE.MeshToonMaterial({ color: 0x888888, gradientMap: TOON_GRADIENT });
+
+  // Helper: place a wall segment + register HP
+  function addWallSeg(px, py, pz, w, h, d) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), stoneMat());
+    mesh.castShadow = true;
+    mesh.position.set(px, py, pz);
+    addObj(mesh);
+    castleWalls.push({ mesh, hp: 500, maxHp: 500, destroyed: false, position: { x: px, y: py, z: pz } });
+    return mesh;
+  }
+
+  // 4 walls, each split in 2 with a gate gap in center
+  // North wall (z = -halfSize), South wall (z = +halfSize), East/West
+  const segLen = (halfSize * 2 - gateWidth) / 2; // length of each wall half
+
+  // North wall
+  addWallSeg(cx - (halfSize - segLen / 2), wallH / 2, cz - halfSize, segLen, wallH, wallThick);
+  addWallSeg(cx + (halfSize - segLen / 2), wallH / 2, cz - halfSize, segLen, wallH, wallThick);
+  // South wall
+  addWallSeg(cx - (halfSize - segLen / 2), wallH / 2, cz + halfSize, segLen, wallH, wallThick);
+  addWallSeg(cx + (halfSize - segLen / 2), wallH / 2, cz + halfSize, segLen, wallH, wallThick);
+  // West wall
+  addWallSeg(cx - halfSize, wallH / 2, cz - (halfSize - segLen / 2), wallThick, wallH, segLen);
+  addWallSeg(cx - halfSize, wallH / 2, cz + (halfSize - segLen / 2), wallThick, wallH, segLen);
+  // East wall
+  addWallSeg(cx + halfSize, wallH / 2, cz - (halfSize - segLen / 2), wallThick, wallH, segLen);
+  addWallSeg(cx + halfSize, wallH / 2, cz + (halfSize - segLen / 2), wallThick, wallH, segLen);
+
+  // Gate posts + arches for each cardinal direction
+  const gatePostMat = new THREE.MeshToonMaterial({ color: 0x555555, gradientMap: TOON_GRADIENT });
+  const archMat = new THREE.MeshToonMaterial({ color: 0x666666, gradientMap: TOON_GRADIENT });
+  const postH = wallH + 8;
+  function addGate(px, pz, rotY) {
+    // two posts
+    [-1, 1].forEach(side => {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(3, postH, 3), gatePostMat);
+      post.castShadow = true;
+      post.position.set(px + (rotY === 0 ? side * gateWidth / 2 : 0), postH / 2, pz + (rotY !== 0 ? side * gateWidth / 2 : 0));
+      addObj(post);
+    });
+    // arch on top
+    const arch = new THREE.Mesh(new THREE.BoxGeometry(
+      rotY === 0 ? gateWidth + 3 : wallThick + 2,
+      4,
+      rotY !== 0 ? gateWidth + 3 : wallThick + 2
+    ), archMat);
+    arch.castShadow = true;
+    arch.position.set(px, postH + 2, pz);
+    addObj(arch);
+  }
+  addGate(cx, cz - halfSize, 0);           // North gate
+  addGate(cx, cz + halfSize, 0);           // South gate
+  addGate(cx - halfSize, cz, Math.PI / 2); // West gate
+  addGate(cx + halfSize, cz, Math.PI / 2); // East gate
+
+  // Merlons on top of wall segments
+  const merlonMat = new THREE.MeshToonMaterial({ color: 0x777777, gradientMap: TOON_GRADIENT });
+  function addMerlons(startX, startZ, endX, endZ, count) {
+    for (let i = 0; i <= count; i++) {
+      const t = count > 0 ? i / count : 0;
+      const mx = startX + (endX - startX) * t;
+      const mz = startZ + (endZ - startZ) * t;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 3), merlonMat);
+      m.castShadow = true;
+      m.position.set(mx, wallH + 2, mz);
+      addObj(m);
+    }
+  }
+  // North/South merlons on each half
+  const halfCount = Math.floor(segLen / 8);
+  addMerlons(cx - halfSize, cz - halfSize, cx - gateWidth / 2, cz - halfSize, halfCount);
+  addMerlons(cx + gateWidth / 2, cz - halfSize, cx + halfSize, cz - halfSize, halfCount);
+  addMerlons(cx - halfSize, cz + halfSize, cx - gateWidth / 2, cz + halfSize, halfCount);
+  addMerlons(cx + gateWidth / 2, cz + halfSize, cx + halfSize, cz + halfSize, halfCount);
+  // East/West merlons
+  addMerlons(cx - halfSize, cz - halfSize, cx - halfSize, cz - gateWidth / 2, halfCount);
+  addMerlons(cx - halfSize, cz + gateWidth / 2, cx - halfSize, cz + halfSize, halfCount);
+  addMerlons(cx + halfSize, cz - halfSize, cx + halfSize, cz - gateWidth / 2, halfCount);
+  addMerlons(cx + halfSize, cz + gateWidth / 2, cx + halfSize, cz + halfSize, halfCount);
+
+  // --- 4 Watchtowers at corners ---
+  const towerPositions = [[-halfSize, -halfSize], [halfSize, -halfSize], [-halfSize, halfSize], [halfSize, halfSize]];
+  towerPositions.forEach(([tx, tz]) => {
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 30, 12), stoneMat());
+    base.castShadow = true;
+    base.position.set(cx + tx, 15, cz + tz);
+    addObj(base);
+    // platform
+    const platform = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, 2, 12), stoneMat());
+    platform.position.set(cx + tx, 31, cz + tz);
+    addObj(platform);
+    // cone roof
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(11, 15, 12), new THREE.MeshToonMaterial({ color: 0xaa2222, gradientMap: TOON_GRADIENT }));
+    roof.castShadow = true;
+    roof.position.set(cx + tx, 44, cz + tz);
+    addObj(roof);
+    // flag pole + flag
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 12, 6), new THREE.MeshToonMaterial({ color: 0x555555, gradientMap: TOON_GRADIENT }));
+    pole.position.set(cx + tx, 57, cz + tz);
+    addObj(pole);
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(8, 5), new THREE.MeshToonMaterial({ color: 0x0044cc, side: THREE.DoubleSide, gradientMap: TOON_GRADIENT }));
+    flag.position.set(cx + tx + 4, 61, cz + tz);
+    addObj(flag);
+  });
+
+  // --- 8 Cannons (2 per wall) ---
+  const cannonPositions = [
+    // North wall (facing -z)
+    { x: cx - 25, z: cz - halfSize + 2, ry: 0 },
+    { x: cx + 25, z: cz - halfSize + 2, ry: 0 },
+    // South wall (facing +z)
+    { x: cx - 25, z: cz + halfSize - 2, ry: Math.PI },
+    { x: cx + 25, z: cz + halfSize - 2, ry: Math.PI },
+    // West wall (facing -x)
+    { x: cx - halfSize + 2, z: cz - 25, ry: -Math.PI / 2 },
+    { x: cx - halfSize + 2, z: cz + 25, ry: -Math.PI / 2 },
+    // East wall (facing +x)
+    { x: cx + halfSize - 2, z: cz - 25, ry: Math.PI / 2 },
+    { x: cx + halfSize - 2, z: cz + 25, ry: Math.PI / 2 },
+  ];
+  const woodMat = new THREE.MeshToonMaterial({ color: 0x8B5E3C, gradientMap: TOON_GRADIENT });
+  const metalMat = new THREE.MeshToonMaterial({ color: 0x333333, gradientMap: TOON_GRADIENT });
+  cannonPositions.forEach(({ x: cpx, z: cpz, ry }) => {
+    const cannonGrp = new THREE.Group();
+    // base
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(3, 4, 4, 8), woodMat);
+    base.position.y = 2;
+    cannonGrp.add(base);
+    // barrel
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 10, 8), metalMat);
+    barrel.castShadow = true;
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(0, 4, -5);
+    cannonGrp.add(barrel);
+    cannonGrp.position.set(cpx, wallH - 2, cpz);
+    cannonGrp.rotation.y = ry;
+    addObj(cannonGrp);
+  });
+
+  // --- Cross-shaped paths from gates to center ---
+  const pathMat = new THREE.MeshToonMaterial({ color: 0xaaaaaa, gradientMap: TOON_GRADIENT });
+  // N-S path
+  const pathNS = new THREE.Mesh(new THREE.PlaneGeometry(12, 120), pathMat);
+  pathNS.rotation.x = -Math.PI / 2;
+  pathNS.position.set(cx, 0.1, cz);
+  addObj(pathNS);
+  // E-W path
+  const pathEW = new THREE.Mesh(new THREE.PlaneGeometry(120, 12), pathMat);
+  pathEW.rotation.x = -Math.PI / 2;
+  pathEW.position.set(cx, 0.1, cz);
+  addObj(pathEW);
+
+  // --- Stone Pedestal ---
+  const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(8, 10, 6, 16), stoneMat());
+  pedestal.position.set(cx, 3, cz);
+  addObj(pedestal);
+
+  // --- Crystal Group ---
+  const crystalGrp = new THREE.Group();
+  crystalGrp.position.set(cx, 0, cz);
+
+  // Main crystal
+  const crystalMat = new THREE.MeshPhysicalMaterial({
+    color: 0x00ddff,
+    emissive: 0x0066aa,
+    emissiveIntensity: 0.6,
+    transparent: true,
+    opacity: 0.85,
+    roughness: 0.1,
+    metalness: 0.2,
+    transmission: 0.3,
+  });
+  const mainCrystal = new THREE.Mesh(new THREE.OctahedronGeometry(10, 0), crystalMat);
+  mainCrystal.scale.set(1, 2.2, 1);
+  mainCrystal.position.y = 28;
+  mainCrystal.castShadow = true;
+  crystalGrp.add(mainCrystal);
+
+  // Smaller side crystals
+  [[10, 16, 5], [-10, 14, 4], [3, 15, -9]].forEach(([ox, oy, oz]) => {
+    const sc = new THREE.Mesh(new THREE.OctahedronGeometry(4, 0), crystalMat);
+    sc.scale.set(1, 2, 1);
+    sc.position.set(ox, oy, oz);
+    crystalGrp.add(sc);
+  });
+
+  // Glow ring
+  const ringMat = new THREE.MeshToonMaterial({ color: 0x00ccff, emissive: 0x0088cc, emissiveIntensity: 0.8, transparent: true, opacity: 0.6, gradientMap: TOON_GRADIENT });
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(12, 1.5, 8, 32), ringMat);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 7;
+  crystalGrp.add(ring);
+
+  // 12 orbiting particle spheres
+  const particleMat = new THREE.MeshToonMaterial({ color: 0x00ffff, emissive: 0x0088ff, emissiveIntensity: 1.0, gradientMap: TOON_GRADIENT });
+  for (let i = 0; i < 12; i++) {
+    const particle = new THREE.Mesh(new THREE.SphereGeometry(1.2, 6, 6), particleMat);
+    const angle = (i / 12) * Math.PI * 2;
+    const radius = 16 + (i % 3) * 4;
+    const height = 20 + Math.sin(angle * 2) * 8;
+    particle.position.set(Math.cos(angle) * radius, height, Math.sin(angle) * radius);
+    particle.userData.orbitAngle = angle;
+    particle.userData.orbitRadius = radius;
+    particle.userData.orbitHeight = height;
+    particle.userData.orbitIndex = i;
+    crystalGrp.add(particle);
+  }
+
+  scene.add(crystalGrp);
+  arenaObjects.push(crystalGrp);
+  playerCrystal = crystalGrp;
+
+  // Crystal point light
+  const cLight = new THREE.PointLight(0x00ccff, 2, 120);
+  cLight.position.set(cx, 40, cz);
+  scene.add(cLight);
+  arenaObjects.push(cLight);
+  crystalLight = cLight;
+
+  // Show crystal HP bar
+  const crystalBar = document.getElementById('crystal-hp-bar');
+  if (crystalBar) crystalBar.style.display = 'block';
+  updateCrystalHPBar();
+}
+
+function updateCrystalHPBar() {
+  const fill = document.getElementById('crystal-hp-fill');
+  const text = document.getElementById('crystal-hp-text');
+  if (!fill || !text) return;
+  const pct = Math.max(0, crystalHP / crystalMaxHP * 100);
+  fill.style.width = pct + '%';
+  text.textContent = Math.max(0, Math.floor(crystalHP)) + ' / ' + crystalMaxHP;
+  // Turn red when low
+  if (pct < 30) {
+    fill.style.background = 'linear-gradient(90deg,#ff0000,#ff6600)';
+  } else {
+    fill.style.background = 'linear-gradient(90deg,#00aaff,#00ffdd)';
+  }
 }
 
 // ============================================================
@@ -9328,11 +9606,18 @@ function respawnPlayer() {
   if (!humanPlayer) return;
   reviveKingFor(0);
   // GDP-based: no per-player elixir reset needed
-  // カメラをキング位置に戻す
+  // Respawn at crystal position
+  const respawnX = playerCrystal ? playerCrystal.position.x : 0;
+  const respawnZ = playerCrystal ? playerCrystal.position.z : 0;
   const kt = humanPlayer.kingTower;
-  if (kt && camera) {
-    camera.position.set(kt.x, 60, kt.z + 80);
-    camera.lookAt(kt.x, 0, kt.z);
+  if (kt) {
+    kt.x = respawnX;
+    kt.z = respawnZ + 10;
+    if (kt.mesh) { kt.mesh.position.x = respawnX; kt.mesh.position.z = respawnZ + 10; }
+  }
+  if (camera) {
+    camera.position.set(respawnX, 80, respawnZ + 100);
+    camera.lookAt(respawnX, 0, respawnZ);
   }
   updateHUD();
   if (typeof renderHand === 'function') renderHand();
@@ -9553,6 +9838,164 @@ const DRAGON_DEFS = {
   elderdragon: { hp: 1200, dmg: 120, speed: 160, range: 2.5, color: 0xaa22ff, scale: 36.0, fly: true, name: 'エルダードラゴン' },
 };
 const DRAGON_IDS = Object.keys(DRAGON_DEFS);
+
+// ============================================================
+// TITAN BOSS DEFINITIONS
+// ============================================================
+const TITAN_DEFS = {
+  titan_boss: { hp: 2000, dmg: 150, speed: 40, range: 25, scale: 4, name: 'TITAN BOSS', groundSmashCooldown: 8 },
+};
+
+function buildTitanMesh(scale) {
+  const s = scale; // scale=4 -> ~180 units tall
+  const g = new THREE.Group();
+
+  function tbox(w, h, d, color, emissiveColor, emissiveInt) {
+    const opts = {};
+    if (emissiveColor !== undefined) { opts.emissive = emissiveColor; opts.emissiveIntensity = emissiveInt || 0.5; }
+    const mat = new THREE.MeshToonMaterial({ color, gradientMap: TOON_GRADIENT, ...opts });
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.castShadow = true;
+    return m;
+  }
+  function tcyl(rT, rB, h, segs, color, emissiveColor, emissiveInt) {
+    const opts = {};
+    if (emissiveColor !== undefined) { opts.emissive = emissiveColor; opts.emissiveIntensity = emissiveInt || 0.5; }
+    const mat = new THREE.MeshToonMaterial({ color, gradientMap: TOON_GRADIENT, ...opts });
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(rT, rB, h, segs), mat);
+    m.castShadow = true;
+    return m;
+  }
+  function at(m, x, y, z) { m.position.set(x, y, z); return m; }
+
+  const bodyColor = 0x3a2a1a;
+  const skinColor = 0x5a3a1a;
+  const darkColor = 0x1a1008;
+  const armorColor = 0x444444;
+  const lavaColor = 0xff4400;
+  const eyeColor = 0xff0000;
+  const hornColor = 0x222222;
+
+  // --- Legs (ground level y=0 at feet) ---
+  const legH = 20 * s;
+  const legW = 8 * s;
+  const legL = at(tbox(legW, legH, legW, bodyColor), -7 * s, legH / 2, 0);
+  const legR = at(tbox(legW, legH, legW, bodyColor), 7 * s, legH / 2, 0);
+  g.add(legL); g.add(legR);
+
+  // Feet/boots
+  const footL = at(tbox(legW * 1.3, 4 * s, legW * 1.6, darkColor), -7 * s, 2 * s, 3 * s);
+  const footR = at(tbox(legW * 1.3, 4 * s, legW * 1.6, darkColor), 7 * s, 2 * s, 3 * s);
+  g.add(footL); g.add(footR);
+
+  // --- Torso (inverted triangle: wide shoulders, narrow waist) ---
+  const torsoY = legH + 1 * s;
+  const torsoH = 28 * s;
+  const torso = at(tbox(32 * s, torsoH, 16 * s, skinColor), 0, torsoY + torsoH / 2, 0);
+  g.add(torso);
+
+  // Waist/belt
+  const waist = at(tbox(28 * s, 5 * s, 14 * s, armorColor), 0, torsoY + 3 * s, 0);
+  g.add(waist);
+
+  // Chest armor plate
+  const chestArmor = at(tbox(26 * s, 18 * s, 4 * s, armorColor), 0, torsoY + torsoH * 0.6, -7 * s);
+  g.add(chestArmor);
+
+  // Lava cracks on chest (emissive orange)
+  for (let i = 0; i < 3; i++) {
+    const crack = at(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(3 * s, 10 * s, 1 * s),
+        new THREE.MeshToonMaterial({ color: lavaColor, emissive: lavaColor, emissiveIntensity: 1.0, gradientMap: TOON_GRADIENT })
+      ),
+      (i - 1) * 8 * s,
+      torsoY + torsoH * 0.5,
+      -9.5 * s
+    );
+    g.add(crack);
+  }
+
+  // Shoulder guards (wide)
+  const shoulderY = torsoY + torsoH - 4 * s;
+  const shoulderL = at(tbox(10 * s, 8 * s, 12 * s, armorColor), -20 * s, shoulderY, 0);
+  const shoulderR = at(tbox(10 * s, 8 * s, 12 * s, armorColor), 20 * s, shoulderY, 0);
+  g.add(shoulderL); g.add(shoulderR);
+
+  // --- Arms ---
+  const armY = torsoY + torsoH - 6 * s;
+  const upperArmH = 22 * s;
+  const upperArmL = at(tbox(9 * s, upperArmH, 9 * s, skinColor), -24 * s, armY - upperArmH / 2, 0);
+  const upperArmR = at(tbox(9 * s, upperArmH, 9 * s, skinColor), 24 * s, armY - upperArmH / 2, 0);
+  g.add(upperArmL); g.add(upperArmR);
+
+  const lowerArmH = 18 * s;
+  const lowerArmY = armY - upperArmH;
+  const lowerArmL = at(tbox(8 * s, lowerArmH, 8 * s, bodyColor), -24 * s, lowerArmY - lowerArmH / 2, 0);
+  const lowerArmR = at(tbox(8 * s, lowerArmH, 8 * s, bodyColor), 24 * s, lowerArmY - lowerArmH / 2, 0);
+  g.add(lowerArmL); g.add(lowerArmR);
+
+  // Fists
+  const fistY = lowerArmY - lowerArmH;
+  const fistL = at(tbox(10 * s, 10 * s, 10 * s, darkColor), -24 * s, fistY - 5 * s, 0);
+  const fistR = at(tbox(10 * s, 10 * s, 10 * s, darkColor), 24 * s, fistY - 5 * s, 0);
+  g.add(fistL); g.add(fistR);
+
+  // --- Neck ---
+  const neckY = torsoY + torsoH;
+  const neck = at(tcyl(5 * s, 6 * s, 8 * s, 8, skinColor), 0, neckY + 4 * s, 0);
+  g.add(neck);
+
+  // --- Head ---
+  const headY = neckY + 8 * s;
+  const headH = 22 * s;
+  const head = at(tbox(20 * s, headH, 18 * s, skinColor), 0, headY + headH / 2, 0);
+  g.add(head);
+
+  // Lower jaw
+  const jaw = at(tbox(18 * s, 5 * s, 14 * s, bodyColor), 0, headY + 3 * s, -2 * s);
+  g.add(jaw);
+
+  // Red glowing eyes
+  const eyeMat = new THREE.MeshToonMaterial({ color: eyeColor, emissive: eyeColor, emissiveIntensity: 2.0, gradientMap: TOON_GRADIENT });
+  const eyeL = at(new THREE.Mesh(new THREE.BoxGeometry(4 * s, 3 * s, 2 * s), eyeMat), -6 * s, headY + headH * 0.65, -9 * s);
+  const eyeR = at(new THREE.Mesh(new THREE.BoxGeometry(4 * s, 3 * s, 2 * s), eyeMat), 6 * s, headY + headH * 0.65, -9 * s);
+  eyeL.castShadow = false; eyeR.castShadow = false;
+  g.add(eyeL); g.add(eyeR);
+
+  // Brow ridge
+  const browL = at(tbox(5 * s, 2 * s, 2 * s, darkColor), -6 * s, headY + headH * 0.72, -9.5 * s);
+  const browR = at(tbox(5 * s, 2 * s, 2 * s, darkColor), 6 * s, headY + headH * 0.72, -9.5 * s);
+  g.add(browL); g.add(browR);
+
+  // Horns
+  const hornMat = new THREE.MeshToonMaterial({ color: hornColor, gradientMap: TOON_GRADIENT });
+  const hornL = new THREE.Mesh(new THREE.ConeGeometry(3 * s, 14 * s, 6), hornMat);
+  hornL.castShadow = true;
+  hornL.position.set(-8 * s, headY + headH + 7 * s, 0);
+  hornL.rotation.z = -0.3;
+  const hornR = new THREE.Mesh(new THREE.ConeGeometry(3 * s, 14 * s, 6), hornMat);
+  hornR.castShadow = true;
+  hornR.position.set(8 * s, headY + headH + 7 * s, 0);
+  hornR.rotation.z = 0.3;
+  g.add(hornL); g.add(hornR);
+
+  // Back rock armor (DodecahedronGeometry)
+  for (let i = 0; i < 5; i++) {
+    const rockMat = new THREE.MeshToonMaterial({ color: 0x333333, gradientMap: TOON_GRADIENT });
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(4 * s, 0), rockMat);
+    rock.castShadow = true;
+    rock.position.set(
+      (Math.random() - 0.5) * 14 * s,
+      torsoY + torsoH * 0.3 + i * 5 * s,
+      8 * s
+    );
+    rock.rotation.set(Math.random(), Math.random(), Math.random());
+    g.add(rock);
+  }
+
+  return g;
+}
 
 // ドラゴンメッシュ生成（エンダードラゴン風・色のみ差別化）
 function buildDragonMesh(type, factionColor) {
@@ -9848,8 +10291,60 @@ const DRAGON_SPAWN_POINTS = [
   { x:  ARENA_W_BASE * 0.48, z: 0 },         // 東
 ];
 
+// タイタンをエンティティとしてスポーン
+function spawnTitan(x, z, factionColor) {
+  const def = TITAN_DEFS.titan_boss;
+  const mesh = buildTitanMesh(def.scale);
+  mesh.position.set(x, 0, z);
+  scene.add(mesh);
+
+  const entity = {
+    cardId: 'titan_boss',
+    type: 'troop',
+    mesh: mesh,
+    hp: def.hp,
+    maxHp: def.hp,
+    dmg: def.dmg,
+    speed: def.speed,
+    range: def.range * 10,
+    attackSpeed: 1.5,
+    attackTimer: 0,
+    side: 99,
+    isDragon: true,
+    isTitan: true,
+    dragonType: 'titan_boss',
+    aiPattern: 'siege',
+    target: null,
+    fly: false,
+    flyHeight: 0,
+    lifetime: Infinity,
+    spawnTime: matchTimer,
+    hpContainer: null,
+    dead: false,
+    statDmg: 0,
+    statKills: 0,
+    groundSmashTimer: def.groundSmashCooldown,
+  };
+
+  // HP bar (boss styling: wide)
+  const hpC = document.createElement('div');
+  hpC.className = 'hp-bar-container';
+  hpC.style.width = '120px';
+  hpC.innerHTML = '<div class="hp-bar-bg" style="height:8px;"><div class="hp-bar-fill" style="width:100%;background:linear-gradient(90deg,#ff0000,#ff6600);"></div></div>';
+  const hpBarsEl = document.getElementById('hp-bars-container') || document.getElementById('hud');
+  hpBarsEl.appendChild(hpC);
+  entity.hpContainer = hpC;
+
+  entities.push(entity);
+  waveEnemies.push(entity);
+  return entity;
+}
+
 // ドラゴンをエンティティとしてスポーン
 function spawnDragon(type, x, z, aiPattern, factionColor) {
+  if (type === 'titan_boss') {
+    return spawnTitan(x, z, factionColor);
+  }
   const def = DRAGON_DEFS[type];
   const mesh = buildDragonMesh(type, factionColor);
   const flyHeight = def.fly ? 80 : 0;
@@ -9915,12 +10410,12 @@ function spawnWave(waveNum) {
 
   const difficulty = waveConfig.startDifficulty * Math.pow(waveConfig.scaling, waveNum - 1);
   let budget = Math.floor(5 + waveNum * 3 * difficulty);
-  const costs = { dragonling: 1, firedrake: 2, frostdrake: 2, stonedrake: 4, elderdragon: 6 };
+  const costs = { dragonling: 1, firedrake: 2, frostdrake: 2, stonedrake: 4, elderdragon: 6, titan_boss: 8 };
   let available = ['dragonling'];
   if (waveNum >= 2) available.push('firedrake');
   if (waveNum >= 3) available.push('frostdrake');
   if (waveNum >= 5) available.push('stonedrake');
-  if (waveNum >= 8) available.push('elderdragon');
+  if (waveNum >= 8) available.push('titan_boss');
 
   const toSpawn = [];
   while (budget > 0) {
@@ -10623,6 +11118,33 @@ function getMovementTarget(entity) {
 
   // ── ドラゴンAI ──
   if (entity.isDragon) {
+    // Titan AI: target crystal and castle walls
+    if (entity.isTitan) {
+      // Check for castle walls between titan and crystal
+      let nearestWall = null, wallDist = Infinity;
+      for (let i = 0; i < castleWalls.length; i++) {
+        const w = castleWalls[i];
+        if (w.destroyed || !w.mesh) continue;
+        const d = Math.sqrt((w.mesh.position.x - x) ** 2 + (w.mesh.position.z - z) ** 2);
+        if (d < wallDist) { wallDist = d; nearestWall = w; }
+      }
+      if (nearestWall && wallDist < 500) {
+        return { x: nearestWall.mesh.position.x, z: nearestWall.mesh.position.z, target: { isCastleWall: true, wallRef: nearestWall } };
+      }
+      // No walls (or far away) -> go for crystal
+      if (playerCrystal && crystalHP > 0) {
+        return { x: playerCrystal.position.x, z: playerCrystal.position.z, target: { isCrystal: true } };
+      }
+      // Fallback: nearest tower
+      let nearestKingT = null, kDistT = Infinity;
+      towers.forEach(t => {
+        if (t.destroyed || t.side === 99) return;
+        const d = Math.sqrt((t.x - x) ** 2 + (t.z - z) ** 2);
+        if (d < kDistT) { kDistT = d; nearestKingT = t; }
+      });
+      if (nearestKingT) return { x: nearestKingT.x, z: nearestKingT.z, target: nearestKingT };
+      return { x: 0, z: 0, target: null };
+    }
     if (entity.aiPattern === 'siege') {
       // siege: 経路上の建物（施設）を優先破壊しながら進軍
       let nearestStructure = null, sDist = Infinity;
@@ -10935,6 +11457,15 @@ function updateEntities(dt) {
       continue;
     }
 
+    // ===== Titan ground smash timer =====
+    if (e.isTitan && e.groundSmashTimer !== undefined) {
+      e.groundSmashTimer -= dt;
+      if (e.groundSmashTimer <= 0) {
+        performGroundSmash(e);
+        e.groundSmashTimer = TITAN_DEFS.titan_boss.groundSmashCooldown;
+      }
+    }
+
     // ===== Golem boss: structure-targeting AI =====
     if (e.isRaidBoss && e.bossType === 'golem') {
       // Find nearest enemy structure (not own faction)
@@ -11021,6 +11552,73 @@ function updateEntities(dt) {
     const moveTarget = getMovementTarget(e);
 
     if (moveTarget.target) {
+      // Titan castle wall attack
+      if (e.isTitan && moveTarget.target.isCastleWall) {
+        const wallRef = moveTarget.target.wallRef;
+        if (wallRef && !wallRef.destroyed && wallRef.mesh) {
+          const wx = wallRef.mesh.position.x, wz = wallRef.mesh.position.z;
+          const wDist = Math.sqrt((e.mesh.position.x - wx) ** 2 + (e.mesh.position.z - wz) ** 2);
+          if (wDist > e.range) {
+            e.state = 'moving';
+            const dx = wx - e.mesh.position.x, dz = wz - e.mesh.position.z;
+            const len = Math.sqrt(dx * dx + dz * dz);
+            if (len > 0.1) { e.mesh.position.x += (dx / len) * e.speed * speedMult * dt; e.mesh.position.z += (dz / len) * e.speed * speedMult * dt; }
+            e.mesh.lookAt(wx, e.mesh.position.y, wz);
+          } else {
+            e.state = 'attacking';
+            e.attackTimer -= dt * speedMult;
+            if (e.attackTimer <= 0) {
+              e.attackTimer = e.attackSpeed;
+              wallRef.hp -= e.dmg;
+              showDamageNumber(wx, wz, Math.round(e.dmg));
+              if (wallRef.hp <= 0 && !wallRef.destroyed) {
+                wallRef.destroyed = true;
+                scene.remove(wallRef.mesh);
+                const idx = arenaObjects.indexOf(wallRef.mesh);
+                if (idx >= 0) arenaObjects.splice(idx, 1);
+              }
+            }
+            e.mesh.lookAt(wx, e.mesh.position.y, wz);
+          }
+          // Terrain follow
+          e.mesh.position.y = getTerrainHeight(e.mesh.position.x, e.mesh.position.z);
+          updateHPBarPosition(e);
+          continue;
+        }
+      }
+
+      // Titan crystal attack
+      if (e.isTitan && moveTarget.target.isCrystal) {
+        if (playerCrystal && crystalHP > 0) {
+          const cx2 = playerCrystal.position.x, cz2 = playerCrystal.position.z;
+          const cDist = Math.sqrt((e.mesh.position.x - cx2) ** 2 + (e.mesh.position.z - cz2) ** 2);
+          if (cDist > e.range) {
+            e.state = 'moving';
+            const dx = cx2 - e.mesh.position.x, dz = cz2 - e.mesh.position.z;
+            const len = Math.sqrt(dx * dx + dz * dz);
+            if (len > 0.1) { e.mesh.position.x += (dx / len) * e.speed * speedMult * dt; e.mesh.position.z += (dz / len) * e.speed * speedMult * dt; }
+            e.mesh.lookAt(cx2, e.mesh.position.y, cz2);
+          } else {
+            e.state = 'attacking';
+            e.attackTimer -= dt * speedMult;
+            if (e.attackTimer <= 0) {
+              e.attackTimer = e.attackSpeed;
+              crystalHP -= e.dmg;
+              crystalHP = Math.max(0, crystalHP);
+              updateCrystalHPBar();
+              showDamageNumber(cx2, cz2, Math.round(e.dmg));
+              if (crystalHP <= 0) {
+                endMatch(false);
+              }
+            }
+            e.mesh.lookAt(cx2, e.mesh.position.y, cz2);
+          }
+          e.mesh.position.y = getTerrainHeight(e.mesh.position.x, e.mesh.position.z);
+          updateHPBarPosition(e);
+          continue;
+        }
+      }
+
       const tx = moveTarget.target.mesh ? moveTarget.target.mesh.position.x : moveTarget.target.x;
       const tz = moveTarget.target.mesh ? moveTarget.target.mesh.position.z : moveTarget.target.z;
       const dist = Math.sqrt(
@@ -11152,6 +11750,123 @@ function updateEntities(dt) {
     }
 
     updateHPBarPosition(e);
+  }
+}
+
+// ============================================================
+// TITAN GROUND SMASH
+// ============================================================
+function performGroundSmash(entity) {
+  if (!entity || !entity.mesh) return;
+  const ex = entity.mesh.position.x;
+  const ez = entity.mesh.position.z;
+  const smashRadius = 40;
+  const smashDmg = 80;
+
+  // Damage castle walls in radius
+  for (let i = 0; i < castleWalls.length; i++) {
+    const w = castleWalls[i];
+    if (w.destroyed || !w.mesh) continue;
+    const d = Math.sqrt((w.mesh.position.x - ex) ** 2 + (w.mesh.position.z - ez) ** 2);
+    if (d <= smashRadius) {
+      w.hp -= smashDmg;
+      if (w.hp <= 0 && !w.destroyed) {
+        w.destroyed = true;
+        scene.remove(w.mesh);
+        const idx = arenaObjects.indexOf(w.mesh);
+        if (idx >= 0) arenaObjects.splice(idx, 1);
+      }
+    }
+  }
+
+  // Damage crystal if in range
+  if (playerCrystal && crystalHP > 0) {
+    const cd = Math.sqrt((playerCrystal.position.x - ex) ** 2 + (playerCrystal.position.z - ez) ** 2);
+    if (cd <= smashRadius) {
+      crystalHP -= smashDmg;
+      crystalHP = Math.max(0, crystalHP);
+      updateCrystalHPBar();
+      if (crystalHP <= 0) endMatch(false);
+    }
+  }
+
+  // Damage nearby friendly structures
+  for (let si = 0; si < structures.length; si++) {
+    const s = structures[si];
+    if (s.destroyed) continue;
+    const d = Math.sqrt((s.x - ex) ** 2 + (s.z - ez) ** 2);
+    if (d <= smashRadius) {
+      damageStructure(s, smashDmg);
+    }
+  }
+
+  // Visual: expanding ring on ground
+  const ringGeo = new THREE.RingGeometry(0.5, 4, 32);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(ex, 0.5, ez);
+  scene.add(ring);
+  spellEffects.push({
+    mesh: ring, timer: 0.8,
+    expandRing: true,
+    expandSpeed: smashRadius / 0.8,
+    isCastleRing: true
+  });
+
+  // Camera shake
+  if (typeof shakeScreen === 'function') {
+    try { shakeScreen(); } catch(_) {}
+  }
+}
+
+// ============================================================
+// CRYSTAL ANIMATION
+// ============================================================
+function updateCrystalAnimation(dt) {
+  if (!playerCrystal) return;
+  const t = (typeof clock !== 'undefined') ? clock.elapsedTime : performance.now() / 1000;
+  const isLow = crystalHP / crystalMaxHP < 0.3;
+
+  // Rotate main crystal (first child that is OctahedronGeometry based)
+  const children = playerCrystal.children;
+  if (children.length > 0) {
+    // index 0 = main crystal
+    children[0].rotation.y = t * 0.5;
+    children[0].rotation.x = Math.sin(t * 0.3) * 0.1;
+
+    // Flicker red when low HP
+    if (isLow && children[0].material) {
+      const flicker = 0.5 + 0.5 * Math.sin(t * 8);
+      children[0].material.emissiveIntensity = 0.3 + flicker * 0.8;
+      children[0].material.emissive.setHex(flicker > 0.5 ? 0xff0000 : 0x0066aa);
+    }
+  }
+
+  // Orbit particles (children index 4+ after main crystal, 3 side crystals, ring)
+  const orbitStart = 5; // main + 3 side + ring
+  for (let i = orbitStart; i < children.length; i++) {
+    const p = children[i];
+    if (p.userData.orbitAngle === undefined) continue;
+    const speed = 0.4 + (p.userData.orbitIndex % 3) * 0.1;
+    p.userData.orbitAngle += dt * speed;
+    const angle = p.userData.orbitAngle;
+    const radius = p.userData.orbitRadius;
+    const baseHeight = p.userData.orbitHeight;
+    p.position.x = Math.cos(angle) * radius;
+    p.position.z = Math.sin(angle) * radius;
+    p.position.y = baseHeight + Math.sin(t * 2 + p.userData.orbitIndex) * 3;
+  }
+
+  // Light pulse
+  if (crystalLight) {
+    if (isLow) {
+      crystalLight.color.setHex(0xff3300);
+      crystalLight.intensity = 1.5 + Math.sin(t * 8) * 0.8;
+    } else {
+      crystalLight.color.setHex(0x00ccff);
+      crystalLight.intensity = 1.8 + Math.sin(t * 2) * 0.4;
+    }
   }
 }
 
@@ -11453,6 +12168,10 @@ function updateSpellEffects(dt) {
       e.mesh.position.x += (e.vx || 0) * dt;
       e.mesh.position.z += (e.vz || 0) * dt;
       if (e.vy) e.vy -= 5 * dt;
+    }
+    if (e.expandRing && e.expandSpeed) {
+      const s = e.mesh.scale.x + e.expandSpeed * dt;
+      e.mesh.scale.set(s, s, s);
     }
     if (e.mesh.material) {
       e.mesh.material.opacity = Math.max(0, e.timer);
@@ -13473,6 +14192,8 @@ window.resumeFromResult = function() {
 
 function endMatch(won) {
   gameState = 'RESULT';
+  // Hide crystal HP bar
+  { const _cb = document.getElementById('crystal-hp-bar'); if (_cb) _cb.style.display = 'none'; }
   // バトル終了時にバトルセーブを削除
   clearBattleSave();
   // 一時モーダル（チェスト拾取等）をクリーンアップ
@@ -14917,6 +15638,7 @@ window.startBattle = function() {
   // Show HUD
   document.getElementById('hud').style.display = 'block';
   document.getElementById('battle-dock').style.display = 'flex';
+  { const _cb = document.getElementById('crystal-hp-bar'); if (_cb) _cb.style.display = 'block'; }
   // commentary-box廃止
   document.getElementById('commentary-box').innerHTML = '';
   document.getElementById('bottom-status-bar').style.display = 'block';
@@ -15938,6 +16660,7 @@ function updateGame(dt) {
     if (frameCount % 3 === 0) { updateHUD(); updateMinimap(); }
     updateCommentary(dt);
     try { updateQueenAuraAnimation(dt); } catch(e) {}
+    try { updateCrystalAnimation(dt); } catch(e) {}
     if (frameCount % 15 === 0) renderHand();
     // ドラゴン襲来カウントダウン（UIは出さない、内部的に時間を進めるだけ）
     dragonCountdownTimer -= dt;
@@ -16020,6 +16743,9 @@ function updateGame(dt) {
   if (frameCount % 3 === 0) updatePlayerStats(dt);
   try { updateQueenAuraAnimation(dt); } catch(e) {}
   if (frameCount % 3 === 0) updateActionStatus();
+
+  // Crystal animation
+  try { updateCrystalAnimation(dt); } catch(e) {}
 
   // Re-render hand (for GDP cost checking) — every ~0.5 seconds
   if (frameCount % 15 === 0) {
