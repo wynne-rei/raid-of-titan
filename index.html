@@ -7519,8 +7519,41 @@ function buildArena() {
   // ============ 雲ビルボード ============
   buildClouds();
 
+  // ============ 奈落雲海（下界） ============
+  buildAbyssCloudSea();
+
   // NOTE: 3国敵拠点 (buildFactionBases) は RAID OF TITAN v4 で撤去済み
   // NOTE: 遠景の山・木・岩は空島マップの視認性を保つため非表示
+}
+
+// 奈落層：空島の下に広がる雲海。タイタンの足はここに沈む。
+function buildAbyssCloudSea() {
+  const R = Math.max(arenaW, ARENA_L) * 3;
+  const abyssMat = new THREE.MeshBasicMaterial({
+    color: 0x606878, transparent: true, opacity: 0.55,
+    side: THREE.DoubleSide, depthWrite: false,
+  });
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(R * 2, R * 2), abyssMat);
+  plane.rotation.x = -Math.PI / 2;
+  plane.position.y = ABYSS_Y;
+  scene.add(plane);
+  arenaObjects.push(plane);
+
+  // 雲海の上に浮かぶ濃霧レイヤー（奥行き演出）
+  const fogMat = new THREE.MeshBasicMaterial({
+    color: 0x8a94a6, transparent: true, opacity: 0.22,
+    side: THREE.DoubleSide, depthWrite: false,
+  });
+  const fogGeo = new THREE.SphereGeometry(30, 6, 4);
+  for (let i = 0; i < 24; i++) {
+    const blob = new THREE.Mesh(fogGeo, fogMat);
+    blob.scale.set(2 + Math.random() * 3, 0.5 + Math.random() * 0.6, 1.5 + Math.random() * 2);
+    const angle = (i / 24) * Math.PI * 2 + Math.random() * 0.4;
+    const r = 250 + Math.random() * 600;
+    blob.position.set(Math.cos(angle) * r, ABYSS_Y + 20 + Math.random() * 40, Math.sin(angle) * r);
+    scene.add(blob);
+    arenaObjects.push(blob);
+  }
 }
 
 // ============================================================
@@ -10022,22 +10055,35 @@ function spawnInitialArmy() {
 // TITAN DEFINITIONS — RAID OF TITAN v4
 // 7体の名前付き巨人。夜ごとに順番に襲来する。
 // ============================================================
+// v4: スケール倍増+奈落沈め。足は奈落にあり、頭〜肩だけ空島上に顔を出す想定。
+// range は「腕を伸ばして空島を攻撃する」挙動のため大幅に延長（2D距離チェック）。
 const TITAN_DEFS = {
-  grunt:        { hp: 600,  dmg: 50,  speed: 60, range: 18, scale: 1.5, name: 'GRUNT',         groundSmashCooldown: 0,
+  grunt:        { hp: 600,  dmg: 50,  speed: 60, range: 25, scale: 3.0,  name: 'GRUNT',         groundSmashCooldown: 0,
                   colors: { body: 0x6a4a2a, skin: 0x8a5a3a, dark: 0x2a1a08, armor: 0x555555, lava: 0xffaa44, eye: 0xffaa00, horn: 0x333333 } },
-  warrior:      { hp: 1200, dmg: 80,  speed: 55, range: 20, scale: 2.0, name: 'WARRIOR',       groundSmashCooldown: 10,
+  warrior:      { hp: 1200, dmg: 80,  speed: 55, range: 30, scale: 4.0,  name: 'WARRIOR',       groundSmashCooldown: 10,
                   colors: { body: 0x4a3a2a, skin: 0x7a5a3a, dark: 0x1a1008, armor: 0x4a4a4a, lava: 0xff6644, eye: 0xff3300, horn: 0x222222 } },
-  stonebreaker: { hp: 2200, dmg: 120, speed: 45, range: 22, scale: 2.6, name: 'STONEBREAKER', groundSmashCooldown: 8,
+  stonebreaker: { hp: 2200, dmg: 120, speed: 45, range: 35, scale: 5.0,  name: 'STONEBREAKER', groundSmashCooldown: 8,
                   colors: { body: 0x5a5a5a, skin: 0x7a7a7a, dark: 0x2a2a2a, armor: 0x333333, lava: 0xeeeeee, eye: 0xaaccff, horn: 0x222222 } },
-  ashking:      { hp: 2800, dmg: 140, speed: 50, range: 24, scale: 2.9, name: 'ASHKING',      groundSmashCooldown: 7,
+  ashking:      { hp: 2800, dmg: 140, speed: 50, range: 40, scale: 6.0,  name: 'ASHKING',      groundSmashCooldown: 7,
                   colors: { body: 0x2a1a1a, skin: 0x4a2a2a, dark: 0x0a0606, armor: 0x3a2a2a, lava: 0xff3300, eye: 0xff0000, horn: 0x1a0a0a } },
-  frostjaw:     { hp: 2600, dmg: 130, speed: 55, range: 22, scale: 2.8, name: 'FROSTJAW',     groundSmashCooldown: 8,
+  frostjaw:     { hp: 2600, dmg: 130, speed: 55, range: 40, scale: 6.0,  name: 'FROSTJAW',     groundSmashCooldown: 8,
                   colors: { body: 0x2a3a5a, skin: 0x4a6a8a, dark: 0x1a2030, armor: 0x8aaacc, lava: 0x88ccff, eye: 0x00ffff, horn: 0xccddff } },
-  voidwalker:   { hp: 3200, dmg: 160, speed: 48, range: 26, scale: 3.2, name: 'VOIDWALKER',   groundSmashCooldown: 6,
+  voidwalker:   { hp: 3200, dmg: 160, speed: 48, range: 45, scale: 7.0,  name: 'VOIDWALKER',   groundSmashCooldown: 6,
                   colors: { body: 0x1a1a2a, skin: 0x3a2a4a, dark: 0x0a060a, armor: 0x2a1a3a, lava: 0xaa00ff, eye: 0xff00ff, horn: 0x2a1a3a } },
-  titan_lord:   { hp: 5000, dmg: 220, speed: 38, range: 30, scale: 4.0, name: 'TITAN LORD',   groundSmashCooldown: 5,
+  titan_lord:   { hp: 5000, dmg: 220, speed: 38, range: 60, scale: 10.0, name: 'TITAN LORD',   groundSmashCooldown: 5,
                   colors: { body: 0x3a2a1a, skin: 0x5a3a1a, dark: 0x1a1008, armor: 0x444444, lava: 0xff4400, eye: 0xff0000, horn: 0x222222 } },
 };
+
+// 奈落雲海の位置。タイタンはここより下に足があるイメージ
+const ABYSS_Y = -150;
+
+// タイタンの「足元Y」を計算：頭肩だけ空島上に出る深さに沈める
+function computeTitanFeetY(def) {
+  const s = def.scale;
+  const totalH = 45 * s;           // mesh 総高さの近似
+  const peek = 25 + s * 4;          // 大きい個体ほど多めに顔を出す
+  return peek - totalH;             // 足元Y
+}
 const TITAN_ORDER = ['grunt', 'warrior', 'stonebreaker', 'ashking', 'frostjaw', 'voidwalker', 'titan_lord'];
 
 // 後方互換: 既存コードは DRAGON_DEFS / DRAGON_IDS を参照するため、エイリアスとして提供
@@ -10512,8 +10558,9 @@ const DRAGON_SPAWN_POINTS = [
 // タイタンをエンティティとしてスポーン
 function spawnTitan(x, z, factionColor) {
   const def = TITAN_DEFS.titan_boss;
-  const mesh = buildTitanMesh(def.scale);
-  mesh.position.set(x, 0, z);
+  const mesh = buildTitanMesh(def);
+  const feetY = computeTitanFeetY(def);
+  mesh.position.set(x, feetY, z);
   scene.add(mesh);
 
   const entity = {
@@ -10532,6 +10579,8 @@ function spawnTitan(x, z, factionColor) {
     isTitan: true,
     dragonType: 'titan_boss',
     aiPattern: 'siege',
+    titanFeetY: feetY,
+    titanAttackAnim: 0,
     target: null,
     fly: false,
     flyHeight: 0,
@@ -10565,8 +10614,8 @@ function spawnDragon(type, x, z, aiPattern, factionColor) {
   }
   const def = TITAN_DEFS[type] || TITAN_DEFS.grunt;
   const mesh = buildDragonMesh(type, factionColor);
-  const flyHeight = 0; // v4: 地上型
-  mesh.position.set(x, flyHeight, z);
+  const feetY = computeTitanFeetY(def); // v4: 奈落に足を沈める
+  mesh.position.set(x, feetY, z);
   scene.add(mesh);
 
   const entity = {
@@ -10595,6 +10644,8 @@ function spawnDragon(type, x, z, aiPattern, factionColor) {
     statDmg: 0,
     statKills: 0,
     groundSmashTimer: def.groundSmashCooldown || 0,
+    titanFeetY: computeTitanFeetY(def),
+    titanAttackAnim: 0,
   };
 
   // HPバー（ドラゴン用: サイズ拡大、赤色）
@@ -11519,6 +11570,12 @@ function updateEntities(dt) {
   for (let i = entities.length - 1; i >= 0; i--) {
     const e = entities[i];
 
+    // ショーケース: タイタン静止展示
+    if (e.statusFrozen) {
+      if (e.isTitan) applyTitanPosture(e, dt);
+      continue;
+    }
+
     // Dead check
     if (e.hp <= 0) {
       // ドラゴン撃破時: SAVED BY テロップ演出
@@ -11747,10 +11804,14 @@ function updateEntities(dt) {
         }
       }
       // Terrain follow + bobbing
-      const terrainY = getTerrainHeight(e.mesh.position.x, e.mesh.position.z);
-      const baseY = e.def && e.def.size ? (e.def.size[1] || e.def.size[0]) / 2 : 4;
-      const bob = Math.sin(clock.elapsedTime * 3) * 0.05;
-      e.mesh.position.y = terrainY + baseY + bob;
+      if (e.isTitan) {
+        applyTitanPosture(e, dt);
+      } else {
+        const terrainY = getTerrainHeight(e.mesh.position.x, e.mesh.position.z);
+        const baseY = e.def && e.def.size ? (e.def.size[1] || e.def.size[0]) / 2 : 4;
+        const bob = Math.sin(clock.elapsedTime * 3) * 0.05;
+        e.mesh.position.y = terrainY + baseY + bob;
+      }
       updateHPBarPosition(e);
       continue;
     }
@@ -11786,9 +11847,11 @@ function updateEntities(dt) {
               }
             }
             e.mesh.lookAt(wx, e.mesh.position.y, wz);
+            // アーム伸ばし演出（攻撃後0.3秒）
+            e.titanAttackAnim = 0.3;
           }
-          // Terrain follow
-          e.mesh.position.y = getTerrainHeight(e.mesh.position.x, e.mesh.position.z);
+          // タイタンは奈落に沈んだまま。地形追従しない
+          applyTitanPosture(e, dt);
           updateHPBarPosition(e);
           continue;
         }
@@ -11819,8 +11882,11 @@ function updateEntities(dt) {
               }
             }
             e.mesh.lookAt(cx2, e.mesh.position.y, cz2);
+            // アーム伸ばし演出
+            e.titanAttackAnim = 0.3;
           }
-          e.mesh.position.y = getTerrainHeight(e.mesh.position.x, e.mesh.position.z);
+          // タイタンは奈落に沈んだまま。地形追従しない
+          applyTitanPosture(e, dt);
           updateHPBarPosition(e);
           continue;
         }
@@ -11839,6 +11905,8 @@ function updateEntities(dt) {
         if (e.attackTimer <= 0) {
           e.attackTimer = e.attackSpeed;
           const target = moveTarget.target;
+          // タイタンはアーム伸ばし演出
+          if (e.isTitan) e.titanAttackAnim = 0.3;
           // ストーンドレイクは近接攻撃（体当たり）、他のドラゴンはブレス攻撃
           // v4: grunt/warrior/stonebreaker は近接、他は遠距離ブレス
           const meleeTitans = ['grunt', 'warrior', 'stonebreaker', 'stonedrake'];
@@ -11951,7 +12019,9 @@ function updateEntities(dt) {
     }
 
     // Bobbing animation for troops + 地形追従
-    {
+    if (e.isTitan) {
+      applyTitanPosture(e, dt);
+    } else {
       const terrainY = e.fly ? 0 : getTerrainHeight(e.mesh.position.x, e.mesh.position.z);
       const baseY = e.fly ? (e.flyHeight || 80) : (e.def && e.def.size ? (e.def.size[1] || e.def.size[0]) / 2 : 4);
       const bob = e.state === 'moving' ? Math.sin(clock.elapsedTime * 5) * 0.05 : 0;
@@ -11960,6 +12030,77 @@ function updateEntities(dt) {
 
     updateHPBarPosition(e);
   }
+}
+
+// ============================================================
+// TITAN POSTURE — 奈落にfeet固定＋攻撃時のアーム伸ばし演出
+// ============================================================
+function applyTitanPosture(e, dt) {
+  if (!e || !e.mesh) return;
+  const feetY = (typeof e.titanFeetY === 'number') ? e.titanFeetY : computeTitanFeetY(TITAN_DEFS[e.dragonType] || TITAN_DEFS.grunt);
+  // 微かな呼吸のみ（足は奈落に沈んだまま）
+  const breath = Math.sin(clock.elapsedTime * 1.2) * 0.8;
+  e.mesh.position.y = feetY + breath;
+
+  // 攻撃アニメ: 0.3秒かけて身体を伸び上がらせる＋ごく軽く前傾
+  if (e.titanAttackAnim > 0) {
+    e.titanAttackAnim = Math.max(0, e.titanAttackAnim - dt);
+    const t = 1 - (e.titanAttackAnim / 0.3); // 0→1
+    const wave = Math.sin(t * Math.PI);       // 0→1→0
+    const def = TITAN_DEFS[e.dragonType] || TITAN_DEFS.grunt;
+    const reachBoost = 4 + def.scale * 3;    // 大きい個体ほど腕を伸ばす
+    e.mesh.position.y = feetY + breath + wave * reachBoost;
+    e.mesh.rotation.z = Math.sin(t * Math.PI * 2) * 0.04;
+  } else {
+    e.mesh.rotation.z = 0;
+  }
+}
+
+// ============================================================
+// TITAN SHOWCASE — 見た目確認用（?titans で起動）
+// ============================================================
+function runTitanShowcase() {
+  // タイトル画面を消す
+  const title = document.getElementById('title-screen');
+  if (title) title.style.display = 'none';
+  const hud = document.getElementById('hud');
+  if (hud) hud.style.display = 'block';
+
+  // 7体を横並び（x軸方向）にスポーン。z は中央大空島の外側
+  const ids = ['grunt','warrior','stonebreaker','ashking','frostjaw','voidwalker','titan_lord'];
+  const spacing = 160;
+  const startX = -(ids.length - 1) * spacing / 2;
+  ids.forEach((id, i) => {
+    const t = spawnDragon(id, startX + i * spacing, -700, 'idle', null);
+    if (t) {
+      // 攻撃・移動を止めて静止展示に
+      t.speed = 0;
+      t.dmg = 0;
+      t.aiPattern = 'idle';
+      t.statusFrozen = true;
+    }
+  });
+
+  // カメラを引きで全体が見える位置に
+  if (typeof camera !== 'undefined' && camera) {
+    camera.position.set(0, 260, -200);
+    camera.lookAt(0, 80, -700);
+  }
+
+  // 画面上にキャプション
+  const cap = document.createElement('div');
+  cap.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.65);color:#fff;padding:8px 20px;border-radius:8px;font-family:sans-serif;font-size:14px;z-index:9999;letter-spacing:1px;';
+  cap.textContent = '🗿 TITAN SHOWCASE — GRUNT / WARRIOR / STONEBREAKER / ASHKING / FROSTJAW / VOIDWALKER / TITAN LORD';
+  document.body.appendChild(cap);
+
+  // 操作ヒント
+  const hint = document.createElement('div');
+  hint.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);color:#ccc;padding:6px 14px;border-radius:6px;font-family:sans-serif;font-size:12px;z-index:9999;';
+  hint.textContent = 'WASD/矢印=移動 / マウスで視点回転 / ?titans を外して通常起動';
+  document.body.appendChild(hint);
+
+  // showcaseフラグ: タイタンの攻撃・移動処理を止める
+  window.__titanShowcase = true;
 }
 
 // ============================================================
@@ -12152,7 +12293,14 @@ function updateHPBarPosition(entity) {
   const isDragon = entity.isDragon;
   // ダイバーモードはカメラが遠い → プレイヤーキングHPバーを頭ぎりぎりに寄せて浮遊感を消す
   const playerTowerOffset = isSpectator ? 22 : 38;
-  const hpBarYOffset = isPlayerTower ? playerTowerOffset : isQueen ? 38 : isDragon ? 30 : (fbxH > 0 ? fbxH + 8 : 15);
+  // タイタンは奈落にfeet固定のため、scaleベースで頭頂上に配置
+  let hpBarYOffset;
+  if (entity.isTitan) {
+    const def = TITAN_DEFS[entity.dragonType] || TITAN_DEFS.grunt;
+    hpBarYOffset = 45 * def.scale + 15;
+  } else {
+    hpBarYOffset = isPlayerTower ? playerTowerOffset : isQueen ? 38 : isDragon ? 30 : (fbxH > 0 ? fbxH + 8 : 15);
+  }
   _hpBarVec.set(ex, ey + hpBarYOffset, ez);
   _hpBarVec.project(camera);
 
@@ -17457,6 +17605,10 @@ function init() {
   setupInput();
   initSnowParticles();
   initDmgNumPool();
+  // ?titans — タイタン見た目確認ショーケース
+  if (location.search.indexOf('titans') >= 0) {
+    setTimeout(runTitanShowcase, 50);
+  }
   // FBXモデルをプリロード → 完了後にゲーム開始可能に
   const titleScreen = document.getElementById('title-screen');
   const menuBtns = titleScreen ? titleScreen.querySelectorAll('.hero-btn') : [];
