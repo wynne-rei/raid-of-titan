@@ -10055,22 +10055,24 @@ function spawnInitialArmy() {
 // TITAN DEFINITIONS — RAID OF TITAN v4
 // 7体の名前付き巨人。夜ごとに順番に襲来する。
 // ============================================================
-// v4: スケール倍増+奈落沈め。足は奈落にあり、頭〜肩だけ空島上に顔を出す想定。
+// v4: 全7体スケール統一（10.0）— 差分は色と名前だけ。
+// 足は奈落にあり、頭〜肩だけ空島上に顔を出す。
 // range は「腕を伸ばして空島を攻撃する」挙動のため大幅に延長（2D距離チェック）。
+const TITAN_BASE = { hp: 5000, dmg: 220, speed: 38, range: 60, scale: 10.0, groundSmashCooldown: 5 };
 const TITAN_DEFS = {
-  grunt:        { hp: 600,  dmg: 50,  speed: 60, range: 25, scale: 3.0,  name: 'GRUNT',         groundSmashCooldown: 0,
+  grunt:        { ...TITAN_BASE, name: 'GRUNT',
                   colors: { body: 0x6a4a2a, skin: 0x8a5a3a, dark: 0x2a1a08, armor: 0x555555, lava: 0xffaa44, eye: 0xffaa00, horn: 0x333333 } },
-  warrior:      { hp: 1200, dmg: 80,  speed: 55, range: 30, scale: 4.0,  name: 'WARRIOR',       groundSmashCooldown: 10,
+  warrior:      { ...TITAN_BASE, name: 'WARRIOR',
                   colors: { body: 0x4a3a2a, skin: 0x7a5a3a, dark: 0x1a1008, armor: 0x4a4a4a, lava: 0xff6644, eye: 0xff3300, horn: 0x222222 } },
-  stonebreaker: { hp: 2200, dmg: 120, speed: 45, range: 35, scale: 5.0,  name: 'STONEBREAKER', groundSmashCooldown: 8,
+  stonebreaker: { ...TITAN_BASE, name: 'STONEBREAKER',
                   colors: { body: 0x5a5a5a, skin: 0x7a7a7a, dark: 0x2a2a2a, armor: 0x333333, lava: 0xeeeeee, eye: 0xaaccff, horn: 0x222222 } },
-  ashking:      { hp: 2800, dmg: 140, speed: 50, range: 40, scale: 6.0,  name: 'ASHKING',      groundSmashCooldown: 7,
+  ashking:      { ...TITAN_BASE, name: 'ASHKING',
                   colors: { body: 0x2a1a1a, skin: 0x4a2a2a, dark: 0x0a0606, armor: 0x3a2a2a, lava: 0xff3300, eye: 0xff0000, horn: 0x1a0a0a } },
-  frostjaw:     { hp: 2600, dmg: 130, speed: 55, range: 40, scale: 6.0,  name: 'FROSTJAW',     groundSmashCooldown: 8,
+  frostjaw:     { ...TITAN_BASE, name: 'FROSTJAW',
                   colors: { body: 0x2a3a5a, skin: 0x4a6a8a, dark: 0x1a2030, armor: 0x8aaacc, lava: 0x88ccff, eye: 0x00ffff, horn: 0xccddff } },
-  voidwalker:   { hp: 3200, dmg: 160, speed: 48, range: 45, scale: 7.0,  name: 'VOIDWALKER',   groundSmashCooldown: 6,
+  voidwalker:   { ...TITAN_BASE, name: 'VOIDWALKER',
                   colors: { body: 0x1a1a2a, skin: 0x3a2a4a, dark: 0x0a060a, armor: 0x2a1a3a, lava: 0xaa00ff, eye: 0xff00ff, horn: 0x2a1a3a } },
-  titan_lord:   { hp: 5000, dmg: 220, speed: 38, range: 60, scale: 10.0, name: 'TITAN LORD',   groundSmashCooldown: 5,
+  titan_lord:   { ...TITAN_BASE, name: 'TITAN LORD',
                   colors: { body: 0x3a2a1a, skin: 0x5a3a1a, dark: 0x1a1008, armor: 0x444444, lava: 0xff4400, eye: 0xff0000, horn: 0x222222 } },
 };
 
