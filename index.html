@@ -3211,6 +3211,12 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
 <div id="hud">
   <!-- (旧 #timer-bar / #wave-top-hud / #wave-info / #wave-number 削除済み 2026-04-10
        常時稼働ワールドへの移行に伴い旧ウェーブ制HUDを撤去) -->
+  <!-- v4: Day/Night HUD -->
+  <div id="day-night-hud" style="position:fixed;top:12px;left:12px;z-index:900;background:rgba(0,0,0,0.55);border:1px solid rgba(255,220,120,0.4);border-radius:8px;padding:8px 14px;font-family:sans-serif;color:#ffe8a8;">
+    <div id="day-label" style="font-size:18px;font-weight:bold;letter-spacing:2px;">Day 1</div>
+    <div id="day-phase" style="font-size:11px;color:#ffd27a;letter-spacing:1px;">☀️ 昼</div>
+    <button id="sleep-btn" style="margin-top:6px;background:linear-gradient(180deg,#3a2a5a,#1a1030);color:#e8d8ff;border:1px solid #7a5aaa;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:bold;display:none;">🛏 就寝する</button>
+  </div>
   <div id="crown-display" style="display:none"></div>
   <div id="overtime-banner">⚡ SUDDEN DEATH ⚡</div>
   <div id="faction-scoreboard"></div>
@@ -5386,6 +5392,60 @@ const INTERVAL_DURATION = 10; // ウェーブ間インターバル（秒）
 let waveConfig = { startDifficulty: 1, scaling: 1.2 }; // オプションで調整
 let playerArmy = []; // プレイヤー側の全ユニット参照
 
+// ============================================================
+// DAY/NIGHT CYCLE — BUILD=DAY, WAVE=NIGHT, INTERVAL撤去
+// ============================================================
+let currentDay = 1;           // Day N カウンター
+let dayNightT = 1;            // 1=昼, 0=夜, 中間=トランジション
+let dayNightTarget = 1;       // 目標値（フェード先）
+const DAY_NIGHT_FADE = 2.5;   // フェード秒数
+
+// 昼夜ライティングを dt でフェード適用
+function updateDayNightLighting(dt) {
+  // 目標値に向かって滑らかに近づく
+  if (dayNightT !== dayNightTarget) {
+    const step = dt / DAY_NIGHT_FADE;
+    if (dayNightT < dayNightTarget) dayNightT = Math.min(dayNightTarget, dayNightT + step);
+    else dayNightT = Math.max(dayNightTarget, dayNightT - step);
+  }
+  const t = dayNightT; // 1=昼, 0=夜
+
+  // 環境光: 昼=白っぽく強い / 夜=紺色弱い
+  if (window._ambientLight) {
+    window._ambientLight.intensity = 0.1 + 0.3 * t;
+    const ar = 0.05 + 0.48 * t, ag = 0.1 + 0.57 * t, ab = 0.25 + 0.55 * t;
+    window._ambientLight.color.setRGB(ar, ag, ab);
+  }
+  if (window._hemiLight) {
+    window._hemiLight.intensity = 0.08 + 0.17 * t;
+  }
+  // 太陽光 → 月光: 強度を弱め青くする
+  if (window._sunLight) {
+    window._sunLight.intensity = 0.3 + 1.2 * t;
+    const sr = 0.4 + 0.6 * t, sg = 0.5 + 0.47 * t, sb = 0.8 + 0.11 * t;
+    window._sunLight.color.setRGB(sr, sg, sb);
+  }
+  // フォグ: 昼=薄い水色 / 夜=濃紺
+  if (scene && scene.fog) {
+    const fr = 0.03 + 0.82 * t, fg = 0.05 + 0.84 * t, fb = 0.15 + 0.78 * t;
+    scene.fog.color.setRGB(fr, fg, fb);
+    scene.fog.near = 1500 + 1000 * t;
+    scene.fog.far = 5000 + 2000 * t;
+  }
+  // 背景（空）— renderer.setClearColorで代用
+  if (renderer) {
+    const br = 0.03 + 0.82 * t, bg = 0.05 + 0.84 * t, bb = 0.15 + 0.78 * t;
+    renderer.setClearColor(new THREE.Color(br, bg, bb), 1);
+  }
+}
+
+function setDayPhase() {
+  dayNightTarget = 1;
+}
+function setNightPhase() {
+  dayNightTarget = 0;
+}
+
 // GDP（国力指標）: プレイヤーのパワーを数値化
 let factionGDP;  // initFactionMap()はFACTION_IDS定義後に呼ぶ（後方で初期化）
 // ワールド時間（秒、累積）: 1日=24分想定
@@ -7084,6 +7144,7 @@ function initThree() {
   scene.add(sun);
   window._sunLight = sun;
   window._ambientLight = ambient;
+  window._hemiLight = hemi;
 
   clock = new THREE.Clock();
 
@@ -9888,6 +9949,20 @@ function tryReviveBotKings(dt) {
 function updateHUD() {
   updateGDPDisplay();
 
+  // v4: Day/Night HUD
+  const dayLabel = document.getElementById('day-label');
+  const dayPhase = document.getElementById('day-phase');
+  const sleepBtn = document.getElementById('sleep-btn');
+  if (dayLabel) dayLabel.textContent = `Day ${currentDay}`;
+  if (dayPhase) {
+    const isNight = (gameState === 'WAVE' || gameState === 'INTERVAL');
+    dayPhase.textContent = isNight ? '🌙 夜（襲撃中）' : '☀️ 昼（探索）';
+    dayPhase.style.color = isNight ? '#9ab3ff' : '#ffd27a';
+  }
+  if (sleepBtn) {
+    sleepBtn.style.display = (gameState === 'BUILD') ? 'block' : 'none';
+  }
+
   // crown-display: ワールド時間表示（Day N + HH:MM）
   // (旧ウェーブHUD: cd-timer / cd-kills-num への書き込みはDOM削除につき撤去)
   const otBanner = document.getElementById('overtime-banner');
@@ -10022,11 +10097,14 @@ let dragonCountdownTimer = DRAGON_COUNTDOWN;
 
 function startFirstWave() {
   if (gameState !== 'BUILD') return;
-  currentWave = 1;
+  // v4: 毎日の夜で currentWave をインクリメント → タイタン種が循環
+  currentWave++;
   gameState = 'WAVE';
   snapshotWaveKills();
   spawnWave(currentWave);
-  addCommentary(`🐉 ドラゴン襲来！`, humanPlayer ? humanPlayer.faction : 'fire');
+  const titanId = TITAN_ORDER[(currentWave - 1) % TITAN_ORDER.length];
+  const titanName = TITAN_DEFS[titanId] ? TITAN_DEFS[titanId].name : 'TITAN';
+  addCommentary(`🌙 Day ${currentDay} — ${titanName} 襲来！`, humanPlayer ? humanPlayer.faction : 'fire');
 }
 window.startFirstWave = startFirstWave;
 // オプション画面からアクセスできるように公開
@@ -12067,6 +12145,9 @@ function runTitanShowcase() {
   if (title) title.style.display = 'none';
   const hud = document.getElementById('hud');
   if (hud) hud.style.display = 'block';
+  // Day HUD を隠す（ショーケースに不要）
+  const dayHud = document.getElementById('day-night-hud');
+  if (dayHud) dayHud.style.display = 'none';
 
   // 6体を周辺空島スポーン地点に+1体は北方さらに奥
   const ids = ['grunt','warrior','stonebreaker','ashking','frostjaw','voidwalker','titan_lord'];
@@ -16065,7 +16146,11 @@ window.startBattle = function() {
   waveEnemies = [];
   playerArmy = [];
   intervalTimer = 0;
-  // 最初のドラゴンは短い猶予後に到来（見せ場は登場演出に任せる）
+  // v4: 昼夜サイクル初期化
+  currentDay = 1;
+  dayNightT = 1;
+  dayNightTarget = 1;
+  // 最初のドラゴンは就寝ボタンまで待機（自動襲来はしない）
   dragonCountdownTimer = 8;
   battleSaveTimer = 30; // 自動セーブタイマーリセット
   resetQueenLevel();
@@ -16173,6 +16258,16 @@ window.backToMenu = function() {
 // INPUT HANDLING
 // ============================================================
 function setupInput() {
+  // v4: 就寝ボタン — DAY中に押すと NIGHT（タイタン襲来）開始
+  const sleepBtn = document.getElementById('sleep-btn');
+  if (sleepBtn) {
+    sleepBtn.addEventListener('click', () => {
+      if (gameState !== 'BUILD') return;
+      startFirstWave();
+      speakKabira(`Day ${currentDay}、夜が来る…`);
+    });
+  }
+
   renderer.domElement.addEventListener('mousemove', (e) => {
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -16938,6 +17033,9 @@ function updateMinimap() {
 // MAIN GAME LOOP
 // ============================================================
 function updateGame(dt) {
+  // v4: 昼夜ライティングのフェード（全ステート共通）
+  try { updateDayNightLighting(dt); } catch(_) {}
+
   // ネットワーク観戦者: ゲームロジック全スキップ、カメラ/UI/ライティングのみ
   if (isNetSpectator) {
     if (isSpectator) updateSpectatorMode(dt);
@@ -17044,12 +17142,8 @@ function updateGame(dt) {
     try { updateQueenAuraAnimation(dt); } catch(e) {}
     try { updateCrystalAnimation(dt); } catch(e) {}
     if (frameCount % 15 === 0) renderHand();
-    // ドラゴン襲来カウントダウン（UIは出さない、内部的に時間を進めるだけ）
-    dragonCountdownTimer -= dt;
-    if (dragonCountdownTimer <= 0) {
-      startFirstWave();
-      return;
-    }
+    // v4: 昼夜サイクル — 自動襲来はなし。プレイヤーが「就寝」ボタンで夜に進める
+    setDayPhase();
     // ホスト: 観戦者への状態ブロードキャスト
     if (isNetHost && netConnections.length > 0) {
       netBroadcastTimer += dt;
@@ -17058,14 +17152,17 @@ function updateGame(dt) {
     return;
   }
 
-  // WAVE: ドラゴン襲来中（UIは出さず、内部的に襲来サイクルを回す）
+  // WAVE (NIGHT): タイタン襲来中
   if (gameState === 'WAVE' || gameState === 'INTERVAL') {
-    // ウェーブクリア判定 — 終わりなし、切れ目なく次へ
+    setNightPhase();
+    // ウェーブクリア判定 — タイタン撃退で翌朝のDAYへ戻る
     waveEnemies = waveEnemies.filter(e => e.hp > 0);
     if (waveEnemies.length === 0 && currentWave > 0 && gameState === 'WAVE') {
-      // 次ウェーブへのインターバル（極短で切れ目を感じさせない）
-      gameState = 'INTERVAL';
-      intervalTimer = 3;
+      // 翌日のDAY（BUILD）へ
+      currentDay++;
+      gameState = 'BUILD';
+      addCommentary(`🌅 Day ${currentDay} — タイタンを撃退した！朝が来た`, 'system');
+      speakKabira(`Day ${currentDay}、夜明けです！`);
       return;
     }
 
@@ -17077,16 +17174,12 @@ function updateGame(dt) {
     }
   }
 
-  // INTERVAL: ウェーブ間休憩
+  // INTERVAL (v4 撤去): 互換のため残すが即WAVEへ
   if (gameState === 'INTERVAL') {
-    intervalTimer -= dt;
-    if (intervalTimer <= 0) {
-      // 次ウェーブ開始
-      currentWave++;
-      gameState = 'WAVE';
-      snapshotWaveKills();
-      spawnWave(currentWave);
-    }
+    currentWave++;
+    gameState = 'WAVE';
+    snapshotWaveKills();
+    spawnWave(currentWave);
   }
 
   // RESULT: スコア表示中 — 更新はミニマル
