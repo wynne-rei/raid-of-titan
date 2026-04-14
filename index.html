@@ -10018,25 +10018,45 @@ function spawnInitialArmy() {
   }
 }
 
-// ドラゴン定義
-const DRAGON_DEFS = {
-  dragonling:  { hp: 200, dmg: 30, speed: 160, range: 1.5, color: 0x88cc44, scale: 12.0, fly: true, name: 'ドラゴンリング' },
-  firedrake:   { hp: 400, dmg: 60, speed: 160, range: 2.0, color: 0xff4422, scale: 18.0, fly: true, name: 'ファイアドレイク' },
-  frostdrake:  { hp: 350, dmg: 45, speed: 160, range: 3.0, color: 0x44aaff, scale: 18.0, fly: true, name: 'フロストドレイク' },
-  stonedrake:  { hp: 800, dmg: 80, speed: 160, range: 1.5, color: 0x886644, scale: 24.0, fly: false, name: 'ストーンドレイク' },
-  elderdragon: { hp: 1200, dmg: 120, speed: 160, range: 2.5, color: 0xaa22ff, scale: 36.0, fly: true, name: 'エルダードラゴン' },
-};
-const DRAGON_IDS = Object.keys(DRAGON_DEFS);
-
 // ============================================================
-// TITAN BOSS DEFINITIONS
+// TITAN DEFINITIONS — RAID OF TITAN v4
+// 7体の名前付き巨人。夜ごとに順番に襲来する。
 // ============================================================
 const TITAN_DEFS = {
-  titan_boss: { hp: 2000, dmg: 150, speed: 40, range: 25, scale: 4, name: 'TITAN BOSS', groundSmashCooldown: 8 },
+  grunt:        { hp: 600,  dmg: 50,  speed: 60, range: 18, scale: 1.5, name: 'GRUNT',         groundSmashCooldown: 0,
+                  colors: { body: 0x6a4a2a, skin: 0x8a5a3a, dark: 0x2a1a08, armor: 0x555555, lava: 0xffaa44, eye: 0xffaa00, horn: 0x333333 } },
+  warrior:      { hp: 1200, dmg: 80,  speed: 55, range: 20, scale: 2.0, name: 'WARRIOR',       groundSmashCooldown: 10,
+                  colors: { body: 0x4a3a2a, skin: 0x7a5a3a, dark: 0x1a1008, armor: 0x4a4a4a, lava: 0xff6644, eye: 0xff3300, horn: 0x222222 } },
+  stonebreaker: { hp: 2200, dmg: 120, speed: 45, range: 22, scale: 2.6, name: 'STONEBREAKER', groundSmashCooldown: 8,
+                  colors: { body: 0x5a5a5a, skin: 0x7a7a7a, dark: 0x2a2a2a, armor: 0x333333, lava: 0xeeeeee, eye: 0xaaccff, horn: 0x222222 } },
+  ashking:      { hp: 2800, dmg: 140, speed: 50, range: 24, scale: 2.9, name: 'ASHKING',      groundSmashCooldown: 7,
+                  colors: { body: 0x2a1a1a, skin: 0x4a2a2a, dark: 0x0a0606, armor: 0x3a2a2a, lava: 0xff3300, eye: 0xff0000, horn: 0x1a0a0a } },
+  frostjaw:     { hp: 2600, dmg: 130, speed: 55, range: 22, scale: 2.8, name: 'FROSTJAW',     groundSmashCooldown: 8,
+                  colors: { body: 0x2a3a5a, skin: 0x4a6a8a, dark: 0x1a2030, armor: 0x8aaacc, lava: 0x88ccff, eye: 0x00ffff, horn: 0xccddff } },
+  voidwalker:   { hp: 3200, dmg: 160, speed: 48, range: 26, scale: 3.2, name: 'VOIDWALKER',   groundSmashCooldown: 6,
+                  colors: { body: 0x1a1a2a, skin: 0x3a2a4a, dark: 0x0a060a, armor: 0x2a1a3a, lava: 0xaa00ff, eye: 0xff00ff, horn: 0x2a1a3a } },
+  titan_lord:   { hp: 5000, dmg: 220, speed: 38, range: 30, scale: 4.0, name: 'TITAN LORD',   groundSmashCooldown: 5,
+                  colors: { body: 0x3a2a1a, skin: 0x5a3a1a, dark: 0x1a1008, armor: 0x444444, lava: 0xff4400, eye: 0xff0000, horn: 0x222222 } },
 };
+const TITAN_ORDER = ['grunt', 'warrior', 'stonebreaker', 'ashking', 'frostjaw', 'voidwalker', 'titan_lord'];
 
-function buildTitanMesh(scale) {
-  const s = scale; // scale=4 -> ~180 units tall
+// 後方互換: 既存コードは DRAGON_DEFS / DRAGON_IDS を参照するため、エイリアスとして提供
+const DRAGON_DEFS = TITAN_DEFS;
+const DRAGON_IDS = TITAN_ORDER;
+
+// v3 互換: TITAN BOSS を参照してる箇所のため alias
+TITAN_DEFS.titan_boss = TITAN_DEFS.titan_lord;
+
+function buildTitanMesh(scaleOrDef, _unused) {
+  // 後方互換: 数値scale or def オブジェクトを受け付ける
+  let def;
+  if (typeof scaleOrDef === 'number') {
+    def = { scale: scaleOrDef, colors: TITAN_DEFS.titan_lord.colors };
+  } else {
+    def = scaleOrDef || { scale: 4, colors: TITAN_DEFS.titan_lord.colors };
+  }
+  const s = def.scale; // scale=4 -> ~180 units tall
+  const c = def.colors || TITAN_DEFS.titan_lord.colors;
   const g = new THREE.Group();
 
   function tbox(w, h, d, color, emissiveColor, emissiveInt) {
@@ -10057,13 +10077,13 @@ function buildTitanMesh(scale) {
   }
   function at(m, x, y, z) { m.position.set(x, y, z); return m; }
 
-  const bodyColor = 0x3a2a1a;
-  const skinColor = 0x5a3a1a;
-  const darkColor = 0x1a1008;
-  const armorColor = 0x444444;
-  const lavaColor = 0xff4400;
-  const eyeColor = 0xff0000;
-  const hornColor = 0x222222;
+  const bodyColor = c.body;
+  const skinColor = c.skin;
+  const darkColor = c.dark;
+  const armorColor = c.armor;
+  const lavaColor = c.lava;
+  const eyeColor = c.eye;
+  const hornColor = c.horn;
 
   // --- Legs (ground level y=0 at feet) ---
   const legH = 20 * s;
@@ -10186,8 +10206,15 @@ function buildTitanMesh(scale) {
   return g;
 }
 
-// ドラゴンメッシュ生成（エンダードラゴン風・色のみ差別化）
+// 敵メッシュ生成 — v4 ですべてタイタン化
+// 後方互換の関数名: buildDragonMesh（内部でタイタンメッシュを返す）
 function buildDragonMesh(type, factionColor) {
+  const def = TITAN_DEFS[type] || TITAN_DEFS.grunt;
+  return buildTitanMesh(def);
+}
+
+// LEGACY ドラゴンメッシュ（参照用に保持・呼び出しなし）
+function _legacy_buildDragonMesh(type, factionColor) {
   const def = DRAGON_DEFS[type];
   /* --- OLD MESH CODE START (replaced with Ender Dragon style) ---
   const s = def.scale;
@@ -10472,12 +10499,14 @@ function buildDragonMesh(type, factionColor) {
   return g;
 }
 
-// ドラゴンスポーンポイント（マップ外周4方向）
+// タイタンスポーンポイント — 周辺6空島の上から中央へ進軍
 const DRAGON_SPAWN_POINTS = [
-  { x: 0, z: -ARENA_L * 0.48 },              // 北
-  { x: 0, z:  ARENA_L * 0.48 },              // 南
-  { x: -ARENA_W_BASE * 0.48, z: 0 },         // 西
-  { x:  ARENA_W_BASE * 0.48, z: 0 },         // 東
+  { x: 0,    z: -520 },   // 北島
+  { x: 460,  z: -280 },   // 北東島
+  { x: 480,  z:  300 },   // 南東島
+  { x: 0,    z:  540 },   // 南島
+  { x: -480, z:  300 },   // 南西島
+  { x: -460, z: -280 },   // 北西島
 ];
 
 // タイタンをエンティティとしてスポーン
@@ -10529,19 +10558,19 @@ function spawnTitan(x, z, factionColor) {
   return entity;
 }
 
-// ドラゴンをエンティティとしてスポーン
+// タイタンをエンティティとしてスポーン（旧名 spawnDragon）— v4 ですべて地上型
 function spawnDragon(type, x, z, aiPattern, factionColor) {
-  if (type === 'titan_boss') {
+  if (type === 'titan_lord' || type === 'titan_boss') {
     return spawnTitan(x, z, factionColor);
   }
-  const def = DRAGON_DEFS[type];
+  const def = TITAN_DEFS[type] || TITAN_DEFS.grunt;
   const mesh = buildDragonMesh(type, factionColor);
-  const flyHeight = def.fly ? 80 : 0;
+  const flyHeight = 0; // v4: 地上型
   mesh.position.set(x, flyHeight, z);
   scene.add(mesh);
 
   const entity = {
-    cardId: 'dragon_' + type,
+    cardId: 'titan_' + type,
     type: 'troop',
     mesh: mesh,
     hp: def.hp,
@@ -10551,19 +10580,21 @@ function spawnDragon(type, x, z, aiPattern, factionColor) {
     range: def.range * 10, // ゲーム内スケール
     attackSpeed: 1.2,
     attackTimer: 0,
-    side: 99, // ドラゴン側（敵）
-    isDragon: true,
+    side: 99, // タイタン側（敵）
+    isDragon: true,  // 既存コード互換: 敵フラグとして流用
+    isTitan: true,
     dragonType: type,
-    aiPattern: aiPattern || 'rush', // 'rush' or 'siege'
+    aiPattern: aiPattern || 'rush',
     target: null,
-    fly: def.fly, // 飛行型 true / 地上型 false
-    flyHeight: flyHeight,
-    lifetime: Infinity, // 永続
+    fly: false,
+    flyHeight: 0,
+    lifetime: Infinity,
     spawnTime: matchTimer,
     hpContainer: null,
     dead: false,
     statDmg: 0,
     statKills: 0,
+    groundSmashTimer: def.groundSmashCooldown || 0,
   };
 
   // HPバー（ドラゴン用: サイズ拡大、赤色）
@@ -10593,48 +10624,24 @@ function getWaveFaction(waveNum) {
 }
 
 function spawnWave(waveNum) {
-  // 今回の攻撃国を決定
+  // v4: 1夜1体の名前付きタイタンが襲来。名前は TITAN_ORDER で循環。
   currentWaveFaction = getWaveFaction(waveNum);
   const factionData = FACTIONS[currentWaveFaction];
 
-  const difficulty = waveConfig.startDifficulty * Math.pow(waveConfig.scaling, waveNum - 1);
-  let budget = Math.floor(5 + waveNum * 3 * difficulty);
-  const costs = { dragonling: 1, firedrake: 2, frostdrake: 2, stonedrake: 4, elderdragon: 6, titan_boss: 8 };
-  let available = ['dragonling'];
-  if (waveNum >= 2) available.push('firedrake');
-  if (waveNum >= 3) available.push('frostdrake');
-  if (waveNum >= 5) available.push('stonedrake');
-  if (waveNum >= 8) available.push('titan_boss');
+  const titanId = TITAN_ORDER[(waveNum - 1) % TITAN_ORDER.length];
 
-  const toSpawn = [];
-  while (budget > 0) {
-    const affordable = available.filter(d => costs[d] <= budget);
-    if (affordable.length === 0) break;
-    const pick = affordable[Math.floor(Math.random() * affordable.length)];
-    toSpawn.push(pick);
-    budget -= costs[pick];
-  }
+  // 外周スポーンポイントから1箇所ランダムに
+  const sp = DRAGON_SPAWN_POINTS[Math.floor(Math.random() * DRAGON_SPAWN_POINTS.length)];
+  const ox = (Math.random() - 0.5) * 30;
+  const oz = (Math.random() - 0.5) * 30;
+  const aiPattern = Math.random() < 0.7 ? 'rush' : 'siege';
+  const titan = spawnDragon(titanId, sp.x + ox, sp.z + oz, aiPattern, factionData.color);
 
-  // 一番強いドラゴンを先頭に（リーダー = 登場演出の主役）
-  toSpawn.sort((a, b) => (costs[b] || 0) - (costs[a] || 0));
-
-  // スポーンポイントに分散配置（国のテーマカラーでスポーン）
-  const spawned = [];
-  toSpawn.forEach((type, i) => {
-    const sp = DRAGON_SPAWN_POINTS[i % DRAGON_SPAWN_POINTS.length];
-    const ox = (Math.random() - 0.5) * 60;
-    const oz = (Math.random() - 0.5) * 60;
-    const aiPattern = Math.random() < 0.6 ? 'rush' : 'siege';
-    const d = spawnDragon(type, sp.x + ox, sp.z + oz, aiPattern, factionData.color);
-    if (d) spawned.push(d);
-  });
-
-  // 呂布登場演出: リーダードラゴンに強制カメラ＋画面揺れ＋バナー
-  if (spawned.length > 0) {
-    playDragonEntrance(spawned[0], factionData);
+  if (titan) {
+    playDragonEntrance(titan, factionData);
   } else {
-    // ウェーブ開始実況（従来モード）
-    speakKabira(`${factionData.icon}${factionData.name}のドラゴン軍団が襲来！`);
+    const def = TITAN_DEFS[titanId];
+    speakKabira(`${def.name} 襲来！`);
   }
 }
 
@@ -10654,15 +10661,17 @@ function playDragonEntrance(dragon, factionData) {
   // すでに演出中なら上書きしない（連鎖防止）
   if (_dragonEntrance) return;
 
-  const def = DRAGON_DEFS[dragon.dragonType] || {};
+  const def = TITAN_DEFS[dragon.dragonType] || {};
   const titleMap = {
-    dragonling:  { title: '飛来',       sub: '小竜の群れ' },
-    firedrake:   { title: '業火',       sub: 'ファイアドレイク' },
-    frostdrake:  { title: '氷嵐',       sub: 'フロストドレイク' },
-    stonedrake:  { title: '大地の咆哮', sub: 'ストーンドレイク' },
-    elderdragon: { title: '破壊の化身', sub: 'エルダードラゴン' },
+    grunt:        { title: '襲来',       sub: 'GRUNT' },
+    warrior:      { title: '咆哮',       sub: 'WARRIOR' },
+    stonebreaker: { title: '岩砕',       sub: 'STONEBREAKER' },
+    ashking:      { title: '灰王',       sub: 'ASHKING' },
+    frostjaw:     { title: '氷顎',       sub: 'FROSTJAW' },
+    voidwalker:   { title: '虚無',       sub: 'VOIDWALKER' },
+    titan_lord:   { title: '破壊の化身', sub: 'TITAN LORD' },
   };
-  const t = titleMap[dragon.dragonType] || { title: '襲来', sub: def.name || 'Dragon' };
+  const t = titleMap[dragon.dragonType] || { title: '襲来', sub: def.name || 'Titan' };
   const facLabel = factionData ? `${factionData.icon}${factionData.name}` : '';
 
   _dragonEntrance = {
