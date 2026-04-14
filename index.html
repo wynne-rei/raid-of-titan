@@ -7794,9 +7794,7 @@ function buildPlayerCastle() {
   arenaObjects.push(cLight);
   crystalLight = cLight;
 
-  // Show crystal HP bar
-  const crystalBar = document.getElementById('crystal-hp-bar');
-  if (crystalBar) crystalBar.style.display = 'block';
+  // Crystal HPバーの値を初期化（表示はstartBattleで行う）
   updateCrystalHPBar();
 }
 
@@ -14191,6 +14189,8 @@ window.resumeFromResult = function() {
 };
 
 function endMatch(won) {
+  // 二重呼び出し防止（複数タイタンが同フレームでクリスタルを破壊した場合等）
+  if (gameState === 'RESULT') return;
   gameState = 'RESULT';
   // Hide crystal HP bar
   { const _cb = document.getElementById('crystal-hp-bar'); if (_cb) _cb.style.display = 'none'; }
@@ -15777,6 +15777,8 @@ window.backToMenu = function() {
   { const _as = document.getElementById('action-status'); if (_as) _as.classList.remove('visible'); }
   { const _mm = document.getElementById('minimap'); if (_mm) _mm.classList.remove('visible'); }
   { const _dim = document.getElementById('placing-dim-overlay'); if (_dim) _dim.classList.remove('active'); }
+  // クリスタルHPバーを非表示
+  { const _cb = document.getElementById('crystal-hp-bar'); if (_cb) _cb.style.display = 'none'; }
   gameState = 'MENU';
   // 視聴者/配信者モードをクリア
   isSpectator = false;
@@ -16721,6 +16723,8 @@ function updateGame(dt) {
   // Update systems (BUILD以外の共通処理) — 各サブシステムを個別try-catchで保護（フリーズ防止）
   frameCount++;
   try { updateEntities(dt); } catch(e) { console.error('updateEntities:', e.message); }
+  // endMatch がフレーム途中で呼ばれた場合、残りの更新をスキップ
+  if (gameState === 'RESULT') return;
   try { updateEntityAnimations(dt); } catch(e) {}
   try { updateTowers(dt); } catch(e) {}
   try { updateProjectiles(dt); } catch(e) { console.error('updateProjectiles:', e.message); }
