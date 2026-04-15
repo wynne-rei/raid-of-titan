@@ -10130,6 +10130,155 @@ function spawnInitialArmy() {
 }
 
 // ============================================================
+// GUARDIAN TITANS — 周辺6島の間を徘徊する番人（Phase 4）
+// ============================================================
+const GUARDIAN_DEFS = [
+  { titanId: 'grunt',        patrolA: 'north', patrolB: 'ne' },
+  { titanId: 'warrior',      patrolA: 'ne',    patrolB: 'se' },
+  { titanId: 'stonebreaker', patrolA: 'se',    patrolB: 'south' },
+  { titanId: 'ashking',      patrolA: 'south', patrolB: 'sw' },
+  { titanId: 'frostjaw',     patrolA: 'sw',    patrolB: 'nw' },
+  { titanId: 'voidwalker',   patrolA: 'nw',    patrolB: 'north' },
+];
+const GUARDIAN_RESPAWN_SEC = 180;    // 3分で復活
+const GUARDIAN_AGGRO_RADIUS = 220;   // 敵対化距離
+const GUARDIAN_DEAGGRO_SEC = 5;      // クールダウン
+
+let guardianTitans = [];
+
+function spawnGuardians() {
+  // 既存の番人は除去
+  guardianTitans.forEach(g => {
+    if (g.mesh) scene.remove(g.mesh);
+    if (g.hpContainer) g.hpContainer.remove();
+    const idx = entities.indexOf(g);
+    if (idx >= 0) entities.splice(idx, 1);
+  });
+  guardianTitans = [];
+
+  for (const def of GUARDIAN_DEFS) {
+    const islA = skyIslands.find(i => i.id === def.patrolA);
+    const islB = skyIslands.find(i => i.id === def.patrolB);
+    if (!islA || !islB) continue;
+    // 中点にスポーン（両島にはみ出てる巨体のイメージ）
+    const midX = (islA.x + islB.x) / 2;
+    const midZ = (islA.z + islB.z) / 2;
+
+    const g = spawnDragon(def.titanId, midX, midZ, 'idle', null);
+    if (!g) continue;
+    // 番人フラグ設定
+    g.isGuardian = true;
+    g.patrolA = { x: islA.x, z: islA.z };
+    g.patrolB = { x: islB.x, z: islB.z };
+    g.patrolT = Math.random();           // 位相をバラけさせる
+    g.patrolDir = Math.random() < 0.5 ? 1 : -1;
+    g.isHostile = false;
+    g.hostileTimer = 0;
+    g.respawnTimer = 0;
+    g.guardianDef = def;
+    // 番人は夜襲撃リストから外す
+    const wIdx = waveEnemies.indexOf(g);
+    if (wIdx >= 0) waveEnemies.splice(wIdx, 1);
+
+    guardianTitans.push(g);
+  }
+  addCommentary(`🗿 6体の番人タイタンが島々を守っている...`, 'system');
+}
+
+// 番人タイタンの更新（updateEntitiesから個別処理）
+function updateGuardianEntity(e, dt) {
+  // 死亡 → 復活カウントダウン
+  if (e.hp <= 0) {
+    if (e.respawnTimer <= 0) {
+      // 初回: 透明化
+      e.respawnTimer = GUARDIAN_RESPAWN_SEC;
+      if (e.mesh) e.mesh.visible = false;
+      if (e.hpContainer) e.hpContainer.style.display = 'none';
+      addCommentary(`✨ ${(TITAN_DEFS[e.dragonType]||{}).name || '番人'} を撃破！ 3分後に復活`, 'system');
+    }
+    e.respawnTimer -= dt;
+    if (e.respawnTimer <= 0) {
+      // 復活
+      const def = TITAN_DEFS[e.dragonType] || TITAN_DEFS.grunt;
+      e.hp = def.hp;
+      e.maxHp = def.hp;
+      e.dead = false;
+      e.isHostile = false;
+      e.hostileTimer = 0;
+      e.respawnTimer = 0;
+      if (e.mesh) e.mesh.visible = true;
+      if (e.hpContainer) e.hpContainer.style.display = 'block';
+    }
+    return;
+  }
+
+  // 敵対判定: プレイヤーユニットが近づいてるか
+  let nearest = null, nearestDist = Infinity;
+  for (const p of entities) {
+    if (p === e) continue;
+    if (p.isGuardian || p.isTitan) continue;
+    if (p.side !== 0 || p.hp <= 0) continue;
+    if (!p.mesh) continue;
+    const dx = p.mesh.position.x - e.mesh.position.x;
+    const dz = p.mesh.position.z - e.mesh.position.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < nearestDist) { nearestDist = d2; nearest = p; }
+  }
+  nearestDist = Math.sqrt(nearestDist);
+
+  if (nearest && nearestDist < GUARDIAN_AGGRO_RADIUS) {
+    e.isHostile = true;
+    e.hostileTimer = GUARDIAN_DEAGGRO_SEC;
+  } else {
+    e.hostileTimer = Math.max(0, e.hostileTimer - dt);
+    if (e.hostileTimer <= 0) e.isHostile = false;
+  }
+
+  const def = TITAN_DEFS[e.dragonType] || TITAN_DEFS.grunt;
+
+  if (e.isHostile && nearest) {
+    // 追尾攻撃
+    const dx = nearest.mesh.position.x - e.mesh.position.x;
+    const dz = nearest.mesh.position.z - e.mesh.position.z;
+    const len = Math.sqrt(dx * dx + dz * dz);
+    const range = def.range * 10;
+    if (len > range) {
+      const spd = def.speed * 0.4; // 番人は襲撃タイタンより遅め
+      e.mesh.position.x += (dx / len) * spd * dt;
+      e.mesh.position.z += (dz / len) * spd * dt;
+      e.state = 'moving';
+    } else {
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        e.attackTimer = e.attackSpeed;
+        nearest.hp -= def.dmg * 0.5;  // 番人は威力半分
+        nearest.lastHitBy = 99;
+        showDamageNumber(nearest.mesh.position.x, nearest.mesh.position.z, Math.round(def.dmg * 0.5));
+        e.titanAttackAnim = 0.3;
+      }
+      e.state = 'attacking';
+    }
+    e.mesh.lookAt(nearest.mesh.position.x, e.mesh.position.y, nearest.mesh.position.z);
+  } else {
+    // 徘徊: patrolA ↔ patrolB の ping-pong
+    e.patrolT += dt * 0.02 * e.patrolDir;
+    if (e.patrolT >= 1) { e.patrolT = 1; e.patrolDir = -1; }
+    if (e.patrolT <= 0) { e.patrolT = 0; e.patrolDir = 1; }
+    const tx = e.patrolA.x + (e.patrolB.x - e.patrolA.x) * e.patrolT;
+    const tz = e.patrolA.z + (e.patrolB.z - e.patrolA.z) * e.patrolT;
+    e.mesh.position.x = tx;
+    e.mesh.position.z = tz;
+    const nx = (e.patrolB.x - e.patrolA.x) * e.patrolDir;
+    const nz = (e.patrolB.z - e.patrolA.z) * e.patrolDir;
+    e.mesh.lookAt(tx + nx, e.mesh.position.y, tz + nz);
+    e.state = 'moving';
+  }
+
+  applyTitanPosture(e, dt);
+  if (typeof updateHPBarPosition === 'function') updateHPBarPosition(e);
+}
+
+// ============================================================
 // TITAN DEFINITIONS — RAID OF TITAN v4
 // 7体の名前付き巨人。夜ごとに順番に襲来する。
 // ============================================================
@@ -11653,6 +11802,12 @@ function updateEntities(dt) {
     // ショーケース: タイタン静止展示
     if (e.statusFrozen) {
       if (e.isTitan) applyTitanPosture(e, dt);
+      continue;
+    }
+
+    // 番人タイタン: 専用AIで処理
+    if (e.isGuardian) {
+      updateGuardianEntity(e, dt);
       continue;
     }
 
@@ -16043,6 +16198,7 @@ window.startBattle = function() {
   // Clean up previous match
   entities.forEach(e => { removeEntityMixer(e.mesh); scene.remove(e.mesh); e.hpContainer.remove(); });
   entities = [];
+  guardianTitans = []; // v4: 番人リストも初期化
   projectiles.forEach(p => scene.remove(p.mesh));
   projectiles = [];
   spellEffects.forEach(e => scene.remove(e.mesh));
@@ -16161,6 +16317,9 @@ window.startBattle = function() {
 
   // 初期騎士2体を配置
   spawnInitialArmy();
+
+  // v4: 番人タイタン6体を周辺空島間に配置
+  try { spawnGuardians(); } catch(e) { console.error('spawnGuardians:', e.message); }
 
   // 配信モード自動有効化（設定がONなら）
   isSpectator = false;
