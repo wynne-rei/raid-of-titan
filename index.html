@@ -3212,10 +3212,17 @@ body.screen-shake { animation: screenShake 0.4s ease-out; }
   <!-- (旧 #timer-bar / #wave-top-hud / #wave-info / #wave-number 削除済み 2026-04-10
        常時稼働ワールドへの移行に伴い旧ウェーブ制HUDを撤去) -->
   <!-- v4: Day/Night HUD -->
-  <div id="day-night-hud" style="position:fixed;top:12px;left:12px;z-index:900;background:rgba(0,0,0,0.55);border:1px solid rgba(255,220,120,0.4);border-radius:8px;padding:8px 14px;font-family:sans-serif;color:#ffe8a8;pointer-events:auto;">
+  <div id="day-night-hud" style="position:fixed;top:12px;left:60px;z-index:901;background:rgba(0,0,0,0.55);border:1px solid rgba(255,220,120,0.4);border-radius:8px;padding:8px 14px;font-family:sans-serif;color:#ffe8a8;pointer-events:auto;">
     <div id="day-label" style="font-size:18px;font-weight:bold;letter-spacing:2px;">Day 1</div>
     <div id="day-phase" style="font-size:11px;color:#ffd27a;letter-spacing:1px;">☀️ 昼</div>
-    <button id="sleep-btn" style="margin-top:6px;background:linear-gradient(180deg,#3a2a5a,#1a1030);color:#e8d8ff;border:1px solid #7a5aaa;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:bold;display:none;">🛏 就寝する</button>
+    <button id="sleep-btn" style="margin-top:6px;background:linear-gradient(180deg,#3a2a5a,#1a1030);color:#e8d8ff;border:1px solid #7a5aaa;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:bold;display:none;">⏭ 時間スキップ</button>
+  </div>
+  <!-- v4 Phase 7: 廃墟修復プロンプト -->
+  <div id="ruin-repair-prompt" style="position:fixed;bottom:120px;left:50%;transform:translateX(-50%);z-index:901;background:rgba(0,0,0,0.72);border:1px solid rgba(255,200,120,0.6);border-radius:10px;padding:10px 20px;font-family:sans-serif;color:#ffe8a8;display:none;pointer-events:auto;min-width:320px;text-align:center;">
+    <div class="rrp-label" style="font-size:14px;margin-bottom:6px;">🌉 修復対象</div>
+    <div style="background:rgba(0,0,0,0.5);border-radius:4px;height:10px;overflow:hidden;">
+      <div class="rrp-fill" style="width:0%;height:100%;background:linear-gradient(90deg,#ffa44a,#ffd27a);transition:width 0.1s;"></div>
+    </div>
   </div>
   <div id="crown-display" style="display:none"></div>
   <div id="overtime-banner">⚡ SUDDEN DEATH ⚡</div>
@@ -7543,6 +7550,263 @@ function isOnSkyIsland(x, z) {
 }
 
 // ============================================================
+// RUIN SYSTEM — Phase 7: 廃墟修復（橋・塔・城門）
+// ============================================================
+const RUIN_DEFS = {
+  ruin_tower: {
+    name: '廃墟の見張り塔', icon: '🗼',
+    repairTime: 5.0, // 秒
+    builtType: 'watchtower',
+    radius: 25,
+  },
+  ruin_wall: {
+    name: '廃墟の城門', icon: '🛡',
+    repairTime: 4.0,
+    builtType: 'wall',
+    radius: 25,
+  },
+  ruin_bridge: {
+    name: '壊れた橋', icon: '🌉',
+    repairTime: 6.0,
+    builtType: null, // 橋は構造物ではなく通行可能化のみ
+    radius: 30,
+  },
+};
+let ruins = []; // 各廃墟: { id, type, mesh, x, z, progress, repaired, builtStructure, bridgeRef }
+
+function buildRuinMesh(type) {
+  const g = new THREE.Group();
+  const stoneMat = new THREE.MeshToonMaterial({ color: 0x6a6058, gradientMap: TOON_GRADIENT });
+  const mossMat = new THREE.MeshToonMaterial({ color: 0x4a5a3a, gradientMap: TOON_GRADIENT });
+  function box(w, h, d, mat) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.castShadow = true;
+    return m;
+  }
+  function at(m, x, y, z) { m.position.set(x, y, z); return m; }
+
+  if (type === 'ruin_tower') {
+    // 崩れかけた塔: ランダムな高さの石ブロックの積み重ね
+    g.add(at(box(8, 4, 8, stoneMat), 0, 2, 0));           // 基盤
+    g.add(at(box(7, 3, 7, stoneMat), 0.3, 5.5, -0.2));    // 2段目 少し傾く
+    g.add(at(box(6, 3, 6, mossMat),  -0.4, 8.5, 0.3));    // 3段目 苔色
+    g.add(at(box(5, 2, 5, stoneMat), 0.2, 11, -0.3));     // 4段目（崩れた頂部）
+    // 横に崩れ落ちた石
+    g.add(at(box(3, 1.5, 3, stoneMat), -5, 0.75, 2));
+    g.add(at(box(2, 1, 2, mossMat), 6, 0.5, -3));
+  } else if (type === 'ruin_wall') {
+    // 崩れた門: 柱2本が傾いて残っている
+    const pillarL = at(box(4, 10, 4, stoneMat), -6, 5, 0);
+    pillarL.rotation.z = 0.1;
+    g.add(pillarL);
+    const pillarR = at(box(4, 8, 4, stoneMat), 6, 4, 0);
+    pillarR.rotation.z = -0.15;
+    g.add(pillarR);
+    // 崩れた梁の残骸（地面）
+    g.add(at(box(8, 1.5, 2, mossMat), 0, 0.75, 0));
+    g.add(at(box(3, 1, 3, stoneMat), -3, 0.5, 4));
+  }
+  return g;
+}
+
+function buildRuins() {
+  // クリーンアップ
+  ruins.forEach(r => {
+    if (r.mesh && r.mesh.parent) r.mesh.parent.remove(r.mesh);
+    if (r.repairBarDiv && r.repairBarDiv.parentNode) r.repairBarDiv.remove();
+  });
+  ruins.length = 0;
+
+  // ==== 周辺6島に廃墟塔を1つずつ ====
+  for (const is of skyIslands) {
+    if (is.isCenter) continue;
+    // 島の中央から少し北寄りに配置
+    const rx = is.x;
+    const rz = is.z - is.radius * 0.3;
+    const mesh = buildRuinMesh('ruin_tower');
+    mesh.position.set(rx, is.height, rz);
+    scene.add(mesh);
+    arenaObjects.push(mesh);
+    ruins.push({
+      id: 'ruin_tower_' + is.id,
+      type: 'ruin_tower',
+      mesh,
+      x: rx, z: rz, y: is.height,
+      progress: 0, repaired: false,
+      builtStructure: null, bridgeRef: null,
+      islandId: is.id,
+    });
+  }
+
+  // ==== 中央島の外周3箇所に廃墟城門 ====
+  const center = skyIslands.find(is => is.isCenter);
+  if (center) {
+    const wallAngles = [ -Math.PI / 3, Math.PI / 3, Math.PI ]; // 南東・南西・北
+    wallAngles.forEach((angle, i) => {
+      const wx = center.x + Math.cos(angle) * center.radius * 0.78;
+      const wz = center.z + Math.sin(angle) * center.radius * 0.78;
+      const mesh = buildRuinMesh('ruin_wall');
+      mesh.position.set(wx, center.height, wz);
+      mesh.rotation.y = angle + Math.PI / 2; // 外向き
+      scene.add(mesh);
+      arenaObjects.push(mesh);
+      ruins.push({
+        id: 'ruin_wall_' + i,
+        type: 'ruin_wall',
+        mesh,
+        x: wx, z: wz, y: center.height,
+        progress: 0, repaired: false,
+        builtStructure: null, bridgeRef: null,
+      });
+    });
+  }
+
+  // ==== 既存の壊れた橋を修復可能廃墟として登録 ====
+  skyBridges.forEach((br, idx) => {
+    const midX = (br.fromPos.x + br.toPos.x) / 2;
+    const midZ = (br.fromPos.z + br.toPos.z) / 2;
+    const midY = (br.fromPos.y + br.toPos.y) / 2;
+    ruins.push({
+      id: 'ruin_bridge_' + idx,
+      type: 'ruin_bridge',
+      mesh: null, // 橋自体のstubsは既に配置済
+      x: midX, z: midZ, y: midY,
+      progress: 0, repaired: false,
+      builtStructure: null, bridgeRef: br,
+    });
+  });
+}
+
+function isRuinNearPlayer(ruin) {
+  if (!playerKingTower || !playerKingTower.mesh) return false;
+  const def = RUIN_DEFS[ruin.type];
+  const dx = playerKingTower.mesh.position.x - ruin.x;
+  const dz = playerKingTower.mesh.position.z - ruin.z;
+  return (dx * dx + dz * dz) < def.radius * def.radius;
+}
+
+function updateRuinInteraction(dt) {
+  if (!playerKingTower || !playerKingTower.mesh) return;
+  if (gameState !== 'BUILD' && gameState !== 'WAVE' && gameState !== 'INTERVAL') return;
+
+  // 最も近い未修復の廃墟を探す
+  let nearest = null, nearestD2 = Infinity;
+  for (const r of ruins) {
+    if (r.repaired) continue;
+    const dx = playerKingTower.mesh.position.x - r.x;
+    const dz = playerKingTower.mesh.position.z - r.z;
+    const def = RUIN_DEFS[r.type];
+    const d2 = dx * dx + dz * dz;
+    if (d2 < def.radius * def.radius && d2 < nearestD2) {
+      nearest = r; nearestD2 = d2;
+    }
+  }
+
+  const prompt = document.getElementById('ruin-repair-prompt');
+  if (!nearest) {
+    if (prompt) prompt.style.display = 'none';
+    return;
+  }
+
+  const def = RUIN_DEFS[nearest.type];
+  const holdingR = !!keysPressed['r'];
+  if (holdingR) {
+    nearest.progress += dt / def.repairTime;
+    if (nearest.progress >= 1.0) {
+      nearest.progress = 1.0;
+      repairRuin(nearest);
+      if (prompt) prompt.style.display = 'none';
+      return;
+    }
+  } else {
+    // Rを離したら徐々に減衰（急にゼロだとイライラする）
+    nearest.progress = Math.max(0, nearest.progress - dt * 0.3);
+  }
+
+  // UI表示更新
+  if (prompt) {
+    prompt.style.display = 'block';
+    const label = prompt.querySelector('.rrp-label');
+    const fill = prompt.querySelector('.rrp-fill');
+    if (label) label.textContent = `${def.icon} ${def.name}  [R]長押しで修復`;
+    if (fill) fill.style.width = Math.floor(nearest.progress * 100) + '%';
+  }
+}
+
+function repairRuin(ruin) {
+  ruin.repaired = true;
+  const def = RUIN_DEFS[ruin.type];
+
+  // 廃墟メッシュを除去
+  if (ruin.mesh && ruin.mesh.parent) {
+    ruin.mesh.parent.remove(ruin.mesh);
+  }
+
+  // 修復エフェクト
+  try { createBuildEffect(ruin.x, ruin.z, 0xffd27a); } catch(_) {}
+  addCommentary(`🔨 ${def.name} を修復完了！`, 'system');
+
+  if (ruin.type === 'ruin_bridge' && ruin.bridgeRef) {
+    // 橋: 中央スパンのメッシュを生成して追加
+    const br = ruin.bridgeRef;
+    br.repaired = true;
+    const stoneTex2 = generateTexture('stone', 512);
+    stoneTex2.repeat.set(2, 2);
+    const bridgeMat = new THREE.MeshToonMaterial({ map: stoneTex2, color: 0xb8a68a, gradientMap: TOON_GRADIENT });
+    const dx = br.toPos.x - br.fromPos.x;
+    const dz = br.toPos.z - br.fromPos.z;
+    const angle = Math.atan2(dz, dx);
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    const span = new THREE.Mesh(new THREE.BoxGeometry(dist * 0.88, 2.5, 8), bridgeMat);
+    span.position.set((br.fromPos.x + br.toPos.x) / 2, ruin.y - 0.5, (br.fromPos.z + br.toPos.z) / 2);
+    span.rotation.y = -angle;
+    span.castShadow = true;
+    scene.add(span);
+    arenaObjects.push(span);
+    br.mesh = span;
+    return;
+  }
+
+  if (def.builtType) {
+    // 通常施設として生成（コストゼロ、プレイヤー側）
+    const structureFaction = humanPlayer ? humanPlayer.faction : FACTION_IDS[0];
+    const s = forceBuildStructure(def.builtType, ruin.x, ruin.z, structureFaction, ruin.y);
+    if (s) {
+      ruin.builtStructure = s;
+      s.fromRuin = ruin; // 破壊時に元に戻すためのバックリンク
+    }
+  }
+}
+
+// コスト無視で強制的に構造物を建てる（廃墟修復専用）
+function forceBuildStructure(type, x, z, faction, baseY) {
+  const def = STRUCTURE_DEFS[type];
+  if (!def) return null;
+  const mesh = createStructureMesh(type, faction);
+  mesh.position.set(x, baseY || 0, z);
+  scene.add(mesh);
+
+  const hpContainer = document.createElement('div');
+  hpContainer.className = 'hp-bar-container structure-hp';
+  const colorHex = FACTIONS[faction].colorHex;
+  hpContainer.innerHTML = `
+    <div class="hp-bar-label">${def.icon} ${def.name}</div>
+    <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:100%;background:${colorHex}"></div></div>`;
+  document.getElementById('hp-bars-container')?.appendChild(hpContainer);
+
+  const structure = {
+    type, faction, x, z,
+    hp: def.hp, maxHp: def.hp,
+    mesh, hpContainer,
+    destroyed: false,
+    attackTimer: 0,
+    fromRuin: null,
+  };
+  structures.push(structure);
+  return structure;
+}
+
+// ============================================================
 // ARENA
 // ============================================================
 function cleanupArena() {
@@ -7552,6 +7816,16 @@ function cleanupArena() {
   _terrainData = null;
   skyIslands.length = 0;
   skyBridges.length = 0;
+  // v4 Phase 7: 廃墟リストもリセット（メッシュは arenaObjects で除去済）
+  ruins.length = 0;
+  // v4 Phase 9: ミニマップの空島背景もリセット（新マップ生成時に再描画される）
+  try {
+    const _mmc = document.getElementById('minimap-canvas');
+    if (_mmc) {
+      _mmc._islandsDrawn = false;
+      _mmc.querySelectorAll('.mm-island').forEach(el => el.remove());
+    }
+  } catch (e) {}
 }
 
 function buildArena() {
@@ -9323,6 +9597,19 @@ function damageStructure(structure, amount) {
     createBuildEffect(structure.x, structure.z, 0xff5722);
     const def = STRUCTURE_DEFS[structure.type];
     addCommentary(`💥 ${FACTIONS[structure.faction].icon} ${def.name}が破壊された！`, structure.faction);
+    // v4 Phase 7: 廃墟由来の施設が壊れたら廃墟に戻す（再修復可能に）
+    if (structure.fromRuin) {
+      const ruin = structure.fromRuin;
+      ruin.repaired = false;
+      ruin.progress = 0;
+      ruin.builtStructure = null;
+      // 廃墟メッシュを再生成
+      const mesh = buildRuinMesh(ruin.type);
+      mesh.position.set(ruin.x, ruin.y, ruin.z);
+      scene.add(mesh);
+      arenaObjects.push(mesh);
+      ruin.mesh = mesh;
+    }
   }
 }
 
@@ -10206,7 +10493,12 @@ function updateGuardianEntity(e, dt) {
       e.isHostile = false;
       e.hostileTimer = 0;
       e.respawnTimer = 0;
-      if (e.mesh) e.mesh.visible = true;
+      // v4 Phase 6: 崩壊状態を復元（欠損したボクセルを戻す）
+      e._damageStage = 0;
+      if (e.mesh) {
+        e.mesh.visible = true;
+        e.mesh.children.forEach(c => { if (c) c.visible = true; });
+      }
       if (e.hpContainer) e.hpContainer.style.display = 'block';
     }
     return;
@@ -10365,11 +10657,13 @@ function buildTitanMesh(scaleOrDef, _unused) {
   const legW = 8 * s;
   const legL = at(tbox(legW, legH, legW, bodyColor), -7 * s, legH / 2, 0);
   const legR = at(tbox(legW, legH, legW, bodyColor), 7 * s, legH / 2, 0);
+  legL._protected = true; legR._protected = true; // Phase 6: 崩壊しても残す
   g.add(legL); g.add(legR);
 
   // Feet/boots
   const footL = at(tbox(legW * 1.3, 4 * s, legW * 1.6, darkColor), -7 * s, 2 * s, 3 * s);
   const footR = at(tbox(legW * 1.3, 4 * s, legW * 1.6, darkColor), 7 * s, 2 * s, 3 * s);
+  footL._protected = true; footR._protected = true;
   g.add(footL); g.add(footR);
 
   // --- Torso (inverted triangle: wide shoulders, narrow waist) ---
@@ -10434,6 +10728,7 @@ function buildTitanMesh(scaleOrDef, _unused) {
   const headY = neckY + 8 * s;
   const headH = 22 * s;
   const head = at(tbox(20 * s, headH, 18 * s, skinColor), 0, headY + headH / 2, 0);
+  head._protected = true; // Phase 6: 頭は残す
   g.add(head);
 
   // Lower jaw
@@ -10445,6 +10740,7 @@ function buildTitanMesh(scaleOrDef, _unused) {
   const eyeL = at(new THREE.Mesh(new THREE.BoxGeometry(4 * s, 3 * s, 2 * s), eyeMat), -6 * s, headY + headH * 0.65, -9 * s);
   const eyeR = at(new THREE.Mesh(new THREE.BoxGeometry(4 * s, 3 * s, 2 * s), eyeMat), 6 * s, headY + headH * 0.65, -9 * s);
   eyeL.castShadow = false; eyeR.castShadow = false;
+  eyeL._protected = true; eyeR._protected = true; // Phase 6: 目は残す（圧迫感維持）
   g.add(eyeL); g.add(eyeR);
 
   // Brow ridge
@@ -10462,6 +10758,7 @@ function buildTitanMesh(scaleOrDef, _unused) {
   hornR.castShadow = true;
   hornR.position.set(8 * s, headY + headH + 7 * s, 0);
   hornR.rotation.z = 0.3;
+  hornL._protected = true; hornR._protected = true; // Phase 6: 角は残す
   g.add(hornL); g.add(hornR);
 
   // Back rock armor (DodecahedronGeometry)
@@ -12289,6 +12586,136 @@ function applyTitanPosture(e, dt) {
   } else {
     e.mesh.rotation.z = 0;
   }
+
+  // v4 Phase 6: 崩壊演出（HP%で段階変化）
+  applyTitanDamageState(e, dt);
+}
+
+// ============================================================
+// TITAN DAMAGE STATE — Phase 6: HP%で段階的に崩壊する演出
+// ============================================================
+// Stage 0: 100-76% ノーマル
+// Stage 1:  75-51% 一部欠損＋煙
+// Stage 2:  50-26% 多数欠損＋激しい煙
+// Stage 3:  25- 1% 瀕死（欠損＋火花＋震え）
+function applyTitanDamageState(e, dt) {
+  if (!e || !e.mesh || !e.maxHp || e.hp <= 0) return;
+  if (e.statusFrozen) return; // ショーケースでは崩壊させない
+
+  const hpPct = e.hp / e.maxHp;
+  let stage = 0;
+  if (hpPct <= 0.25) stage = 3;
+  else if (hpPct <= 0.50) stage = 2;
+  else if (hpPct <= 0.75) stage = 1;
+
+  if (e._damageStage === undefined) e._damageStage = 0;
+
+  // ステージ昇格: ボクセル欠損処理＋コメンタリー（一度だけ）
+  while (stage > e._damageStage) {
+    e._damageStage++;
+    const children = e.mesh.children;
+    // 各ステージで全体の約12%を欠損させる（累積で最大36%）
+    const hideCount = Math.max(3, Math.floor(children.length * 0.12));
+    let hidden = 0, tries = 0;
+    while (hidden < hideCount && tries < children.length * 2) {
+      tries++;
+      const idx = Math.floor(Math.random() * children.length);
+      const child = children[idx];
+      if (!child || !child.visible) continue;
+      // 目（emissive）・角・足は残す（_isEssential 判定代わりに色/サイズで簡易判定）
+      if (child._protected) continue;
+      child.visible = false;
+      hidden++;
+      // 欠けた位置からデブリ飛散
+      spawnTitanDebris(e, child);
+    }
+    // コメンタリー
+    const def = TITAN_DEFS[e.dragonType] || TITAN_DEFS.grunt;
+    if (e._damageStage === 1) addCommentary(`💥 ${def.name} が傷ついた！`, 'system');
+    else if (e._damageStage === 2) addCommentary(`🔥 ${def.name} 重傷！崩壊寸前！`, 'system');
+    else if (e._damageStage === 3) addCommentary(`⚡ ${def.name} 瀕死！トドメを刺せ！`, 'system');
+  }
+
+  // Stage 3: 小刻みに震える
+  if (e._damageStage >= 3) {
+    e.mesh.position.x += (Math.random() - 0.5) * 0.6;
+    e.mesh.position.z += (Math.random() - 0.5) * 0.6;
+  }
+
+  // 煙パーティクル (Stage 2以上で確率発火)
+  if (e._damageStage >= 2 && Math.random() < dt * 3.5) {
+    spawnTitanSmoke(e);
+  }
+  // 火花 (Stage 3で確率発火)
+  if (e._damageStage >= 3 && Math.random() < dt * 6) {
+    spawnTitanSpark(e);
+  }
+}
+
+function spawnTitanDebris(e, fromChild) {
+  // 欠けたメッシュの位置から小さな石/破片を飛散
+  try {
+    const worldPos = new THREE.Vector3();
+    fromChild.getWorldPosition(worldPos);
+    for (let i = 0; i < 4; i++) {
+      const p = new THREE.Mesh(
+        new THREE.BoxGeometry(1.5, 1.5, 1.5),
+        new THREE.MeshBasicMaterial({ color: 0x443322 })
+      );
+      p.position.copy(worldPos);
+      scene.add(p);
+      spellEffects.push({
+        mesh: p, timer: 1.2,
+        vx: (Math.random() - 0.5) * 8,
+        vy: 3 + Math.random() * 5,
+        vz: (Math.random() - 0.5) * 8,
+        particle: true,
+      });
+    }
+  } catch(_) {}
+}
+
+function spawnTitanSmoke(e) {
+  try {
+    // 胴体付近から灰色の煙
+    const ox = (Math.random() - 0.5) * 20;
+    const oy = 20 + Math.random() * 40;
+    const oz = (Math.random() - 0.5) * 20;
+    const p = new THREE.Mesh(
+      new THREE.SphereGeometry(3 + Math.random() * 3, 5, 5),
+      new THREE.MeshBasicMaterial({ color: 0x666666, transparent: true, opacity: 0.65 })
+    );
+    p.position.set(e.mesh.position.x + ox, e.mesh.position.y + oy, e.mesh.position.z + oz);
+    scene.add(p);
+    spellEffects.push({
+      mesh: p, timer: 1.6,
+      vx: (Math.random() - 0.5) * 2,
+      vy: 2 + Math.random() * 2,
+      vz: (Math.random() - 0.5) * 2,
+      particle: true,
+    });
+  } catch(_) {}
+}
+
+function spawnTitanSpark(e) {
+  try {
+    const ox = (Math.random() - 0.5) * 25;
+    const oy = 15 + Math.random() * 50;
+    const oz = (Math.random() - 0.5) * 25;
+    const p = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 4, 4),
+      new THREE.MeshBasicMaterial({ color: 0xffaa22 })
+    );
+    p.position.set(e.mesh.position.x + ox, e.mesh.position.y + oy, e.mesh.position.z + oz);
+    scene.add(p);
+    spellEffects.push({
+      mesh: p, timer: 0.5,
+      vx: (Math.random() - 0.5) * 4,
+      vy: 4 + Math.random() * 3,
+      vz: (Math.random() - 0.5) * 4,
+      particle: true,
+    });
+  } catch(_) {}
 }
 
 // ============================================================
@@ -13794,6 +14221,13 @@ function confirmPlacement() {
   const cardId = handCards[selectedCardIndex];
   const def = CARD_DEFS[cardId];
 
+  // v4 Phase 8: 配置可否チェック（奈落上は配置不可）
+  if (ghostMesh.userData && ghostMesh.userData._canPlace === false) {
+    // 無効な場所 — 軽く警告してキャンセル
+    addCommentary(`⚠️ 空島の上にしか配置できません`, 'system');
+    return;
+  }
+
   const placeX = ghostMesh.position.x;
   const placeZ = ghostMesh.position.z;
 
@@ -13874,14 +14308,36 @@ function updateGhostPosition() {
   const posY = def.type === 'spell' ? 1 : def.type === 'structure' ? 0 : 50;
   // Bob up and down for visibility (structures stay grounded)
   const bob = def.type === 'structure' ? 0 : Math.sin(Date.now() * 0.004) * 5;
-  // Place ghost in front of king based on camera direction
-  const gx = playerKingTower.mesh.position.x - Math.sin(cameraYaw) * GHOST_OFFSET_Z;
-  const gz = playerKingTower.mesh.position.z + Math.cos(cameraYaw) * GHOST_OFFSET_Z;
+
+  // v4 Phase 8: Clash Royale 風配置 — マウス位置にゴースト追従
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObject(groundPlane);
+  let gx, gz;
+  if (hits.length > 0) {
+    gx = hits[0].point.x;
+    gz = hits[0].point.z;
+  } else {
+    // マウスが地面外: キング前方にフォールバック
+    gx = playerKingTower.mesh.position.x - Math.sin(cameraYaw) * GHOST_OFFSET_Z;
+    gz = playerKingTower.mesh.position.z + Math.cos(cameraYaw) * GHOST_OFFSET_Z;
+  }
   ghostMesh.position.set(gx, posY + bob, gz);
-  // Pulse opacity on children
+
+  // 配置可否判定: 空島上なら OK、奈落上なら NG（呪文は空中でもOK）
+  const onIsland = isOnSkyIsland(gx, gz);
+  const canPlace = (def.type === 'spell') || !!onIsland;
+  ghostMesh.userData._canPlace = canPlace;
+
+  // Pulse opacity on children — 有効=白系 / 無効=赤系
   ghostMesh.children.forEach(c => {
     if (c.material && c.material.transparent) {
       c.material.opacity = 0.35 + Math.sin(Date.now() * 0.006) * 0.15;
+      if (!canPlace) {
+        if (!c.userData._origColor) c.userData._origColor = c.material.color.getHex();
+        c.material.color.setHex(0xff4444);
+      } else if (c.userData._origColor) {
+        c.material.color.setHex(c.userData._origColor);
+      }
     }
   });
 
@@ -16321,6 +16777,9 @@ window.startBattle = function() {
   // v4: 番人タイタン6体を周辺空島間に配置
   try { spawnGuardians(); } catch(e) { console.error('spawnGuardians:', e.message); }
 
+  // v4 Phase 7: 廃墟配置（修復対象）
+  try { buildRuins(); } catch(e) { console.error('buildRuins:', e.message); }
+
   // 配信モード自動有効化（設定がONなら）
   isSpectator = false;
   disableStreamMode();
@@ -17059,14 +17518,28 @@ function updateMinimap() {
   }
   mm.classList.add('visible');
 
-  // ワールド→ミニマップ変換
-  const W = arenaW, L = ARENA_L;
+  // v4 Phase 9: 空島レイアウト向けに拡大表示（島は ±520 以内）
+  const MM_RANGE = 1600; // -800〜+800 を表示
+  const W = MM_RANGE, L = MM_RANGE;
   const toMM = (x, z) => {
-    // 0..1 にマップ
     const nx = (x + W / 2) / W;
     const nz = (z + L / 2) / L;
     return { lx: nx * 100, ly: nz * 100 };
   };
+
+  // v4 Phase 9: 空島の背景ドットを初回のみ生成
+  if (!canvas._islandsDrawn && Array.isArray(skyIslands) && skyIslands.length > 0) {
+    canvas._islandsDrawn = true;
+    skyIslands.forEach(is => {
+      const el = document.createElement('div');
+      el.className = 'mm-island';
+      const { lx, ly } = toMM(is.x, is.z);
+      // 島の半径もミニマップ座標に変換
+      const radPct = (is.radius / (MM_RANGE / 2)) * 50;
+      el.style.cssText = `position:absolute;left:${lx}%;top:${ly}%;width:${radPct * 2}%;height:${radPct * 2}%;transform:translate(-50%,-50%);border-radius:50%;background:${is.isCenter ? 'rgba(130,200,120,0.35)' : 'rgba(110,180,100,0.28)'};border:1px solid rgba(160,220,140,0.5);pointer-events:none;z-index:1;`;
+      canvas.appendChild(el);
+    });
+  }
 
   const seen = new Set();
 
@@ -17099,6 +17572,37 @@ function updateMinimap() {
     dot.style.top = ly + '%';
   }
 
+  // v4 Phase 9: 廃墟・修復済み施設マーカー
+  if (Array.isArray(ruins)) {
+    for (let ri = 0; ri < ruins.length; ri++) {
+      const r = ruins[ri];
+      const key = 'ruin' + ri;
+      seen.add(key);
+      let dot = _mmDotMap.get(key);
+      if (!dot) {
+        dot = document.createElement('div');
+        dot.className = 'mm-dot';
+        dot.style.zIndex = '2';
+        canvas.appendChild(dot);
+        _mmDotMap.set(key, dot);
+      }
+      if (r.repaired) {
+        dot.style.background = '#ffd24a';
+        dot.style.color = '#ffd24a';
+        dot.style.boxShadow = '0 0 4px #ffd24a';
+        dot.textContent = '';
+      } else {
+        dot.style.background = '#888';
+        dot.style.color = '#888';
+        dot.style.boxShadow = '';
+        dot.textContent = '';
+      }
+      const { lx, ly } = toMM(r.x, r.z);
+      dot.style.left = lx + '%';
+      dot.style.top = ly + '%';
+    }
+  }
+
   // エンティティ
   for (let i = 0; i < entities.length; i++) {
     const e = entities[i];
@@ -17116,7 +17620,20 @@ function updateMinimap() {
     const isSelf = e.side === focusSide;
     const isAlly = owner && focusPlayer && owner.faction === focusPlayer.faction && !isSelf;
     const isDragon = e.side === 99;
-    if (isSelf) {
+    const isGuardian = !!e.isGuardian;
+    if (e.hp <= 0 && isGuardian) {
+      // 死亡中の番人は非表示
+      dot.style.display = 'none';
+    } else {
+      dot.style.display = '';
+    }
+    if (isGuardian) {
+      // 番人タイタン: シアンの「G」
+      dot.className = 'mm-dot mm-enemy';
+      dot.style.color = '#4ad9ff';
+      dot.style.background = 'transparent';
+      dot.textContent = 'G';
+    } else if (isSelf) {
       dot.className = 'mm-dot mm-self';
       dot.textContent = '';
     } else if (isAlly) {
@@ -17296,6 +17813,7 @@ function updateGame(dt) {
     }
     try { updateChests(dt); } catch(e) {}
     try { updateStructures(dt); } catch(e) {}
+    try { updateRuinInteraction(dt); } catch(e) {}
     if (frameCount % 3 === 0) { updateHUD(); updateMinimap(); }
     updateCommentary(dt);
     try { updateQueenAuraAnimation(dt); } catch(e) {}
@@ -17373,6 +17891,7 @@ function updateGame(dt) {
   }
   try { updateChests(dt); } catch(e) {}
   try { updateStructures(dt); } catch(e) {}
+  try { updateRuinInteraction(dt); } catch(e) {}
   if (frameCount % 3 === 0) { updateHUD(); updateMinimap(); }
   if (structurePanelOpen && frameCount % 10 === 0) renderStructurePanel();
   updateCommentary(dt);
